@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Eliminar Usuario{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>Eliminar Usuario</h2>
+        </div>
+        <div class="card-body">
+            <p class="alert alert-danger">
+                ¿Estás seguro de que deseas eliminar al usuario <strong>{{ user.username }}</strong> ({{ user.first_name }} {{ user.last_name }})?
+            </p>
+            <p>Esta acción no se puede deshacer y eliminará todos los reportes asociados al usuario.</p>
+
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Sí, Eliminar</button>
+                <a href="{% url 'user_list' %}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

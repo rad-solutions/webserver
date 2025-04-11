@@ -1,0 +1,3 @@
+--line-length=88
+--target-version=py38
+--exclude=/(\.eggs|\.git|\.hg|\.mypy_cache|\.tox|\.venv|venv|_build|buck-out|build|dist)/

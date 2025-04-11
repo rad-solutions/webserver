@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Detalles de Usuario{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>{{ user.first_name }} {{ user.last_name }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Nombre de Usuario:</strong></div>
+                <div class="col-md-8">{{ user.username }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Nombre:</strong></div>
+                <div class="col-md-8">{{ user.first_name }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Apellido:</strong></div>
+                <div class="col-md-8">{{ user.last_name }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Email:</strong></div>
+                <div class="col-md-8">{{ user.email }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Creación:</strong></div>
+                <div class="col-md-8">{{ user.created_at }}</div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a href="{% url 'user_list' %}" class="btn btn-secondary">Volver</a>
+            <a href="{% url 'user_update' user.id %}" class="btn btn-warning">Editar</a>
+            <a href="{% url 'user_delete' user.id %}" class="btn btn-danger">Eliminar</a>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <h3>Reportes del Usuario</h3>
+        <div class="card">
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Título</th>
+                            <th>Descripción</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in user.reports.all %}
+                        <tr>
+                            <td>{{ report.title }}</td>
+                            <td>{{ report.description|truncatechars:50 }}</td>
+                            <td>{{ report.created_at }}</td>
+                            <td>
+                                <a href="{% url 'report_detail' report.id %}" class="btn btn-sm btn-info">Ver</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">Este usuario no tiene reportes.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

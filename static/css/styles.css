@@ -1,0 +1,66 @@
+/* Estilos principales para RadSolutions Reports */
+
+html, body {
+    height: 90%;
+    margin: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1 0 auto;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.navbar-brand {
+    font-weight: 700;
+}
+
+/* Personalización de colores */
+.bg-primary {
+    background-color: #0d3b66 !important; /* Azul oscuro */
+}
+
+.bg-dark {
+    background-color: #1a252f !important;
+}
+
+footer {
+    flex-shrink: 0;
+}
+
+/* Estilos para contenedores de contenido */
+.content-container {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+/* Botones personalizados */
+.btn-primary {
+    background-color: #0d3b66;
+    border-color: #0d3b66;
+}
+
+.btn-primary:hover {
+    background-color: #082b4d;
+    border-color: #082b4d;
+}
+
+/* Para mantener consistencia con el azul en links activos */
+.nav-link.active {
+    background-color: rgba(255, 255, 255, 0.1);
+}

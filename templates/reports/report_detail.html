@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Reporte{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>{{ report.title }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Usuario:</strong></div>
+                <div class="col-md-8">
+                    <a href="{% url 'user_detail' report.user.id %}">{{ report.user.username }}</a>
+                    ({{ report.user.first_name }} {{ report.user.last_name }})
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Descripción:</strong></div>
+                <div class="col-md-8">{{ report.description|linebreaks }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Creación:</strong></div>
+                <div class="col-md-8">{{ report.created_at|date:"d/m/Y H:i" }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Archivo PDF:</strong></div>
+                <div class="col-md-8">
+                    <a href="{{ report.pdf_file.url }}" class="btn btn-info" target="_blank">
+                        <i class="fas fa-file-pdf"></i> Ver/Descargar PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a href="{% url 'report_list' %}" class="btn btn-secondary">Volver</a>
+            <a href="{% url 'report_update' report.id %}" class="btn btn-warning">Editar</a>
+            <a href="{% url 'report_delete' report.id %}" class="btn btn-danger">Eliminar</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
