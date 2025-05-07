@@ -16,8 +16,8 @@ RadSolutions Reports es una aplicación web basada en Django para la gestión de
 
 1. Clona este repositorio:
    ```
-   git clone <url-del-repositorio>
-   cd radsolutions_reports
+   git clone https://github.com/rad-solutions/webserver.git
+   cd webserver
    ```
 
 2. Crea un archivo `.env` en la raíz del proyecto con las siguientes variables (o edita el existente):
@@ -28,12 +28,14 @@ RadSolutions Reports es una aplicación web basada en Django para la gestión de
    DATABASE_USER=radsolutions_user
    DATABASE_PASSWORD=radsolutions_pass
    DATABASE_HOST=db
-   DATABASE_PORT=5433
+   DATABASE_PORT=5432
    ALLOWED_HOSTS=localhost,127.0.0.1
    USE_MOCK_STORAGE=True
    ```
 
 ## Instalación y ejecución
+
+**Nota para usuarios de Windows:** Los comandos `make` de este proyecto están pensados para entornos tipo Unix. Si estás en Windows, necesitarás usar WSL (Windows Subsystem for Linux) o una herramienta similar que proporcione la utilidad `make` (como Git Bash o Cygwin) para ejecutar estos comandos. Alternativamente, puedes ejecutar los comandos equivalentes directamente (por ejemplo, `python manage.py runserver` en lugar de `make run`).
 
 ### Con Docker (recomendado)
 

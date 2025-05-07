@@ -2,10 +2,22 @@ import os
 import tempfile
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Report, User
+from .models import (
+    Equipment,
+    Process,
+    ProcessStatus,
+    ProcessStatusChoices,
+    ProcessType,
+    ProcessTypeChoices,
+    Report,
+    Role,
+    RoleChoices,
+    User,
+)
 
 
 class UserModelTest(TestCase):
@@ -75,6 +87,173 @@ class ReportModelTest(TestCase):
     def test_user_reports_relationship(self):
         self.assertEqual(self.user.reports.count(), 1)
         self.assertEqual(self.user.reports.first(), self.report)
+
+
+class RoleModelTest(TestCase):
+    def test_role_creation(self):
+        """Test that role creation works correctly."""
+        role = Role.objects.create(name=RoleChoices.CLIENTE)
+        self.assertEqual(role.name, "cliente")
+        self.assertEqual(Role.objects.count(), 1)
+
+    def test_role_string_representation(self):
+        """Test the string representation of the role."""
+        role = Role.objects.create(name=RoleChoices.EMPLEADO)
+        self.assertEqual(str(role), "Empleado")
+
+    def test_role_uniqueness(self):
+        """Test that role names must be unique."""
+        Role.objects.create(name=RoleChoices.CLIENTE)
+        with self.assertRaises(IntegrityError):
+            Role.objects.create(name=RoleChoices.CLIENTE)
+
+
+class ProcessTypeModelTest(TestCase):
+    def test_process_type_creation(self):
+        """Test process type creation."""
+        pt = ProcessType.objects.create(process_type=ProcessTypeChoices.ASESORIA)
+        self.assertEqual(pt.process_type, "asesoria")
+        self.assertEqual(ProcessType.objects.count(), 1)
+
+    def test_process_type_string_representation(self):
+        """Test the string representation."""
+        pt = ProcessType.objects.create(
+            process_type=ProcessTypeChoices.CALCULO_BLINDAJES
+        )
+        self.assertEqual(str(pt), "Cálculo de Blindajes")
+
+    def test_process_type_uniqueness(self):
+        """Test process type uniqueness."""
+        ProcessType.objects.create(process_type=ProcessTypeChoices.CONTROL_CALIDAD)
+        with self.assertRaises(IntegrityError):
+            ProcessType.objects.create(process_type=ProcessTypeChoices.CONTROL_CALIDAD)
+
+
+class ProcessStatusModelTest(TestCase):
+    def test_process_status_creation(self):
+        """Test process status creation."""
+        ps = ProcessStatus.objects.create(estado=ProcessStatusChoices.EN_PROGRESO)
+        self.assertEqual(ps.estado, "en_progreso")
+        self.assertEqual(ProcessStatus.objects.count(), 1)
+
+    def test_process_status_string_representation(self):
+        """Test the string representation."""
+        ps = ProcessStatus.objects.create(estado=ProcessStatusChoices.FINALIZADO)
+        self.assertEqual(str(ps), "Finalizado")
+
+    def test_process_status_uniqueness(self):
+        """Test process status uniqueness."""
+        ProcessStatus.objects.create(estado=ProcessStatusChoices.RADICADO)
+        with self.assertRaises(IntegrityError):
+            ProcessStatus.objects.create(estado=ProcessStatusChoices.RADICADO)
+
+
+class ProcessModelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="procuser", password="password")
+        self.process_type = ProcessType.objects.create(
+            process_type=ProcessTypeChoices.ASESORIA
+        )
+        self.process_status = ProcessStatus.objects.create(
+            estado=ProcessStatusChoices.EN_PROGRESO
+        )
+
+    def test_process_creation(self):
+        """Test process creation and relationships."""
+        process = Process.objects.create(
+            user=self.user,
+            process_type=self.process_type,
+            estado=self.process_status,
+        )
+        self.assertEqual(process.user, self.user)
+        self.assertEqual(process.process_type, self.process_type)
+        self.assertEqual(process.estado, self.process_status)
+        self.assertIsNotNone(process.fecha_inicio)
+        self.assertIsNone(process.fecha_final)
+        self.assertEqual(Process.objects.count(), 1)
+        self.assertEqual(self.user.processes.count(), 1)
+        self.assertEqual(self.process_type.processes.count(), 1)
+        self.assertEqual(self.process_status.processes.count(), 1)
+
+    def test_process_string_representation(self):
+        """Test the string representation."""
+        process = Process.objects.create(
+            user=self.user,
+            process_type=self.process_type,
+            estado=self.process_status,
+        )
+        expected_string = "Asesoría for procuser - Status: En Progreso"
+        self.assertEqual(str(process), expected_string)
+
+
+class EquipmentModelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="equipuser", password="password")
+        # Optional: Create related objects if needed for multiple tests
+        # self.process_type = ProcessType.objects.create(process_type=ProcessTypeChoices.ASESORIA)
+        # self.process_status = ProcessStatus.objects.create(estado=ProcessStatusChoices.EN_PROGRESO)
+        # self.process = Process.objects.create(
+        #     user=self.user, process_type=self.process_type, estado=self.process_status
+        # )
+
+    def test_equipment_creation(self):
+        """Test equipment creation."""
+        equipment = Equipment.objects.create(
+            nombre="Equipo Gamma",
+            marca="MarcaX",
+            modelo="ModeloY",
+            serial="XYZ123",
+            user=self.user,
+        )
+        self.assertEqual(equipment.nombre, "Equipo Gamma")
+        self.assertEqual(equipment.serial, "XYZ123")
+        self.assertEqual(equipment.user, self.user)
+        self.assertFalse(equipment.tiene_proceso_de_asesoria)
+        self.assertEqual(Equipment.objects.count(), 1)
+        self.assertEqual(self.user.equipment.count(), 1)
+
+    def test_equipment_creation_minimal(self):
+        """Test equipment creation with minimal data."""
+        equipment = Equipment.objects.create(nombre="Detector Simple")
+        self.assertEqual(equipment.nombre, "Detector Simple")
+        self.assertIsNone(equipment.serial)
+        self.assertIsNone(equipment.user)
+        self.assertEqual(Equipment.objects.count(), 1)
+
+    def test_equipment_string_representation(self):
+        """Test the string representation."""
+        equipment_with_user = Equipment.objects.create(
+            nombre="Equipo A", serial="SERA", user=self.user
+        )
+        equipment_no_user = Equipment.objects.create(nombre="Equipo B")
+        equipment_no_serial = Equipment.objects.create(
+            nombre="Equipo C", user=self.user
+        )
+
+        expected_str_1 = "Equipo A (SERA) - Owner: equipuser"
+        expected_str_2 = "Equipo B (No Serial) - Owner: None"
+        expected_str_3 = "Equipo C (No Serial) - Owner: equipuser"
+
+        self.assertEqual(str(equipment_with_user), expected_str_1)
+        self.assertEqual(str(equipment_no_user), expected_str_2)
+        self.assertEqual(str(equipment_no_serial), expected_str_3)
+
+    def test_equipment_serial_uniqueness(self):
+        """Test that non-null equipment serial numbers must be unique."""
+        Equipment.objects.create(nombre="Equipo 1", serial="UNIQUE123")
+        # Ensure the first one was created successfully before attempting the duplicate
+        self.assertEqual(Equipment.objects.count(), 1)
+        with self.assertRaises(IntegrityError):
+            Equipment.objects.create(nombre="Equipo 2", serial="UNIQUE123")
+        # No need to check count again here, as the transaction might be broken
+        # if the IntegrityError occurred as expected. The assertRaises handles the check.
+
+    def test_equipment_null_serial_allowed(self):
+        """Test that multiple equipment items can have a null serial."""
+        Equipment.objects.create(nombre="Equipo 3", serial=None)
+        Equipment.objects.create(nombre="Equipo 4", serial=None)
+        # Check that both were created successfully
+        self.assertEqual(Equipment.objects.count(), 2)
 
 
 class ReportAPITest(TestCase):

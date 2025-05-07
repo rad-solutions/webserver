@@ -103,7 +103,7 @@ class Equipment(models.Model):
     )
 
     def __str__(self):
-        return f"{self.name} ({self.serial or 'No Serial'}) - Owner: {self.user.username if self.user else 'None'}"
+        return f"{self.nombre} ({self.serial or 'No Serial'}) - Owner: {self.user.username if self.user else 'None'}"
 
 
 class Report(models.Model):
