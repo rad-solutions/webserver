@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/rad-solutions/webserver/compare/v1.0.0...v1.1.0) (2025-05-08)
+
+
+### Features
+
+* Added error test ([577dd50](https://github.com/rad-solutions/webserver/commit/577dd507fe96eee17b6c0d83c6462df73f931f19))
+
 # 1.0.0 (2025-05-08)
 
 
