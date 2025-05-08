@@ -1,6 +1,7 @@
 import os
 import tempfile
 
+from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
 from django.test import TestCase
@@ -43,6 +44,23 @@ class UserModelTest(TestCase):
         """Test que la representación de cadena del usuario es correcta"""
         expected_string = "Test User (test@example.com)"
         self.assertEqual(str(self.user), expected_string)
+
+    def test_username_required(self):
+        """Username cannot be blank."""
+        with self.assertRaises(ValueError):
+            User.objects.create_user(
+                username="", email="foo@example.com", password="pwd"
+            )
+
+    def test_duplicate_username(self):
+        """Creating two users with the same username should fail."""
+        User.objects.create_user(
+            username="dupuser", email="first@example.com", password="pwd"
+        )
+        with self.assertRaises(IntegrityError):
+            User.objects.create_user(
+                username="dupuser", email="second@example.com", password="pwd"
+            )
 
 
 class ReportModelTest(TestCase):
@@ -87,6 +105,26 @@ class ReportModelTest(TestCase):
     def test_user_reports_relationship(self):
         self.assertEqual(self.user.reports.count(), 1)
         self.assertEqual(self.user.reports.first(), self.report)
+
+    def test_missing_title_validation(self):
+        """Cannot create report without title."""
+        rpt = Report(
+            user=self.user,
+            description="No title provided",
+            pdf_file=SimpleUploadedFile("no_title.pdf", b"data"),
+        )
+        with self.assertRaises(ValidationError):
+            rpt.full_clean()
+
+    def test_missing_pdf_validation(self):
+        """Cannot create report without PDF file."""
+        rpt = Report(
+            user=self.user,
+            title="Has Title",
+            description="But no file",
+        )
+        with self.assertRaises(ValidationError):
+            rpt.full_clean()
 
 
 class RoleModelTest(TestCase):
@@ -253,6 +291,27 @@ class EquipmentModelTest(TestCase):
         Equipment.objects.create(nombre="Equipo 3", serial=None)
         Equipment.objects.create(nombre="Equipo 4", serial=None)
         # Check that both were created successfully
+        self.assertEqual(Equipment.objects.count(), 2)
+
+    def test_unique_serial_validation(self):
+        """Non-null serial must be unique at validation time."""
+        eq1 = Equipment(nombre="E1", serial="ABC123")
+        eq1.full_clean()
+        eq1.save()
+
+        eq2 = Equipment(nombre="E2", serial="ABC123")
+        with self.assertRaises(ValidationError):
+            eq2.full_clean()
+
+    def test_serial_blank_allowed_validation(self):
+        """Null serial should pass model validation repeatedly."""
+        eq1 = Equipment(nombre="E1", serial=None)
+        eq2 = Equipment(nombre="E2", serial=None)
+        # both should validate without error
+        eq1.full_clean()
+        eq2.full_clean()
+        eq1.save()
+        eq2.save()
         self.assertEqual(Equipment.objects.count(), 2)
 
 
