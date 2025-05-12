@@ -2,9 +2,9 @@ name: Django CI and Release
 
 on:
   push:
-    branches: [ main, test/semantic-release ] # Added test/semantic-release
+    branches: [ main ]
   pull_request:
-    branches: [ main, test/semantic-release ] # Added test/semantic-release
+    branches: [ main ] 
 
 jobs:
   test-and-lint:
@@ -84,7 +84,7 @@ jobs:
     name: Semantic Release
     needs: test-and-lint
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/test/semantic-release' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' 
     permissions:
       contents: write
       issues: write
