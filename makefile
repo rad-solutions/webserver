@@ -1,13 +1,15 @@
 test:
-	python manage.py test
+	# python manage.py test
+	docker compose exec web python manage.py test
 
 down:
 	docker-compose down
 
 docker-migrate-create-admin:
 	docker-compose exec web sh -c "python manage.py makemigrations && python manage.py migrate"
-	docker-compose exec web sh -c "echo \"from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@gmail.com', 'admin') if not User.objects.filter(username='admin').exists() else None\" | python manage.py shell"
+	docker-compose exec web python manage.py shell -c "import app.scripts.create_users; app.scripts.create_users.run()"
 	@echo "Superusuario 'admin' creado con contraseña 'admin' y correo 'admin@gmail.com'"
+	@echo "Usuario cliente 'cliente' creado con contraseña 'clientepass' y rol 'Cliente'"
 
 setup:
 	docker-compose up -d

@@ -30,7 +30,7 @@ class UserForm(UserCreationForm):
 class ReportForm(forms.ModelForm):
     class Meta:
         model = Report
-        fields = ["title", "description", "pdf_file"]
+        fields = ["title", "description", "pdf_file", "process", "estado_reporte"]
 
 
 # Login view
