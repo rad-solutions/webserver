@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/rad-solutions/webserver/compare/v1.1.0...v1.2.0) (2025-05-12)
+
+
+### Features
+
+* Added semantic release and new fields to the database ([53ceaf2](https://github.com/rad-solutions/webserver/commit/53ceaf22fcf8dfd7fd7f043cd4fdcfdc3c04c3fa))
+
 # [1.1.0](https://github.com/rad-solutions/webserver/compare/v1.0.0...v1.1.0) (2025-05-08)
 
 
