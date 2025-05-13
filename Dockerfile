@@ -5,15 +5,24 @@ WORKDIR /app
 
 # Instalar dependencias del sistema
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libpq-dev \
+    && apt-get install -y --no-install-recommends gcc libpq-dev curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar dependencias de Python
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir django-storages boto3
+# Instalar Poetry
+ENV POETRY_HOME="/opt/poetry"
+ENV PATH="$POETRY_HOME/bin:$PATH"
+RUN curl -sSL https://install.python-poetry.org | python3 - --version 1.8.2 \
+    && poetry config virtualenvs.create false
+
+# Copiar archivos de dependencias y del proyecto
+COPY pyproject.toml poetry.lock* ./
+
+# Instalar dependencias de Python con Poetry
+# --no-root es para no instalar el paquete actual (el proyecto en sí) como editable,
+# lo cual es bueno para producción.
+# --only main es para no instalar dependencias de desarrollo en la imagen final.
+RUN poetry install --no-root --only main
 
 # Copiar el proyecto
 COPY . .

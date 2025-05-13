@@ -1,0 +1,52 @@
+[tool.poetry]
+name = "webserver-requeriments"
+version = "0.1.0"
+description = ""
+authors = ["dachacond <102201222+dachacond@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.12"
+asgiref = "==3.8.1"
+boto3 = "==1.37.29"
+botocore = "==1.37.29"
+crispy-bootstrap5 = "==0.7"
+django = "==5.2"
+django-crispy-forms = "==2.1"
+django-debug-toolbar = "==4.3.0"
+django-storages = "==1.14.6"
+djangorestframework = "==3.14.0"
+gunicorn = "==21.2.0"
+psycopg2-binary = "==2.9.9"
+python-dateutil = "==2.9.0.post0"
+python-dotenv = "==1.0.0"
+pytz = "==2025.2"
+s3transfer = "==0.11.4"
+six = "==1.17.0"
+sqlparse = "==0.5.3"
+urllib3 = "==2.3.0"
+whitenoise = "==6.6.0"
+pillow = "==10.2.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "24.2.0"
+flake8 = "7.0.0"
+isort = "6.0.1"
+mypy-extensions = "1.0.0"
+pre-commit = "3.6.2"
+pycodestyle = "2.11.1"
+pyflakes = "3.2.0"
+pytest = "7.4.4"
+pytest-django = "4.7.0"
+click = "8.1.8"
+iniconfig = "2.1.0"
+jmespath = "1.0.1"
+mccabe = "0.7.0"
+packaging = "24.2"
+pathspec = "0.12.1"
+platformdirs = "4.3.7"
+pluggy = "1.5.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

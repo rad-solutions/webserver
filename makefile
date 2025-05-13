@@ -1,29 +1,28 @@
 test:
-	# python manage.py test
-	docker compose exec web python manage.py test
+	docker compose exec web poetry run pytest
 
 down:
-	docker-compose down
+	docker compose down
 
 docker-migrate-create-admin:
-	docker-compose exec web sh -c "python manage.py makemigrations && python manage.py migrate"
-	docker-compose exec web python manage.py shell -c "import app.scripts.create_users; app.scripts.create_users.run()"
+	docker compose exec web sh -c "poetry run python manage.py makemigrations && poetry run python manage.py migrate"
+	docker compose exec web poetry run python manage.py shell -c "from app.scripts import create_users; create_users.run()"
 	@echo "Superusuario 'admin' creado con contraseña 'admin' y correo 'admin@gmail.com'"
 	@echo "Usuario cliente 'cliente' creado con contraseña 'clientepass' y rol 'Cliente'"
 
 setup:
-	docker-compose up -d
+	docker compose up -d --build
 	make docker-migrate-create-admin
 	@echo "Sistema iniciado y configurado correctamente."
 
 lint:
-	flake8 .
-	isort . --check --profile black
+	poetry run flake8 .
+	poetry run isort . --check --profile black
 
 format:
-	black .
-	isort .
-	flake8 .
+	poetry run black .
+	poetry run isort .
+	poetry run flake8 .
 
 precommit:
-	pre-commit run --all-files
+	poetry run pre-commit run --all-files
