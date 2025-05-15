@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/rad-solutions/webserver/compare/v1.2.0...v1.3.0) (2025-05-15)
+
+
+### Features
+
+* Integrate Poetry ([7988053](https://github.com/rad-solutions/webserver/commit/7988053e01182a7e631f1cf42346964bfa2b7628))
+
 # [1.2.0](https://github.com/rad-solutions/webserver/compare/v1.1.0...v1.2.0) (2025-05-12)
 
 
