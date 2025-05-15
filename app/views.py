@@ -3,8 +3,8 @@ import logging
 from django import forms
 from django.contrib.auth import logout
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.views import LoginView
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.views import LoginView, redirect_to_login
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
@@ -119,12 +119,25 @@ class ReportDetailView(LoginRequiredMixin, DetailView):
     login_url = "/login/"
 
 
-class ReportCreateView(LoginRequiredMixin, CreateView):
+class ReportCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    permission_required = "app.upload_report"
+    raise_exception = True
     model = Report
     form_class = ReportForm
     template_name = "reports/report_form.html"
     success_url = reverse_lazy("report_list")
     login_url = "/login/"
+
+    def handle_no_permission(self):
+        # 1) Not authenticated → redirect to login (302)
+        if not self.request.user.is_authenticated:
+            return redirect_to_login(
+                self.request.get_full_path(),
+                self.get_login_url(),
+                self.get_redirect_field_name(),
+            )
+        # 2) Authenticated but no permission → PermissionDenied (403)
+        return super().handle_no_permission()
 
     def form_valid(self, form):
         form.instance.user = self.request.user

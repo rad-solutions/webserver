@@ -33,6 +33,11 @@ class User(AbstractUser):
             return f"{self.first_name} {self.last_name} ({self.email or self.username})"
         return self.username
 
+    class Meta(AbstractUser.Meta):
+        permissions = [
+            ("add_external_user", "Can add external users only"),
+        ]
+
 
 class ClientProfile(models.Model):
     user = models.OneToOneField(
@@ -137,6 +142,11 @@ class Equipment(models.Model):
     def __str__(self):
         return f"{self.nombre} ({self.serial or 'No Serial'}) - Owner: {self.user.username if self.user else 'None'}"
 
+    class Meta:
+        permissions = [
+            ("manage_equipment", "Can create and edit equipment"),
+        ]
+
 
 class EstadoReporteChoices(models.TextChoices):
     EN_GENERACION = "en_generacion", _("En Generación")
@@ -168,6 +178,12 @@ class Report(models.Model):
 
     def __str__(self):
         return f"Report by {self.user.first_name}: {self.title}"
+
+    class Meta:
+        permissions = [
+            ("upload_report", "Can upload reports"),
+            ("approve_report", "Can approve reports"),
+        ]
 
     def delete(self, *args, **kwargs):
         if self.pdf_file:
