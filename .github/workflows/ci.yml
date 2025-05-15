@@ -79,7 +79,7 @@ jobs:
     - name: Stop containers using make
       run: |
         make down
-
+        
   release:
     name: Semantic Release
     needs: test-and-lint
