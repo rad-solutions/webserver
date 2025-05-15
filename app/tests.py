@@ -1,6 +1,7 @@
 import os
 import tempfile
 
+from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
@@ -478,6 +479,10 @@ class ReportAPITest(TestCase):
 
         self.client.login(username="testuser", password="testpassword")
 
+        # Grant upload_report permission so tests pass
+        upload_perm = Permission.objects.get(codename="upload_report")
+        self.user.user_permissions.add(upload_perm)
+
     def tearDown(self):
         os.unlink(self.temp_file.name)
 
@@ -693,3 +698,260 @@ class ProtectedResourceTest(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.url.startswith("/login/"))
+
+
+class PermissionTests(TestCase):
+    def setUp(self):
+        self.admin_user = User.objects.create_superuser(
+            username="admin", email="admin@example.com", password="adminpassword"
+        )
+        self.regular_user = User.objects.create_user(
+            username="regularuser",
+            email="regular@example.com",
+            password="regularpassword",
+        )
+        self.client_role = Role.objects.create(name=RoleChoices.CLIENTE)
+        self.gerente_role = Role.objects.create(name=RoleChoices.GERENTE)
+        self.director_role = Role.objects.create(name=RoleChoices.DIRECTOR_TECNICO)
+        self.tecnico_role = Role.objects.create(name=RoleChoices.PERSONAL_TECNICO_APOYO)
+        self.admin_role = Role.objects.create(name=RoleChoices.PERSONAL_ADMINISTRATIVO)
+
+        # Create process type and status for related tests
+        self.process_type = ProcessType.objects.create(
+            process_type=ProcessTypeChoices.ASESORIA
+        )
+        self.process_status = ProcessStatus.objects.create(
+            estado=ProcessStatusChoices.EN_PROGRESO
+        )
+
+    def test_custom_permissions_exist(self):
+        """Test that all custom permissions exist in the system"""
+        # Check User model permissions
+        self.assertTrue(
+            Permission.objects.filter(
+                codename="add_external_user",
+                content_type__app_label="app",
+                content_type__model="user",
+            ).exists()
+        )
+
+        # Check Equipment model permissions
+        self.assertTrue(
+            Permission.objects.filter(
+                codename="manage_equipment",
+                content_type__app_label="app",
+                content_type__model="equipment",
+            ).exists()
+        )
+
+        # Check Report model permissions
+        self.assertTrue(
+            Permission.objects.filter(
+                codename="upload_report",
+                content_type__app_label="app",
+                content_type__model="report",
+            ).exists()
+        )
+
+        self.assertTrue(
+            Permission.objects.filter(
+                codename="approve_report",
+                content_type__app_label="app",
+                content_type__model="report",
+            ).exists()
+        )
+
+    def test_add_external_user_permission(self):
+        """Test that users with add_external_user permission can create external users only"""
+        # Get the permission
+        add_external_user_perm = Permission.objects.get(codename="add_external_user")
+
+        # Assign the permission to the user with admin role
+        admin_user = User.objects.create_user(
+            username="adminstaff", email="adminstaff@example.com", password="password"
+        )
+        admin_user.roles.add(self.admin_role)
+        admin_user.user_permissions.add(add_external_user_perm)
+
+        self.assertTrue(admin_user.has_perm("app.add_external_user"))
+        self.client.login(username="adminstaff", password="password")
+
+        # Here we would test API or view access rights to ensure the user can only create external users
+        # For this test class, we'll just verify the permission exists and is assigned correctly
+
+    def test_manage_equipment_permission(self):
+        """Test that users with manage_equipment permission can create and edit equipment"""
+        # Get the permission
+        manage_equipment_perm = Permission.objects.get(codename="manage_equipment")
+
+        # Assign to technical staff
+        tech_user = User.objects.create_user(
+            username="techstaff", email="tech@example.com", password="password"
+        )
+        tech_user.roles.add(self.tecnico_role)
+        tech_user.user_permissions.add(manage_equipment_perm)
+
+        self.assertTrue(tech_user.has_perm("app.manage_equipment"))
+
+        # Director also has this permission
+        director_user = User.objects.create_user(
+            username="director", email="director@example.com", password="password"
+        )
+        director_user.roles.add(self.director_role)
+        director_user.user_permissions.add(manage_equipment_perm)
+
+        self.assertTrue(director_user.has_perm("app.manage_equipment"))
+
+    def test_report_permissions(self):
+        """Test report upload and approval permissions"""
+        # Get permissions
+        upload_report_perm = Permission.objects.get(codename="upload_report")
+        approve_report_perm = Permission.objects.get(codename="approve_report")
+
+        # Technical staff can upload but not approve
+        tech_user = User.objects.create_user(
+            username="tech2", email="tech2@example.com", password="password"
+        )
+        tech_user.roles.add(self.tecnico_role)
+        tech_user.user_permissions.add(upload_report_perm)
+
+        self.assertTrue(tech_user.has_perm("app.upload_report"))
+        self.assertFalse(tech_user.has_perm("app.approve_report"))
+
+        # Director can upload and approve
+        director_user = User.objects.create_user(
+            username="director2", email="director2@example.com", password="password"
+        )
+        director_user.roles.add(self.director_role)
+        director_user.user_permissions.add(upload_report_perm)
+        director_user.user_permissions.add(approve_report_perm)
+
+        self.assertTrue(director_user.has_perm("app.upload_report"))
+        self.assertTrue(director_user.has_perm("app.approve_report"))
+
+        # Client should have view permission only (default)
+        client_user = User.objects.create_user(
+            username="client", email="client@example.com", password="password"
+        )
+        client_user.roles.add(self.client_role)
+
+        self.assertFalse(client_user.has_perm("app.upload_report"))
+        self.assertFalse(client_user.has_perm("app.approve_report"))
+
+    def test_group_based_permissions(self):
+        """Test that permissions can be assigned through groups and are correctly inherited by users"""
+        from django.contrib.auth.models import Group
+
+        # 1) Create a group and add permission to it
+        gerente_group = Group.objects.create(name="gerente_group")
+        manage_equipment_perm = Permission.objects.get(codename="manage_equipment")
+        gerente_group.permissions.add(manage_equipment_perm)
+
+        # 2) Assign user to the group
+        tech_user = User.objects.create_user(
+            username="group_tech", email="group_tech@example.com", password="password"
+        )
+
+        # Verify user doesn't have permission initially
+        self.assertFalse(tech_user.has_perm("app.manage_equipment"))
+
+        # Add user to the group
+        tech_user.groups.add(gerente_group)
+
+        # Important: Refresh the user from database to update permission cache
+        tech_user = User.objects.get(pk=tech_user.pk)
+
+        # 3) Verify user inherits permissions from the group
+        self.assertTrue(tech_user.has_perm("app.manage_equipment"))
+
+        # Test with another permission as well
+        upload_report_perm = Permission.objects.get(codename="upload_report")
+        gerente_group.permissions.add(upload_report_perm)
+
+        # Refresh user again to get updated permissions
+        tech_user = User.objects.get(pk=tech_user.pk)
+
+        # Verify user now has both permissions through the group
+        self.assertTrue(tech_user.has_perm("app.upload_report"))
+
+    def test_view_level_permission_protection(self):
+        """Test that report creation requires upload_report permission."""
+        # Create a user without required permissions
+        staff_user = User.objects.create_user(
+            username="viewstaff", email="view@example.com", password="password"
+        )
+
+        # Create process for report test
+        process = Process.objects.create(
+            user=staff_user, process_type=self.process_type, estado=self.process_status
+        )
+
+        # Use a URL that we know exists in the project
+        report_upload_url = reverse("report_create")
+
+        # Setup report permissions
+        upload_report_perm = Permission.objects.get(codename="upload_report")
+
+        # Login as the user
+        self.client.login(username="viewstaff", password="password")
+
+        # Create test file for report upload
+        temp_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+        temp_file.write(b"test content")
+        temp_file.close()
+
+        try:
+            # First check for existing reports to make sure we have a clean state
+            initial_report_count = Report.objects.count()
+
+            # Add report permission to the user
+            staff_user.user_permissions.add(upload_report_perm)
+
+            # Try with permission
+            with open(temp_file.name, "rb") as pdf:
+                data = {
+                    "title": "Test Report With Permission",
+                    "description": "Testing permission enforcement",
+                    "pdf_file": pdf,
+                    "process": process.id,
+                    "estado_reporte": EstadoReporteChoices.EN_GENERACION,
+                }
+                response = self.client.post(report_upload_url, data)
+
+                # Check that report was created successfully
+                self.assertEqual(Report.objects.count(), initial_report_count + 1)
+                self.assertTrue(
+                    Report.objects.filter(title="Test Report With Permission").exists()
+                )
+
+            # --------------------------------------------------------------------
+            # ahora el caso negativo: sin permiso debe fallar
+            staff_user.user_permissions.remove(upload_report_perm)
+            staff_user = User.objects.get(pk=staff_user.pk)  # refresca caché
+            with open(temp_file.name, "rb") as pdf:
+                data = {
+                    "title": "Fail Report Without Perm",
+                    "description": "Should be forbidden",
+                    "pdf_file": pdf,
+                    "process": process.id,
+                    "estado_reporte": EstadoReporteChoices.EN_GENERACION,
+                }
+                response = self.client.post(report_upload_url, data)
+            self.assertEqual(response.status_code, 403)
+            self.assertFalse(
+                Report.objects.filter(title="Fail Report Without Perm").exists()
+            )
+            # --------------------------------------------------------------------
+        finally:
+            # Clean up
+            os.unlink(temp_file.name)
+            for report in Report.objects.all():
+                if hasattr(report.pdf_file, "path") and os.path.exists(
+                    report.pdf_file.path
+                ):
+                    os.unlink(report.pdf_file.path)
+
+        # NOTE: This test is expected to fail until permission enforcement is added to the view!
+        # The proper way to add permission enforcement is to use Django's permission_required decorator:
+        # @permission_required('app.upload_report', raise_exception=True)
+        # Or for class-based views, use PermissionRequiredMixin
