@@ -94,17 +94,17 @@ def main(request):
                 process__process_type__process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
             ).order_by("-process__fecha_inicio")[:5]
         elif proceso_activo == "control_calidad":
-            equipos = Report.objects.filter(
+            equipos = Equipment.objects.filter(
                 user=request.user,
                 process__process_type__process_type=ProcessTypeChoices.CONTROL_CALIDAD,
             ).order_by("-process__fecha_inicio")[:5]
         elif proceso_activo == "asesoria":
-            equipos = Report.objects.filter(
+            equipos = Equipment.objects.filter(
                 user=request.user,
                 process__process_type__process_type=ProcessTypeChoices.ASESORIA,
             ).order_by("-process__fecha_inicio")[:5]
         elif proceso_activo == "otro":
-            equipos = Report.objects.filter(
+            equipos = Equipment.objects.filter(
                 user=request.user,
                 process__process_type__process_type=ProcessTypeChoices.OTRO,
             ).order_by("-process__fecha_inicio")[:5]

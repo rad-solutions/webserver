@@ -88,9 +88,9 @@
                                             <tr>
                                                 <th>Titulo</th>
                                                 <th>Descripción</th>
-                                                <th>PDF</th>
                                                 <th>Fecha Creación</th>
                                                 <th>Fecha Vencimiento</th>
+                                                <th>PDF</th>
                                                 <th>Estado</th>
                                             </tr>
                                         </thead>
@@ -99,9 +99,15 @@
                                             <tr>
                                                 <td>{{ reporte.title }}</td>
                                                 <td>{{ reporte.description}}</td>
-                                                <td>{{ reporte.pdf_file }}</td>
                                                 <td>{{ reporte.created_at|date:"d/m/Y H:i" }}</td>
                                                 <td>{{ reporte.fecha_vencimiento|date:"d/m/Y H:i"|default:"N/A" }}</td>
+                                                <td>{% if reporte.pdf_file %}
+                                                        <a href="{{ reporte.pdf_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                            <i class="fas fa-file-pdf"></i> Ver PDF
+                                                        </a>
+                                                    {% else %}
+                                                        <span>N/A</span>
+                                                    {% endif %}</td>
                                                 <td>{{ reporte.estado_reporte}}</td>
                                             </tr>
                                             {% endfor %}

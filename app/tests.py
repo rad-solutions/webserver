@@ -1,5 +1,6 @@
 import os
 import tempfile
+from datetime import date, timedelta
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -693,3 +694,219 @@ class ProtectedResourceTest(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.url.startswith("/login/"))
+
+
+class ClientDashboardTest(TestCase):
+    def setUp(self):
+        # Crear roles si no existen
+        self.role_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+
+        # Crear un usuario cliente
+        self.user = User.objects.create_user(
+            username="clientuser",
+            email="client@example.com",
+            password="testpassword",
+            first_name="Client",
+            last_name="User",
+        )
+        self.user.roles.add(self.role_cliente)
+
+        # Crear tipos de proceso
+        self.process_type_blindajes, _ = ProcessType.objects.get_or_create(
+            process_type=ProcessTypeChoices.CALCULO_BLINDAJES
+        )
+        self.process_type_calidad, _ = ProcessType.objects.get_or_create(
+            process_type=ProcessTypeChoices.CONTROL_CALIDAD
+        )
+        self.process_type_asesoria, _ = ProcessType.objects.get_or_create(
+            process_type=ProcessTypeChoices.ASESORIA
+        )
+
+        # Crear estados de proceso
+        self.process_status, _ = ProcessStatus.objects.get_or_create(
+            estado=ProcessStatusChoices.EN_PROGRESO
+        )
+
+        # Crear procesos para el usuario
+        self.process_blindajes = Process.objects.create(
+            user=self.user,
+            process_type=self.process_type_blindajes,
+            estado=self.process_status,
+        )
+        self.process_calidad = Process.objects.create(
+            user=self.user,
+            process_type=self.process_type_calidad,
+            estado=self.process_status,
+        )
+        self.process_asesoria = Process.objects.create(
+            user=self.user,
+            process_type=self.process_type_asesoria,
+            estado=self.process_status,
+        )
+
+        # Crear un archivo PDF temporal para los reportes
+        self.temp_pdf_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+        self.temp_pdf_file.write(b"dummy pdf content")
+        self.temp_pdf_file.seek(0)  # Regresar al inicio del archivo para lectura
+
+        # Crear reportes asociados a los procesos
+        self.report_blindajes = Report.objects.create(
+            user=self.user,
+            process=self.process_blindajes,
+            title="Reporte Blindajes",
+            description="Descripción del reporte de blindajes",
+            estado_reporte=EstadoReporteChoices.EN_GENERACION,
+            pdf_file=SimpleUploadedFile(
+                self.temp_pdf_file.name, self.temp_pdf_file.read()
+            ),
+        )
+        self.temp_pdf_file.seek(0)
+        self.report_calidad = Report.objects.create(
+            user=self.user,
+            process=self.process_calidad,
+            title="Reporte Calidad",
+            description="Descripción del reporte de calidad",
+            estado_reporte=EstadoReporteChoices.EN_GENERACION,
+            pdf_file=SimpleUploadedFile(
+                self.temp_pdf_file.name, self.temp_pdf_file.read()
+            ),
+        )
+        self.temp_pdf_file.seek(0)
+        self.report_asesoria = Report.objects.create(
+            user=self.user,
+            process=self.process_asesoria,
+            title="Reporte Asesoria",
+            description="Descripción del reporte de asesoría",
+            estado_reporte=EstadoReporteChoices.EN_GENERACION,
+            pdf_file=SimpleUploadedFile(
+                self.temp_pdf_file.name, self.temp_pdf_file.read()
+            ),
+        )
+
+        # Crear equipos asociados a los procesos del usuario
+        self.equipment_blindajes = Equipment.objects.create(
+            nombre="Equipo Blindajes 1",
+            marca="MarcaA",
+            modelo="ModeloA1",
+            serial="SN001",
+            user=self.user,
+            process=self.process_blindajes,
+            fecha_vigencia_licencia="2025-12-31",
+        )
+        self.equipment_calidad = Equipment.objects.create(
+            nombre="Equipo Calidad 1",
+            marca="MarcaB",
+            modelo="ModeloB1",
+            serial="SN002",
+            user=self.user,
+            process=self.process_calidad,
+            fecha_vigencia_licencia="2026-06-15",
+        )
+        # Equipo sin proceso para probar la sección de licencias por vencer
+        self.equipment_licencia_proxima = Equipment.objects.create(
+            nombre="Equipo Licencia Próxima",
+            marca="MarcaC",
+            modelo="ModeloC1",
+            serial="SN003",
+            user=self.user,
+            fecha_vigencia_licencia=date.today()
+            + timedelta(days=30),  # Licencia vence en 30 días
+        )
+
+    def tearDown(self):
+        self.temp_pdf_file.close()
+        if os.path.exists(self.temp_pdf_file.name):
+            os.remove(self.temp_pdf_file.name)
+        # Limpiar archivos PDF creados por los reportes si es necesario
+        for report in Report.objects.all():
+            if report.pdf_file and hasattr(report.pdf_file, "path"):
+                if os.path.exists(report.pdf_file.path):
+                    try:
+                        os.remove(report.pdf_file.path)
+                    except OSError:
+                        pass  # Podría haber sido eliminado por el modelo
+
+    def test_dashboard_context_default(self):
+        """Verificar que el contexto del dashboard del cliente sea correcto por defecto."""
+        self.client.login(username="clientuser", password="testpassword")
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "dashboard_cliente.html")
+
+        # Verificar claves de contexto
+        self.assertIn("reportes", response.context)
+        self.assertIn("equipos", response.context)
+        self.assertIn("equipos_licencia_por_vencer", response.context)
+        self.assertIn("proceso_activo", response.context)
+        self.assertIn("reporte_activo", response.context)
+
+        # Verificar valores por defecto
+        self.assertEqual(response.context["proceso_activo"], "calculo_blindajes")
+        self.assertEqual(response.context["reporte_activo"], "calculo_blindajes")
+
+        # Verificar contenido de las listas por defecto
+        self.assertEqual(len(response.context["reportes"]), 1)
+        self.assertIn(self.report_blindajes, response.context["reportes"])
+
+        self.assertEqual(len(response.context["equipos"]), 1)
+        self.assertIn(self.equipment_blindajes, response.context["equipos"])
+
+        self.assertEqual(len(response.context["equipos_licencia_por_vencer"]), 1)
+        self.assertIn(
+            self.equipment_licencia_proxima,
+            response.context["equipos_licencia_por_vencer"],
+        )
+
+    def test_dashboard_filter_proceso_activo(self):
+        """Verificar que el filtro de proceso_activo funcione."""
+        self.client.login(username="clientuser", password="testpassword")
+        response = self.client.get(reverse("home") + "?proceso_activo=control_calidad")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["proceso_activo"], "control_calidad")
+        # reporte_activo debería seguir siendo el por defecto
+        self.assertEqual(response.context["reporte_activo"], "calculo_blindajes")
+
+        self.assertEqual(len(response.context["equipos"]), 1)
+        self.assertIn(self.equipment_calidad, response.context["equipos"])
+        self.assertNotIn(self.equipment_blindajes, response.context["equipos"])
+
+        # Los reportes deben seguir siendo los de calculo_blindajes (default)
+        self.assertEqual(len(response.context["reportes"]), 1)
+        self.assertIn(self.report_blindajes, response.context["reportes"])
+
+    def test_dashboard_filter_reporte_activo(self):
+        """Verificar que el filtro de reporte_activo funcione."""
+        self.client.login(username="clientuser", password="testpassword")
+        response = self.client.get(reverse("home") + "?reporte_activo=control_calidad")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["reporte_activo"], "control_calidad")
+        # proceso_activo debería seguir siendo el por defecto
+        self.assertEqual(response.context["proceso_activo"], "calculo_blindajes")
+
+        self.assertEqual(len(response.context["reportes"]), 1)
+        self.assertIn(self.report_calidad, response.context["reportes"])
+        self.assertNotIn(self.report_blindajes, response.context["reportes"])
+
+        # Los equipos deben seguir siendo los de calculo_blindajes (default)
+        self.assertEqual(len(response.context["equipos"]), 1)
+        self.assertIn(self.equipment_blindajes, response.context["equipos"])
+
+    def test_dashboard_filter_both_activo(self):
+        """Verificar que los filtros de proceso_activo y reporte_activo funcionen juntos."""
+        self.client.login(username="clientuser", password="testpassword")
+        response = self.client.get(
+            reverse("home") + "?proceso_activo=control_calidad&reporte_activo=asesoria"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["proceso_activo"], "control_calidad")
+        self.assertEqual(response.context["reporte_activo"], "asesoria")
+
+        self.assertEqual(len(response.context["equipos"]), 1)
+        self.assertIn(self.equipment_calidad, response.context["equipos"])
+
+        self.assertEqual(len(response.context["reportes"]), 1)
+        self.assertIn(self.report_asesoria, response.context["reportes"])
