@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Página Principal{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5">
+        <div class="col-md-8 offset-md-2 text-center">
+            <h1 class="display-4 mb-4">{{ titulo }}</h1>
+            <p class="lead mb-5">{{ mensaje }}</p>
+        </div>
+            <div class="row mt-5">
+                <div class="col-lg-4">
+                    <div class="card mb-4">
+                        <div class="card-body text-center">
+                            <h3>Procesos</h3>
+                            <div class="btn-group d-flex mb-3" role="group" aria-label="Tipos de Proceso">
+                                <a href="{% url 'home' %}?proceso_activo=calculo_blindajes&reporte_activo={{ reporte_activo }}" class="btn btn-outline-primary w-100 {% if proceso_activo == 'calculo_blindajes' %}active{% endif %}">Cálculo Blindajes</a>
+                                <a href="{% url 'home' %}?proceso_activo=control_calidad&reporte_activo={{ reporte_activo }}" class="btn btn-outline-primary w-100 {% if proceso_activo == 'control_calidad' %}active{% endif %}">Control Calidad</a>
+                                <a href="{% url 'home' %}?proceso_activo=asesoria&reporte_activo={{ reporte_activo }}" class="btn btn-outline-primary w-100 {% if proceso_activo == 'asesoria' %}active{% endif %}">Asesoría</a>
+                            </div>
+                            <div id="procesos" class="info-container" >
+                                {% if proceso_activo == 'calculo_blindajes' %}
+                                <h5>Procesos de Cálculo de Blindajes</h5>
+                                {% elif proceso_activo == 'control_calidad' %}
+                                <h5>Procesos de Control de Calidad</h5>
+                                {% elif proceso_activo == 'asesoria' %}
+                                <h5>Procesos de Asesoría</h5>
+                                {% endif %}
+                                {% if equipos %}
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Nombre</th>
+                                                <th>Marca</th>
+                                                <th>Modelo</th>
+                                                <th>Serial</th>
+                                                <th>Fecha Inicio</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for equipo in equipos %}
+                                            <tr>
+                                                <td>{{ equipos.nombre }}</td>
+                                                <td>{{ equipos.marca }}</td>
+                                                <td>{{ equipos.modelo }}</td>
+                                                <td>{{ equipos.serial }}</td>
+                                                <td>{{ equipos.process.fecha_inicio|date:"d/m/Y" }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <p>No hay procesos disponibles para el tipo seleccionado.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if equipos %}
+                        <div class="card-footer text-center">
+                            <a href="{% url 'process_list' %}?process_type={{ proceso_activo }}" class="btn btn-primary">Ver más</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card mb-4">
+                        <div class="card-body text-center">
+                            <h3>Reportes</h3>
+                            <div class="btn-group d-flex mb-3" role="group" aria-label="Tipos de Reporte">
+                                <a href="{% url 'home' %}?reporte_activo=calculo_blindajes&proceso_activo={{ proceso_activo }}" class="btn btn-outline-success w-100 {% if reporte_activo == 'calculo_blindajes' %}active{% endif %}">Cálculo Blindajes</a>
+                                <a href="{% url 'home' %}?reporte_activo=control_calidad&proceso_activo={{ proceso_activo }}" class="btn btn-outline-success w-100 {% if reporte_activo == 'control_calidad' %}active{% endif %}">Control Calidad</a>
+                                <a href="{% url 'home' %}?reporte_activo=asesoria&proceso_activo={{ proceso_activo }}" class="btn btn-outline-success w-100 {% if reporte_activo == 'asesoria' %}active{% endif %}">Asesoría</a>
+                            </div>
+                            <div id="reportes-calculo_blindajes" class="info-container" >
+                                {% if reporte_activo == 'calculo_blindajes' %}
+                                <h5>Reportes de Cálculo de Blindajes</h5>
+                                {% elif reporte_activo == 'control_calidad' %}
+                                <h5>Reportes de Control de Calidad</h5>
+                                {% elif reporte_activo == 'asesoria' %}
+                                <h5>Reportes de Asesoría</h5>
+                                {% endif %}
+
+                                {% if reportes %}
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Titulo</th>
+                                                <th>Descripción</th>
+                                                <th>PDF</th>
+                                                <th>Fecha Creación</th>
+                                                <th>Fecha Vencimiento</th>
+                                                <th>Estado</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for reporte in reportes %}
+                                            <tr>
+                                                <td>{{ reporte.title }}</td>
+                                                <td>{{ reporte.description}}</td>
+                                                <td>{{ reporte.pdf_file }}</td>
+                                                <td>{{ reporte.created_at|date:"d/m/Y H:i" }}</td>
+                                                <td>{{ reporte.fecha_vencimiento|date:"d/m/Y H:i"|default:"N/A" }}</td>
+                                                <td>{{ reporte.estado_reporte}}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <p>No hay reportes disponibles para el tipo seleccionado.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if reportes %}
+                        <div class="card-footer text-center">
+                            <a href="{% url 'report_list' %}" class="btn btn-success">Ver más</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card mb-4">
+                        <div class="card-body text-center">
+                            <h3>Notificaciones</h3>
+                            {% if equipos_licencia_por_vencer %}
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Nombre</th>
+                                                <th>Marca</th>
+                                                <th>Modelo</th>
+                                                <th>Serial</th>
+                                                <th>Fecha Vencimiento</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for equipo in equipos_licencia_por_vencer %}
+                                            <tr>
+                                                <td>{{ equipo.nombre }}</td>
+                                                <td>{{ equipo.marca}}</td>
+                                                <td>{{ equipo.modelo }}</td>
+                                                <td>{{ equipo.serial }}</td>
+                                                <td>{{ equipo.fecha_vencimiento_licencia|date:"d/m/Y H:i"|default:"N/A" }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                    <p>No hay equipos con licencias por vencer.</p>
+                                {% endif %}
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+</div>
+{% endblock %}

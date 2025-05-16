@@ -1,4 +1,5 @@
 import logging
+from datetime import date, timedelta
 
 from django import forms
 from django.contrib.auth import logout
@@ -15,7 +16,7 @@ from django.views.generic import (
     UpdateView,
 )
 
-from .models import Report, User
+from .models import Equipment, ProcessTypeChoices, Report, RoleChoices, User
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +58,84 @@ def main(request):
         return render(request, "welcome.html", context)
 
     # Si el usuario está autenticado, mostrar la página principal con acceso a todas las funcionalidades
-    context = {
-        "titulo": "Página Principal",
-        "mensaje": "Bienvenido a RadSolutions Reports",
-    }
-    return render(request, "main.html", context)
+    if request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
+        # Lógica específica para usuarios de tipo Cliente
+        # Determinar qué tipo de proceso y reporte mostrar
+        # Usa 'calculo_blindajes' como valor por defecto
+        proceso_activo = request.GET.get("proceso_activo", "calculo_blindajes")
+        reporte_activo = request.GET.get("reporte_activo", "calculo_blindajes")
+
+        # Filtrar reportes por tipo de proceso
+        if reporte_activo == "calculo_blindajes":
+            reportes = Report.objects.filter(
+                user=request.user,
+                process__process_type__process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
+            ).order_by("-created_at")[:5]
+        elif reporte_activo == "control_calidad":
+            reportes = Report.objects.filter(
+                user=request.user,
+                process__process_type__process_type=ProcessTypeChoices.CONTROL_CALIDAD,
+            ).order_by("-created_at")[:5]
+        elif reporte_activo == "asesoria":
+            reportes = Report.objects.filter(
+                user=request.user,
+                process__process_type__process_type=ProcessTypeChoices.ASESORIA,
+            ).order_by("-created_at")[:5]
+        elif reporte_activo == "otro":
+            reportes = Report.objects.filter(
+                user=request.user,
+                process__process_type__process_type=ProcessTypeChoices.OTRO,
+            ).order_by("-created_at")[:5]
+
+        # Filtrar equipos por tipo de proceso
+        if proceso_activo == "calculo_blindajes":
+            equipos = Equipment.objects.filter(
+                user=request.user,
+                process__process_type__process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
+            ).order_by("-process__fecha_inicio")[:5]
+        elif proceso_activo == "control_calidad":
+            equipos = Report.objects.filter(
+                user=request.user,
+                process__process_type__process_type=ProcessTypeChoices.CONTROL_CALIDAD,
+            ).order_by("-process__fecha_inicio")[:5]
+        elif proceso_activo == "asesoria":
+            equipos = Report.objects.filter(
+                user=request.user,
+                process__process_type__process_type=ProcessTypeChoices.ASESORIA,
+            ).order_by("-process__fecha_inicio")[:5]
+        elif proceso_activo == "otro":
+            equipos = Report.objects.filter(
+                user=request.user,
+                process__process_type__process_type=ProcessTypeChoices.OTRO,
+            ).order_by("-process__fecha_inicio")[:5]
+
+        # Filtrar equipos con licencia por vencer o vencida para el usuario cliente
+        hoy = date.today()
+        seis_meses_despues = hoy + timedelta(weeks=6 * 4)  # Aproximación de 6 meses
+
+        equipos_licencia_por_vencer = Equipment.objects.filter(
+            user=request.user,
+            fecha_vigencia_licencia__isnull=False,
+            fecha_vigencia_licencia__lte=seis_meses_despues,
+        ).order_by("fecha_vigencia_licencia")
+
+        context = {
+            "titulo": "Página Principal - Cliente",
+            "mensaje": f"Bienvenido, {request.user.first_name or ''} {request.user.last_name or ''}",
+            "reportes": reportes,
+            "equipos": equipos,
+            "equipos_licencia_por_vencer": equipos_licencia_por_vencer,
+            "proceso_activo": proceso_activo,  # Pasa el tipo de proceso activo al contexto
+            "reporte_activo": reporte_activo,  # Pasa el tipo de reporte activo al contexto
+        }
+        return render(request, "dashboard_cliente.html", context)
+    else:
+        # Lógica para otros tipos de usuarios autenticados
+        context = {
+            "titulo": "Página Principal",
+            "mensaje": "Bienvenido a RadSolutions Reports",
+        }
+        return render(request, "main.html", context)
 
 
 # User Views
