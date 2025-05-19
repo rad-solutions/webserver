@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Equipos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Equipos</h1>
+        {% if not user.roles.all|dictsort:"name"|yesno:"CLIENTE"%}
+        <a href="{% url 'equipos_create' %}" class="btn btn-primary">Crear Equipo</a>
+        {% endif %}
+
+    </div>
+
+    <form method="get" class="mb-4">
+        <label for="process_type" class="form-label">Filtrar por tipo de proceso:</label>
+        <select name="process_type" id="process_type" class="form-select" onchange="this.form.submit()">
+            {% for value, label in process_types %}
+            <option value="{{ value }}" {% if value == selected_process_type %}selected{% endif %}>
+                {{ label }}
+            </option>
+            {% endfor %}
+        </select>
+    </form>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Marca</th>
+                            <th>Modelo</th>
+                            <th>Serial</th>
+                            <th>Práctica Asociada</th>
+                            <th>Fecha Adquisición</th>
+                            <th>Fecha Vigencia Licencia</th>
+                            <th>Fecha Ultimo CC</th>
+                            <th>Fecha Vencimiento CC</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for equipo in equipos %}
+                        <tr>
+                            <td>{{ equipo.marca }}</td>
+                            <td>{{ equipo.modelo }}</td>
+                            <td>{{ equipo.serial }}</td>
+                            <td>{{ equipo.practica_asociada }}</td>
+                            <td>{{ equipo.fecha_adquisicion|date:"d/m/Y" }}</td>
+                            <td>{{ equipo.fecha_vigencia_licencia|date:"d/m/Y" }}</td>
+                            <td>{{ equipo.fecha_ultimo_control_calidad|date:"d/m/Y" }}</td>
+                            <td>{{ equipo.fecha_vencimiento_control_calidad|date:"d/m/Y" }}</td>
+                            <td>{{ equipo.get_estado_actual_display }}</td>
+                            <td>
+                                <a href="{% url 'equipos_detail' equipo.id %}" class="btn btn-sm btn-info">Detalles</a>
+
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center">No hay equipos registrados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

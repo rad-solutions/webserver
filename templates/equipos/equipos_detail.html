@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Equipo{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>{{ equipo.nombre }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Usuario:</strong></div>
+                <div class="col-md-8">
+                    <a href="{% url 'user_detail' equipo.user.id %}">{{ equipo.user.username }}</a>
+                    ({{ equipo.user.first_name }} {{ equipo.user.last_name }})
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Marca:</strong></div>
+                <div class="col-md-8">{{ equipo.marca }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Modelo:</strong></div>
+                <div class="col-md-8">{{ equipo.modelo }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Serial:</strong></div>
+                <div class="col-md-8">{{ equipo.serial }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Practica Asociada:</strong></div>
+                <div class="col-md-8">{{ equipo.practica_asociada }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Adquisición:</strong></div>
+                <div class="col-md-8">{{ equipo.fecha_adquisicion|date:"d/m/Y" }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Vigencia de Licencia:</strong></div>
+                <div class="col-md-8">{{ equipo.fecha_vigencia_licencia|date:"d/m/Y" }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Último Control de Calidad:</strong></div>
+                <div class="col-md-8">{{ equipo.fecha_ultimo_control_calidad|date:"d/m/Y" }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Vencimiento del Control de Calidad:</strong></div>
+                <div class="col-md-8">{{ equipo.fecha_vencimiento_control_calidad|date:"d/m/Y"}}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>¿Tiene proceso de Asesoría?</strong></div>
+                <div class="col-md-8">{{ equipo.tiene_proceso_de_asesoria }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Estado Actual:</strong></div>
+                <div class="col-md-8">{{ equipo.estado_actual }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Sede:</strong></div>
+                <div class="col-md-8">{{ equipo.sede }}</div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a href="{% url 'equipos_list' %}" class="btn btn-secondary">Volver</a>
+            {% if user.roles.all|dictsort:"name"|yesno:"CLIENTE" %}
+            <a href="{% url 'equipos_update' equipo.id %}" class="btn btn-warning">Historial de Calidad</a>
+            <a href="{% url 'equipos_delete' equipo.id %}" class="btn btn-danger">Ver Ultimo Informe de Calidad</a>
+            {% else %}
+            <a href="{% url 'equipos_update' equipo.id %}" class="btn btn-warning">Editar</a>
+            <a href="{% url 'equipos_delete' equipo.id %}" class="btn btn-danger">Eliminar</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

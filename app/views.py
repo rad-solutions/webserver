@@ -16,7 +16,7 @@ from django.views.generic import (
     UpdateView,
 )
 
-from .models import Equipment, ProcessTypeChoices, Report, RoleChoices, User
+from .models import Equipment, Process, ProcessTypeChoices, Report, RoleChoices, User
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,58 @@ class UserForm(UserCreationForm):
 class ReportForm(forms.ModelForm):
     class Meta:
         model = Report
-        fields = ["title", "description", "pdf_file", "process", "estado_reporte"]
+        fields = [
+            "title",
+            "description",
+            "pdf_file",
+            "user",
+            "process",
+            "estado_reporte",
+            "fecha_vencimiento",
+        ]
+        widgets = {
+            "fecha_vencimiento": forms.DateInput(attrs={"type": "date"}),
+        }
+
+
+class ProcessForm(forms.ModelForm):
+    class Meta:
+        model = Process
+        fields = ["process_type", "estado", "user", "fecha_final"]
+        widgets = {
+            "fecha_final": forms.DateTimeInput(
+                attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"
+            ),
+        }
+
+
+class EquipmentForm(forms.ModelForm):
+    class Meta:
+        model = Equipment
+        fields = [
+            "nombre",
+            "marca",
+            "modelo",
+            "serial",
+            "practica_asociada",
+            "fecha_adquisicion",
+            "fecha_vigencia_licencia",
+            "fecha_ultimo_control_calidad",
+            "fecha_vencimiento_control_calidad",
+            "tiene_proceso_de_asesoria",
+            "user",
+            "process",
+            "estado_actual",
+            "sede",
+        ]
+        widgets = {
+            "fecha_adquisicion": forms.DateInput(attrs={"type": "date"}),
+            "fecha_vigencia_licencia": forms.DateInput(attrs={"type": "date"}),
+            "fecha_ultimo_control_calidad": forms.DateInput(attrs={"type": "date"}),
+            "fecha_vencimiento_control_calidad": forms.DateInput(
+                attrs={"type": "date"}
+            ),
+        }
 
 
 # Login view
@@ -69,44 +120,44 @@ def main(request):
         if reporte_activo == "calculo_blindajes":
             reportes = Report.objects.filter(
                 user=request.user,
-                process__process_type__process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
+                process__process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
             ).order_by("-created_at")[:5]
         elif reporte_activo == "control_calidad":
             reportes = Report.objects.filter(
                 user=request.user,
-                process__process_type__process_type=ProcessTypeChoices.CONTROL_CALIDAD,
+                process__process_type=ProcessTypeChoices.CONTROL_CALIDAD,
             ).order_by("-created_at")[:5]
         elif reporte_activo == "asesoria":
             reportes = Report.objects.filter(
                 user=request.user,
-                process__process_type__process_type=ProcessTypeChoices.ASESORIA,
+                process__process_type=ProcessTypeChoices.ASESORIA,
             ).order_by("-created_at")[:5]
         elif reporte_activo == "otro":
             reportes = Report.objects.filter(
                 user=request.user,
-                process__process_type__process_type=ProcessTypeChoices.OTRO,
+                process__process_type=ProcessTypeChoices.OTRO,
             ).order_by("-created_at")[:5]
 
         # Filtrar equipos por tipo de proceso
         if proceso_activo == "calculo_blindajes":
             equipos = Equipment.objects.filter(
                 user=request.user,
-                process__process_type__process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
+                process__process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
             ).order_by("-process__fecha_inicio")[:5]
         elif proceso_activo == "control_calidad":
             equipos = Equipment.objects.filter(
                 user=request.user,
-                process__process_type__process_type=ProcessTypeChoices.CONTROL_CALIDAD,
+                process__process_type=ProcessTypeChoices.CONTROL_CALIDAD,
             ).order_by("-process__fecha_inicio")[:5]
         elif proceso_activo == "asesoria":
             equipos = Equipment.objects.filter(
                 user=request.user,
-                process__process_type__process_type=ProcessTypeChoices.ASESORIA,
+                process__process_type=ProcessTypeChoices.ASESORIA,
             ).order_by("-process__fecha_inicio")[:5]
         elif proceso_activo == "otro":
             equipos = Equipment.objects.filter(
                 user=request.user,
-                process__process_type__process_type=ProcessTypeChoices.OTRO,
+                process__process_type=ProcessTypeChoices.OTRO,
             ).order_by("-process__fecha_inicio")[:5]
 
         # Filtrar equipos con licencia por vencer o vencida para el usuario cliente
@@ -201,7 +252,6 @@ class ReportCreateView(LoginRequiredMixin, CreateView):
     login_url = "/login/"
 
     def form_valid(self, form):
-        form.instance.user = self.request.user
         try:
             response = super().form_valid(form)
             # Verificar si el archivo se guardó correctamente
@@ -229,4 +279,153 @@ class ReportDeleteView(LoginRequiredMixin, DeleteView):
     model = Report
     template_name = "reports/report_confirm_delete.html"
     success_url = reverse_lazy("report_list")
+    login_url = "/login/"
+
+
+# Equipos Views
+class EquiposListView(LoginRequiredMixin, ListView):
+    model = Equipment
+    template_name = "equipos/equipos_list.html"
+    context_object_name = "equipos"
+    login_url = "/login/"
+
+    def get_queryset(self):
+        # Obtener el tipo de proceso desde los parámetros GET
+        process_type_filter = self.request.GET.get("process_type", "todos")
+        if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
+            queryset = Equipment.objects.filter(user=self.request.user)
+        else:
+            queryset = Equipment.objects.all()
+
+        if process_type_filter != "todos":  # Si se especifica un tipo y no es "todos"
+            queryset = queryset.filter(process__process_type=process_type_filter)
+        # Si process_type_filter es "todos", no se aplica filtro adicional de tipo de proceso.
+
+        return queryset.order_by("-process__fecha_inicio")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Pasar el tipo de proceso seleccionado al contexto
+        context["selected_process_type"] = self.request.GET.get("process_type", "todos")
+        # Pasar todos los tipos de proceso al contexto para el dropdown
+        choices_list = [("todos", "Todos")] + list(ProcessTypeChoices.choices)
+        context["process_types"] = choices_list
+        return context
+
+
+class EquiposDetailView(LoginRequiredMixin, DetailView):
+    model = Equipment
+    template_name = "equipos/equipos_detail.html"
+    context_object_name = "equipo"
+    login_url = "/login/"
+
+
+class EquiposCreateView(LoginRequiredMixin, CreateView):
+    model = Equipment
+    form_class = EquipmentForm
+    template_name = "equipos/equipos_form.html"
+    success_url = reverse_lazy("equipos_list")
+    login_url = "/login/"
+
+    def form_valid(self, form):
+        try:
+            response = super().form_valid(form)
+            # Verificar si el archivo se guardó correctamente
+            logger.info(
+                f"Equipo '{form.instance.nombre}' creado exitosamente por {self.request.user} con ID {form.instance.id}."
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Error al guardar el equipo: {str(e)}")
+            form.add_error(None, f"Error al guardar el equipo: {str(e)}")
+            return self.form_invalid(form)
+
+
+class EquiposDeleteView(LoginRequiredMixin, DeleteView):
+    model = Equipment
+    template_name = "equipos/equipos_confirm_delete.html"
+    success_url = reverse_lazy("equipos_list")
+    login_url = "/login/"
+
+
+class EquiposUpdateView(LoginRequiredMixin, UpdateView):
+    model = Equipment
+    form_class = EquipmentForm
+    template_name = "equipos/equipos_form.html"
+    success_url = reverse_lazy("equipos_list")
+    login_url = "/login/"
+
+
+# Process Views
+class ProcessListView(LoginRequiredMixin, ListView):
+    model = Equipment
+    template_name = "process/process_list.html"
+    context_object_name = "equipos"
+    login_url = "/login/"
+
+    def get_queryset(self):
+        # Obtener el tipo de proceso desde los parámetros GET
+        process_type_filter = self.request.GET.get("process_type", "todos")
+        if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
+            queryset = Equipment.objects.filter(user=self.request.user)
+        else:
+            queryset = Equipment.objects.all()
+
+        if process_type_filter != "todos":  # Si se especifica un tipo y no es "todos"
+            queryset = queryset.filter(process__process_type=process_type_filter)
+        # Si process_type_filter es "todos", no se aplica filtro adicional de tipo de proceso.
+
+        return queryset.order_by("-process__fecha_inicio")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Pasar el tipo de proceso seleccionado al contexto
+        context["selected_process_type"] = self.request.GET.get("process_type", "todos")
+        # Pasar todos los tipos de proceso al contexto para el dropdown
+        choices_list = [("todos", "Todos")] + list(ProcessTypeChoices.choices)
+        context["process_types"] = choices_list
+        return context
+
+
+class ProcessDetailView(LoginRequiredMixin, DetailView):
+    model = Process
+    template_name = "process/process_detail.html"
+    context_object_name = "process"
+    login_url = "/login/"
+
+
+class ProcessCreateView(LoginRequiredMixin, CreateView):
+    model = Process
+    form_class = ProcessForm
+    template_name = "process/process_form.html"
+    success_url = reverse_lazy("process_list")
+    login_url = "/login/"
+
+    def form_valid(self, form):
+        try:
+            response = super().form_valid(form)
+            logger.info(
+                f"Proceso '{form.instance.process_type}' creado exitosamente por {self.request.user} con ID {form.instance.id}."
+            )
+            return response
+        except Exception as e:
+            logger.error(
+                f"Error crítico al guardar el proceso para el usuario {self.request.user}: {str(e)}"
+            )
+            form.add_error(None, f"Error al guardar el reporte: {str(e)}")
+            return self.form_invalid(form)
+
+
+class ProcessDeleteView(LoginRequiredMixin, DeleteView):
+    model = Process
+    template_name = "process/process_confirm_delete.html"
+    success_url = reverse_lazy("process_list")
+    login_url = "/login/"
+
+
+class ProcessUpdateView(LoginRequiredMixin, UpdateView):
+    model = Process
+    form_class = ProcessForm
+    template_name = "process/process_form.html"
+    success_url = reverse_lazy("process_list")
     login_url = "/login/"

@@ -33,6 +33,11 @@ class User(AbstractUser):
             return f"{self.first_name} {self.last_name} ({self.email or self.username})"
         return self.username
 
+    class Meta(AbstractUser.Meta):
+        permissions = [
+            ("add_external_user", "Can add external users only"),
+        ]
+
 
 class ClientProfile(models.Model):
     user = models.OneToOneField(
@@ -64,34 +69,18 @@ class ProcessStatusChoices(models.TextChoices):
     FINALIZADO = "finalizado", _("Finalizado")
 
 
-class ProcessType(models.Model):
-
-    process_type = models.CharField(
-        max_length=20, choices=ProcessTypeChoices.choices, unique=True
-    )
-
-    def __str__(self):
-        return self.get_process_type_display()
-
-
-class ProcessStatus(models.Model):
-
-    estado = models.CharField(
-        max_length=15, choices=ProcessStatusChoices.choices, unique=True
-    )
-
-    def __str__(self):
-        return self.get_estado_display()
-
-
 class Process(models.Model):
 
-    process_type = models.ForeignKey(
-        ProcessType, on_delete=models.PROTECT, related_name="processes"
+    process_type = models.CharField(
+        max_length=20,
+        choices=ProcessTypeChoices.choices,
+        default=ProcessTypeChoices.OTRO,
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="processes")
-    estado = models.ForeignKey(
-        ProcessStatus, on_delete=models.PROTECT, related_name="processes"
+    estado = models.CharField(
+        max_length=15,
+        choices=ProcessStatusChoices.choices,
+        default=ProcessStatusChoices.EN_PROGRESO,
     )
     fecha_inicio = models.DateTimeField(auto_now_add=True)
     fecha_final = models.DateTimeField(null=True, blank=True)
@@ -137,6 +126,11 @@ class Equipment(models.Model):
     def __str__(self):
         return f"{self.nombre} ({self.serial or 'No Serial'}) - Owner: {self.user.username if self.user else 'None'}"
 
+    class Meta:
+        permissions = [
+            ("manage_equipment", "Can create and edit equipment"),
+        ]
+
 
 class EstadoReporteChoices(models.TextChoices):
     EN_GENERACION = "en_generacion", _("En Generación")
@@ -168,6 +162,12 @@ class Report(models.Model):
 
     def __str__(self):
         return f"Report by {self.user.first_name}: {self.title}"
+
+    class Meta:
+        permissions = [
+            ("upload_report", "Can upload reports"),
+            ("approve_report", "Can approve reports"),
+        ]
 
     def delete(self, *args, **kwargs):
         if self.pdf_file:

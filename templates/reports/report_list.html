@@ -6,7 +6,9 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Reportes</h1>
+        {% if not user.roles.all|dictsort:"name"|yesno:"CLIENTE"%}
         <a href="{% url 'report_create' %}" class="btn btn-primary">Crear Reporte</a>
+        {% endif %}
     </div>
 
     <div class="card">

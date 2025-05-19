@@ -41,11 +41,11 @@
                                         <tbody>
                                             {% for equipo in equipos %}
                                             <tr>
-                                                <td>{{ equipos.nombre }}</td>
-                                                <td>{{ equipos.marca }}</td>
-                                                <td>{{ equipos.modelo }}</td>
-                                                <td>{{ equipos.serial }}</td>
-                                                <td>{{ equipos.process.fecha_inicio|date:"d/m/Y" }}</td>
+                                                <td>{{ equipo.nombre }}</td>
+                                                <td>{{ equipo.marca }}</td>
+                                                <td>{{ equipo.modelo }}</td>
+                                                <td>{{ equipo.serial }}</td>
+                                                <td>{{ equipo.process.fecha_inicio|date:"d/m/Y" }}</td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
@@ -100,7 +100,7 @@
                                                 <td>{{ reporte.title }}</td>
                                                 <td>{{ reporte.description}}</td>
                                                 <td>{{ reporte.created_at|date:"d/m/Y H:i" }}</td>
-                                                <td>{{ reporte.fecha_vencimiento|date:"d/m/Y H:i"|default:"N/A" }}</td>
+                                                <td>{{ reporte.fecha_vencimiento|date:"d/m/Y"|default:"N/A" }}</td>
                                                 <td>{% if reporte.pdf_file %}
                                                         <a href="{{ reporte.pdf_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                                             <i class="fas fa-file-pdf"></i> Ver PDF
@@ -149,7 +149,7 @@
                                                 <td>{{ equipo.marca}}</td>
                                                 <td>{{ equipo.modelo }}</td>
                                                 <td>{{ equipo.serial }}</td>
-                                                <td>{{ equipo.fecha_vencimiento_licencia|date:"d/m/Y H:i"|default:"N/A" }}</td>
+                                                <td>{{ equipo.fecha_vigencia_licencia|date:"d/m/Y"|default:"N/A" }}</td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>

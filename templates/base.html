@@ -37,9 +37,18 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'process_list' %}">Mis Procesos</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'equipos_list' %}">Mis Equipos</a>
+                    </li>
                     {% else %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'report_list' %}">Reportes</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'process_list' %}">Procesos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'equipos_list' %}">Equipos</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'user_list' %}">Usuarios</a>

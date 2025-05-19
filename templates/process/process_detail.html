@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Proceso{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>{{ process.process_type }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Usuario:</strong></div>
+                <div class="col-md-8">
+                    <a href="{% url 'user_detail' process.user.id %}">{{ process.user.username }}</a>
+                    ({{ process.user.first_name }} {{ process.user.last_name }})
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Estado:</strong></div>
+                <div class="col-md-8">{{ process.estado }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Inicio:</strong></div>
+                <div class="col-md-8">{{ process.fecha_inicio|date:"d/m/Y H:i" }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Finalización:</strong></div>
+                <div class="col-md-8">{{ process.fecha_final|date:"d/m/Y H:i" }}</div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a href="{% url 'process_list' %}" class="btn btn-secondary">Volver</a>
+            {% if not user.roles.all|dictsort:"name"|yesno:"CLIENTE" %}
+            <a href="{% url 'process_update' process.id %}" class="btn btn-warning">Editar</a>
+            <a href="{% url 'process_delete' process.id %}" class="btn btn-danger">Eliminar</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
