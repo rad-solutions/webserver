@@ -69,40 +69,24 @@ class ProcessStatusChoices(models.TextChoices):
     FINALIZADO = "finalizado", _("Finalizado")
 
 
-class ProcessType(models.Model):
-
-    process_type = models.CharField(
-        max_length=20, choices=ProcessTypeChoices.choices, unique=True
-    )
-
-    def __str__(self):
-        return self.get_process_type_display()
-
-
-class ProcessStatus(models.Model):
-
-    estado = models.CharField(
-        max_length=15, choices=ProcessStatusChoices.choices, unique=True
-    )
-
-    def __str__(self):
-        return self.get_estado_display()
-
-
 class Process(models.Model):
 
-    process_type = models.ForeignKey(
-        ProcessType, on_delete=models.PROTECT, related_name="processes"
+    process_type = models.CharField(
+        max_length=20,
+        choices=ProcessTypeChoices.choices,
+        default=ProcessTypeChoices.OTRO,
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="processes")
-    estado = models.ForeignKey(
-        ProcessStatus, on_delete=models.PROTECT, related_name="processes"
+    estado = models.CharField(
+        max_length=15,
+        choices=ProcessStatusChoices.choices,
+        default=ProcessStatusChoices.EN_PROGRESO,
     )
     fecha_inicio = models.DateTimeField(auto_now_add=True)
     fecha_final = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.process_type} for {self.user.username} - Status: {self.estado}"
+        return f"{self.get_process_type_display()} for {self.user.username} - Status: {self.get_estado_display()}"
 
 
 class EstadoEquipoChoices(models.TextChoices):

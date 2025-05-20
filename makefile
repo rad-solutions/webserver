@@ -1,5 +1,5 @@
 test:
-	docker compose exec web poetry run python manage.py test
+	docker compose exec web poetry run python manage.py test app.tests
 
 down:
 	docker compose down
