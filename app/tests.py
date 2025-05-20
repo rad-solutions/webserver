@@ -14,9 +14,7 @@ from .models import EstadoReporteChoices  # Added
 from .models import (
     Equipment,
     Process,
-    ProcessStatus,
     ProcessStatusChoices,
-    ProcessType,
     ProcessTypeChoices,
     Report,
     Role,
@@ -83,14 +81,10 @@ class ReportModelTest(TestCase):
             first_name="Test",
             last_name="User",
         )
-        self.process_type = ProcessType.objects.create(
-            process_type=ProcessTypeChoices.ASESORIA
-        )
-        self.process_status = ProcessStatus.objects.create(
-            estado=ProcessStatusChoices.EN_PROGRESO
-        )
         self.process = Process.objects.create(
-            user=self.user, process_type=self.process_type, estado=self.process_status
+            user=self.user,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
         )
 
         self.temp_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
@@ -182,61 +176,11 @@ class RoleModelTest(TestCase):
             Role.objects.create(name=RoleChoices.CLIENTE)
 
 
-class ProcessTypeModelTest(TestCase):
-    def test_process_type_creation(self):
-        """Test process type creation."""
-        ProcessType.objects.all().delete()  # Clear existing
-        pt = ProcessType.objects.create(process_type=ProcessTypeChoices.ASESORIA)
-        self.assertEqual(pt.process_type, "asesoria")
-        self.assertEqual(ProcessType.objects.count(), 1)
-
-    def test_process_type_string_representation(self):
-        """Test the string representation."""
-        ProcessType.objects.all().delete()  # Clear existing
-        pt = ProcessType.objects.create(
-            process_type=ProcessTypeChoices.CALCULO_BLINDAJES
-        )
-        self.assertEqual(str(pt), "Cálculo de Blindajes")
-
-    def test_process_type_uniqueness(self):
-        """Test process type uniqueness."""
-        ProcessType.objects.all().delete()  # Clear existing
-        ProcessType.objects.create(process_type=ProcessTypeChoices.CONTROL_CALIDAD)
-        with self.assertRaises(IntegrityError):
-            ProcessType.objects.create(process_type=ProcessTypeChoices.CONTROL_CALIDAD)
-
-
-class ProcessStatusModelTest(TestCase):
-    def test_process_status_creation(self):
-        """Test process status creation."""
-        ProcessStatus.objects.all().delete()  # Clear existing
-        ps = ProcessStatus.objects.create(estado=ProcessStatusChoices.EN_PROGRESO)
-        self.assertEqual(ps.estado, "en_progreso")
-        self.assertEqual(ProcessStatus.objects.count(), 1)
-
-    def test_process_status_string_representation(self):
-        """Test the string representation."""
-        ProcessStatus.objects.all().delete()  # Clear existing
-        ps = ProcessStatus.objects.create(estado=ProcessStatusChoices.FINALIZADO)
-        self.assertEqual(str(ps), "Finalizado")
-
-    def test_process_status_uniqueness(self):
-        """Test process status uniqueness."""
-        ProcessStatus.objects.all().delete()  # Clear existing
-        ProcessStatus.objects.create(estado=ProcessStatusChoices.RADICADO)
-        with self.assertRaises(IntegrityError):
-            ProcessStatus.objects.create(estado=ProcessStatusChoices.RADICADO)
-
-
 class ProcessModelTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="procuser", password="password")
-        self.process_type = ProcessType.objects.create(
-            process_type=ProcessTypeChoices.ASESORIA
-        )
-        self.process_status = ProcessStatus.objects.create(
-            estado=ProcessStatusChoices.EN_PROGRESO
-        )
+        self.process_type = ProcessTypeChoices.ASESORIA
+        self.process_status = ProcessStatusChoices.EN_PROGRESO
 
     def test_process_creation(self):
         """Test process creation and relationships."""
@@ -252,8 +196,6 @@ class ProcessModelTest(TestCase):
         self.assertIsNone(process.fecha_final)
         self.assertEqual(Process.objects.count(), 1)
         self.assertEqual(self.user.processes.count(), 1)
-        self.assertEqual(self.process_type.processes.count(), 1)
-        self.assertEqual(self.process_status.processes.count(), 1)
 
     def test_process_string_representation(self):
         """Test the string representation."""
@@ -262,7 +204,7 @@ class ProcessModelTest(TestCase):
             process_type=self.process_type,
             estado=self.process_status,
         )
-        expected_string = "Asesoría for procuser - Status: En Progreso"
+        expected_string = "asesoria for procuser - Status: en_progreso"
         self.assertEqual(str(process), expected_string)
 
 
@@ -270,12 +212,8 @@ class EquipmentModelTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="equipuser", password="password")
         # Optional: Create related objects if needed for multiple tests
-        self.process_type = ProcessType.objects.create(
-            process_type=ProcessTypeChoices.ASESORIA
-        )
-        self.process_status = ProcessStatus.objects.create(
-            estado=ProcessStatusChoices.EN_PROGRESO
-        )
+        self.process_type = ProcessTypeChoices.ASESORIA
+        self.process_status = ProcessStatusChoices.EN_PROGRESO
         self.process = Process.objects.create(
             user=self.user, process_type=self.process_type, estado=self.process_status
         )
@@ -467,116 +405,218 @@ class ReportAPITest(TestCase):
         self.temp_file.write(b"contenido de prueba del PDF")
         self.temp_file.close()
 
-        self.process_type = ProcessType.objects.create(
-            process_type=ProcessTypeChoices.ASESORIA
-        )
-        self.process_status = ProcessStatus.objects.create(
-            estado=ProcessStatusChoices.EN_PROGRESO
-        )
         self.process = Process.objects.create(
-            user=self.user, process_type=self.process_type, estado=self.process_status
+            user=self.user,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
         )
 
         self.client.login(username="testuser", password="testpassword")
 
     def tearDown(self):
-        os.unlink(self.temp_file.name)
+        self.temp_file.close()
+        if os.path.exists(self.temp_file.name):
+            os.unlink(self.temp_file.name)
 
         for report in Report.objects.all():
-            if os.path.exists(report.pdf_file.path):
-                os.unlink(report.pdf_file.path)
+            if report.pdf_file and hasattr(report.pdf_file, "path"):
+                if os.path.exists(report.pdf_file.path):
+                    try:
+                        os.remove(report.pdf_file.path)
+                    except OSError:
+                        pass
 
     def test_report_list_view(self):
+        with open(self.temp_file.name, "rb") as temp_file:
+            Report.objects.create(
+                user=self.user,
+                process=self.process,
+                title="Reporte en lista",
+                pdf_file=SimpleUploadedFile("list.pdf", temp_file.read()),
+                estado_reporte=EstadoReporteChoices.EN_GENERACION,
+            )
+            temp_file.seek(0)
+
         url = reverse("report_list")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "reports/report_list.html")
+        self.assertIn("reports", response.context)
 
-    def test_report_creation_view(self):
+    def test_report_detail_view(self):
+        with open(self.temp_file.name, "rb") as temp_file:
+            report = Report.objects.create(
+                user=self.user,
+                process=self.process,
+                title="Detalle Reporte",
+                pdf_file=SimpleUploadedFile("detail.pdf", temp_file.read()),
+                estado_reporte=EstadoReporteChoices.EN_GENERACION,
+            )
+            temp_file.seek(0)
+        url = reverse("report_detail", args=[report.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "reports/report_detail.html")
+        self.assertEqual(response.context["report"], report)
+
+    def test_report_create_view_get(self):
         url = reverse("report_create")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "reports/report_form.html")
+        self.assertIn("form", response.context)
+
+    def test_report_create_view_post_valid(self):
+        url = reverse("report_create")
+        initial_count = Report.objects.count()
         with open(self.temp_file.name, "rb") as pdf:
             data = {
                 "title": "Nuevo informe de prueba",
                 "description": "Descripción del nuevo informe",
                 "pdf_file": pdf,
-                "process": self.process.id,  # Added process
-                "estado_reporte": EstadoReporteChoices.EN_GENERACION,  # Added
+                "process": self.process.id,
+                "user": self.user.id,
+                "estado_reporte": EstadoReporteChoices.EN_GENERACION,
+                "fecha_vencimiento": date.today() + timedelta(days=30),
             }
-            response = self.client.post(url, data)
-            self.assertEqual(response.status_code, 302)
-            self.assertEqual(Report.objects.count(), 1)
-        self.assertTrue(True)
+            response = self.client.post(url, data, format="multipart")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Report.objects.count(), initial_count + 1)
+        self.assertRedirects(response, reverse("report_list"))
+        new_report = Report.objects.latest("created_at")
+        self.assertEqual(new_report.title, "Nuevo informe de prueba")
+        self.assertEqual(new_report.user, self.user)
 
-    def test_report_creation_no_file(self):
+    def test_report_create_view_post_invalid_no_title(self):
         url = reverse("report_create")
-        data = {
-            "title": "Informe sin archivo",
-            "description": "Este informe no tiene archivo PDF",
-            "process": self.process.id,  # Added process
-        }
-        response = self.client.post(url, data)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(Report.objects.count(), 0)
-
-    def test_report_creation_no_title(self):
-        url = reverse("report_create")
+        initial_count = Report.objects.count()
         with open(self.temp_file.name, "rb") as pdf:
             data = {
                 "description": "Este informe no tiene título",
                 "pdf_file": pdf,
-                "process": self.process.id,  # Added process
+                "process": self.process.id,
+                "user": self.user.id,
+                "estado_reporte": EstadoReporteChoices.EN_GENERACION,
             }
-            response = self.client.post(url, data)
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(Report.objects.count(), 0)
+            response = self.client.post(url, data, format="multipart")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Report.objects.count(), initial_count)
+        self.assertIn("form", response.context)
+        self.assertTrue(response.context["form"].errors)
+        form_in_context = response.context.get("form")
+        self.assertIsNotNone(
+            form_in_context,
+            "El formulario no se encontró en el contexto de la respuesta.",
+        )
+        self.assertFormError(form_in_context, "title", "This field is required.")
 
-    def test_report_update_view(self):
-
-        with open(self.temp_file.name, "rb") as pdf:
-            report = Report.objects.create(
-                user=self.user,
-                process=self.process,  # Added
-                title="Informe para actualizar",
-                description="Descripción original",
-                pdf_file=SimpleUploadedFile("test.pdf", pdf.read()),
-            )
-
-        url = reverse("report_update", args=[report.id])
+    def test_report_create_view_post_invalid_no_pdf(self):
+        url = reverse("report_create")
+        initial_count = Report.objects.count()
         data = {
-            "title": "Título actualizado",
-            "description": "Descripción actualizada",
-            "process": self.process.id,  # Ensure process is part of update if it can change
-            "estado_reporte": EstadoReporteChoices.REVISADO,  # Example update
+            "title": "Informe sin archivo",
+            "description": "Este informe no tiene archivo PDF",
+            "process": self.process.id,
+            "user": self.user.id,
         }
         response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Report.objects.count(), initial_count)
+        form_in_context = response.context.get("form")
+        self.assertIsNotNone(
+            form_in_context,
+            "El formulario no se encontró en el contexto de la respuesta.",
+        )
+        self.assertFormError(form_in_context, "pdf_file", "This field is required.")
 
-        self.assertEqual(response.status_code, 302)
-
-        report.refresh_from_db()
-        self.assertEqual(report.title, "Título actualizado")
-        self.assertEqual(report.description, "Descripción actualizada")
-        self.assertEqual(
-            report.estado_reporte, EstadoReporteChoices.REVISADO
-        )  # Check updated state
-
-        with open(self.temp_file.name, "rb") as pdf:
-            data["pdf_file"] = pdf
-            response = self.client.post(url, data)
-            self.assertEqual(response.status_code, 302)
-
-    def test_report_delete_view(self):
-        with open(self.temp_file.name, "rb") as pdf:
+    def test_report_update_view_get(self):
+        with open(self.temp_file.name, "rb") as temp_file:
             report = Report.objects.create(
                 user=self.user,
-                process=self.process,  # Added
+                process=self.process,
+                title="Para Actualizar GET",
+                pdf_file=SimpleUploadedFile("update_get.pdf", temp_file.read()),
+            )
+            temp_file.seek(0)
+        url = reverse("report_update", args=[report.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "reports/report_form.html")
+        self.assertEqual(response.context["form"].instance, report)
+
+    def test_report_update_view_post_valid(self):
+        with open(self.temp_file.name, "rb") as temp_file:
+            report = Report.objects.create(
+                user=self.user,
+                process=self.process,
+                title="Informe para actualizar",
+                description="Descripción original",
+                pdf_file=SimpleUploadedFile("update_me.pdf", temp_file.read()),
+                estado_reporte=EstadoReporteChoices.EN_GENERACION,
+            )
+            temp_file.seek(0)
+
+        url = reverse("report_update", args=[report.id])
+        updated_title = "Título actualizado"
+        updated_description = "Descripción actualizada"
+        updated_estado = EstadoReporteChoices.REVISADO
+
+        # Para actualizar un FileField, necesitas pasar un nuevo archivo.
+        # Si no se pasa, el archivo existente se mantiene.
+        # Si quieres probar la actualización del archivo, crea otro archivo temporal.
+        with open(self.temp_file.name, "rb") as pdf_update:
+            data = {
+                "title": updated_title,
+                "description": updated_description,
+                "process": self.process.id,
+                "user": self.user.id,
+                "estado_reporte": updated_estado,
+                "pdf_file": pdf_update,
+            }
+            response = self.client.post(url, data, format="multipart")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("report_list"))
+
+        report.refresh_from_db()
+        self.assertEqual(report.title, updated_title)
+        self.assertEqual(report.description, updated_description)
+        self.assertEqual(report.estado_reporte, updated_estado)
+
+    def test_report_delete_view_get(self):
+        with open(self.temp_file.name, "rb") as temp_file:
+            report = Report.objects.create(
+                user=self.user,
+                process=self.process,
+                title="Para Eliminar GET",
+                pdf_file=SimpleUploadedFile("delete_get.pdf", temp_file.read()),
+            )
+            temp_file.seek(0)
+        url = reverse("report_delete", args=[report.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "reports/report_confirm_delete.html")
+        self.assertEqual(response.context["report"], report)
+
+    def test_report_delete_view_post(self):
+        with open(self.temp_file.name, "rb") as temp_file:
+            report = Report.objects.create(
+                user=self.user,
+                process=self.process,
                 title="Informe para eliminar",
                 description="Este informe será eliminado",
-                pdf_file=SimpleUploadedFile("test.pdf", pdf.read()),
+                pdf_file=SimpleUploadedFile("delete_me.pdf", temp_file.read()),
             )
+            temp_file.seek(0)
+        initial_count = Report.objects.count()
 
         url = reverse("report_delete", args=[report.id])
         response = self.client.post(url)
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(Report.objects.count(), 0)
+        self.assertRedirects(response, reverse("report_list"))
+        self.assertEqual(Report.objects.count(), initial_count - 1)
+        with self.assertRaises(Report.DoesNotExist):
+            Report.objects.get(id=report.id)
 
 
 class AuthenticationTest(TestCase):
@@ -648,52 +688,92 @@ class ProtectedResourceTest(TestCase):
             last_name="User",
         )
 
+        self.process_for_urls = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.OTRO,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        self.equipment_for_urls = Equipment.objects.create(
+            nombre="Equipo Test URL", user=self.user, process=self.process_for_urls
+        )
+        # Crear un archivo temporal para el reporte
         self.temp_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
-        self.temp_file.write(b"contenido de prueba del PDF")
-        self.temp_file.close()
-
-        self.process_type = ProcessType.objects.create(
-            process_type=ProcessTypeChoices.ASESORIA
+        self.temp_file.write(b"dummy content")
+        self.temp_file.seek(0)
+        self.report_for_urls = Report.objects.create(
+            user=self.user,
+            process=self.process_for_urls,
+            title="Reporte Test URL",
+            pdf_file=SimpleUploadedFile("url_test.pdf", self.temp_file.read()),
         )
-        self.process_status = ProcessStatus.objects.create(
-            estado=ProcessStatusChoices.EN_PROGRESO
-        )
-        self.process = Process.objects.create(
-            user=self.user, process_type=self.process_type, estado=self.process_status
-        )
-
-        with open(self.temp_file.name, "rb") as pdf:
-            self.report = Report.objects.create(
-                user=self.user,
-                process=self.process,  # Added
-                title="Informe del primer usuario",
-                description="Este informe pertenece al primer usuario",
-                pdf_file=SimpleUploadedFile("test.pdf", pdf.read()),
-            )
 
     def tearDown(self):
-        os.unlink(self.temp_file.name)
-
-        for report in Report.objects.all():
-            if os.path.exists(report.pdf_file.path):
-                os.unlink(report.pdf_file.path)
+        self.temp_file.close()
+        if os.path.exists(self.temp_file.name):
+            os.unlink(self.temp_file.name)
+        if self.report_for_urls.pdf_file and hasattr(
+            self.report_for_urls.pdf_file, "path"
+        ):
+            if os.path.exists(self.report_for_urls.pdf_file.path):
+                try:
+                    os.remove(self.report_for_urls.pdf_file.path)
+                except OSError:
+                    pass
 
     def test_unauthenticated_access(self):
         """Test que los usuarios no autenticados son redirigidos al inicio de sesión"""
-        url = reverse("report_list")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith("/login/"))
+        urls_to_test = {
+            "report_list": reverse("report_list"),
+            "report_create": reverse("report_create"),
+            "report_detail": reverse("report_detail", args=[self.report_for_urls.id]),
+            "report_update": reverse("report_update", args=[self.report_for_urls.id]),
+            "report_delete": reverse("report_delete", args=[self.report_for_urls.id]),
+            "equipos_list": reverse("equipos_list"),
+            "equipos_create": reverse("equipos_create"),
+            "equipos_detail": reverse(
+                "equipos_detail", args=[self.equipment_for_urls.id]
+            ),
+            "equipos_update": reverse(
+                "equipos_update", args=[self.equipment_for_urls.id]
+            ),
+            "equipos_delete": reverse(
+                "equipos_delete", args=[self.equipment_for_urls.id]
+            ),
+            "process_list": reverse("process_list"),
+            "process_create": reverse("process_create"),
+            "process_detail": reverse(
+                "process_detail", args=[self.process_for_urls.id]
+            ),
+            "process_update": reverse(
+                "process_update", args=[self.process_for_urls.id]
+            ),
+            "process_delete": reverse(
+                "process_delete", args=[self.process_for_urls.id]
+            ),
+            "user_list": reverse("user_list"),
+            "user_create": reverse("user_create"),
+            # Añadir user_detail, user_update, user_delete si es necesario
+        }
 
-        url = reverse("report_create")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith("/login/"))
+        for name, url in urls_to_test.items():
+            with self.subTest(url_name=name):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 302, f"Failed for GET {url}")
+                self.assertTrue(
+                    response.url.startswith("/login/"), f"Failed for GET {url}"
+                )
 
-        url = reverse("report_detail", args=[self.report.id])
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith("/login/"))
+                # Para vistas create, update, delete, también probar POST si es relevante
+                # (aunque DeleteView y UpdateView suelen requerir GET primero para la confirmación/formulario)
+                if "create" in name or "update" in name or "delete" in name:
+                    response_post = self.client.post(url, {})
+                    self.assertEqual(
+                        response_post.status_code, 302, f"Failed for POST {url}"
+                    )
+                    self.assertTrue(
+                        response_post.url.startswith("/login/"),
+                        f"Failed for POST {url}",
+                    )
 
 
 class ClientDashboardTest(TestCase):
@@ -712,20 +792,12 @@ class ClientDashboardTest(TestCase):
         self.user.roles.add(self.role_cliente)
 
         # Crear tipos de proceso
-        self.process_type_blindajes, _ = ProcessType.objects.get_or_create(
-            process_type=ProcessTypeChoices.CALCULO_BLINDAJES
-        )
-        self.process_type_calidad, _ = ProcessType.objects.get_or_create(
-            process_type=ProcessTypeChoices.CONTROL_CALIDAD
-        )
-        self.process_type_asesoria, _ = ProcessType.objects.get_or_create(
-            process_type=ProcessTypeChoices.ASESORIA
-        )
+        self.process_type_blindajes = ProcessTypeChoices.CALCULO_BLINDAJES
+        self.process_type_calidad = ProcessTypeChoices.CONTROL_CALIDAD
+        self.process_type_asesoria = ProcessTypeChoices.ASESORIA
 
         # Crear estados de proceso
-        self.process_status, _ = ProcessStatus.objects.get_or_create(
-            estado=ProcessStatusChoices.EN_PROGRESO
-        )
+        self.process_status = ProcessStatusChoices.EN_PROGRESO
 
         # Crear procesos para el usuario
         self.process_blindajes = Process.objects.create(
@@ -910,3 +982,257 @@ class ClientDashboardTest(TestCase):
 
         self.assertEqual(len(response.context["reportes"]), 1)
         self.assertIn(self.report_asesoria, response.context["reportes"])
+
+
+class ProcessAPITest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="procuser", password="password")
+        self.other_user = User.objects.create_user(
+            username="otherprocuser", password="password"
+        )
+        self.client.login(username="procuser", password="password")
+
+    def test_process_list_view(self):
+        Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        url = reverse("process_list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "process/process_list.html")
+        self.assertIn("equipos", response.context)
+
+    def test_process_detail_view(self):
+        process = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.CONTROL_CALIDAD,
+            estado=ProcessStatusChoices.RADICADO,
+        )
+        url = reverse("process_detail", args=[process.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "process/process_detail.html")
+        self.assertEqual(response.context["process"], process)
+
+    def test_process_create_view_get(self):
+        url = reverse("process_create")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "process/process_form.html")
+
+    def test_process_create_view_post_valid(self):
+        url = reverse("process_create")
+        initial_count = Process.objects.count()
+        data = {
+            "user": self.user.id,
+            "process_type": ProcessTypeChoices.CALCULO_BLINDAJES,
+            "estado": ProcessStatusChoices.EN_PROGRESO,
+            "fecha_final": (date.today() + timedelta(days=10)).strftime(
+                "%Y-%m-%dT%H:%M"
+            ),
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Process.objects.count(), initial_count + 1)
+        new_process = Process.objects.latest("fecha_inicio")
+        self.assertEqual(new_process.user, self.user)
+        self.assertEqual(new_process.process_type, ProcessTypeChoices.CALCULO_BLINDAJES)
+
+    def test_process_create_view_post_invalid(self):
+        url = reverse("process_create")
+        initial_count = Process.objects.count()
+        data = {"user": self.user.id, "estado": "estado_invalido"}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Process.objects.count(), initial_count)
+        self.assertTrue(response.context["form"].errors)
+
+    def test_process_update_view_get(self):
+        process = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        url = reverse("process_update", args=[process.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "process/process_form.html")
+        self.assertEqual(response.context["form"].instance, process)
+
+    def test_process_update_view_post_valid(self):
+        process = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        url = reverse("process_update", args=[process.id])
+        data = {
+            "user": self.user.id,
+            "process_type": ProcessTypeChoices.CONTROL_CALIDAD,
+            "estado": ProcessStatusChoices.FINALIZADO,
+            "fecha_final": date.today().strftime("%Y-%m-%dT%H:%M"),
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 302)
+        process.refresh_from_db()
+        self.assertEqual(process.process_type, ProcessTypeChoices.CONTROL_CALIDAD)
+        self.assertEqual(process.estado, ProcessStatusChoices.FINALIZADO)
+
+    def test_process_delete_view_get(self):
+        process = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.OTRO,
+            estado=ProcessStatusChoices.RADICADO,
+        )
+        url = reverse("process_delete", args=[process.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "process/process_confirm_delete.html")
+
+    def test_process_delete_view_post(self):
+        process = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.OTRO,
+            estado=ProcessStatusChoices.RADICADO,
+        )
+        initial_count = Process.objects.count()
+        url = reverse("process_delete", args=[process.id])
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Process.objects.count(), initial_count - 1)
+
+
+class EquipmentAPITest(TestCase):
+    def setUp(self):
+        self.user_client = User.objects.create_user(
+            username="equipclient",
+            password="password",
+            first_name="Equip",
+            last_name="Client",
+        )
+        self.admin_user = User.objects.create_user(
+            username="equipadmin", password="password", is_staff=True
+        )
+        self.process = Process.objects.create(
+            user=self.user_client,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        self.client.login(username="equipadmin", password="password")
+
+    def test_equipment_list_view(self):
+        Equipment.objects.create(
+            nombre="Equipo en Lista", user=self.user_client, process=self.process
+        )
+        url = reverse("equipos_list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "equipos/equipos_list.html")
+        self.assertIn("equipos", response.context)
+
+    def test_equipment_detail_view(self):
+        equipment = Equipment.objects.create(
+            nombre="Detalle Equipo", user=self.user_client, process=self.process
+        )
+        url = reverse("equipos_detail", args=[equipment.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "equipos/equipos_detail.html")
+        self.assertEqual(response.context["equipo"], equipment)
+
+    def test_equipment_create_view_get(self):
+        url = reverse("equipos_create")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "equipos/equipos_form.html")
+
+    def test_equipment_create_view_post_valid(self):
+        url = reverse("equipos_create")
+        initial_count = Equipment.objects.count()
+        data = {
+            "nombre": "Nuevo Equipo Gamma",
+            "marca": "MarcaTest",
+            "modelo": "ModeloTest",
+            "serial": "SNTEST123",
+            "user": self.user_client.id,
+            "process": self.process.id,
+            "estado_actual": EstadoEquipoChoices.EN_USO,
+            "sede": "Sede Test",
+            "fecha_adquisicion": date.today().strftime("%Y-%m-%d"),
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 302, response.content.decode())
+        self.assertEqual(Equipment.objects.count(), initial_count + 1)
+        new_equipment = Equipment.objects.latest("id")
+        self.assertEqual(new_equipment.nombre, "Nuevo Equipo Gamma")
+        self.assertEqual(new_equipment.user, self.user_client)
+
+    def test_equipment_create_view_post_invalid(self):
+        url = reverse("equipos_create")
+        initial_count = Equipment.objects.count()
+        data = {"marca": "SoloMarca"}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Equipment.objects.count(), initial_count)
+        self.assertTrue(response.context["form"].errors)
+
+    def test_equipment_update_view_get(self):
+        equipment = Equipment.objects.create(
+            nombre="Equipo para GET Update", user=self.user_client, process=self.process
+        )
+        url = reverse("equipos_update", args=[equipment.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "equipos/equipos_form.html")
+        self.assertEqual(response.context["form"].instance, equipment)
+
+    def test_equipment_update_view_post_valid(self):
+        equipment = Equipment.objects.create(
+            nombre="Equipo Original",
+            serial="SNORIG",
+            user=self.user_client,
+            process=self.process,
+        )
+        url = reverse("equipos_update", args=[equipment.id])
+        data = {
+            "nombre": "Equipo Actualizado",
+            "marca": equipment.marca or "NuevaMarca",
+            "modelo": equipment.modelo or "NuevoModelo",
+            "serial": "SNUPDT",
+            "user": self.user_client.id,
+            "process": self.process.id,
+            "estado_actual": EstadoEquipoChoices.DADO_DE_BAJA,
+            "sede": equipment.sede or "NuevaSede",
+            "fecha_adquisicion": (equipment.fecha_adquisicion or date.today()).strftime(
+                "%Y-%m-%d"
+            ),
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 302)
+        equipment.refresh_from_db()
+        self.assertEqual(equipment.nombre, "Equipo Actualizado")
+        self.assertEqual(equipment.serial, "SNUPDT")
+        self.assertEqual(equipment.estado_actual, EstadoEquipoChoices.DADO_DE_BAJA)
+
+    def test_equipment_delete_view_get(self):
+        equipment = Equipment.objects.create(
+            nombre="Equipo para GET Delete", user=self.user_client, process=self.process
+        )
+        url = reverse("equipos_delete", args=[equipment.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "equipos/equipos_confirm_delete.html")
+
+    def test_equipment_delete_view_post(self):
+        equipment = Equipment.objects.create(
+            nombre="Equipo para POST Delete",
+            user=self.user_client,
+            process=self.process,
+        )
+        initial_count = Equipment.objects.count()
+        url = reverse("equipos_delete", args=[equipment.id])
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Equipment.objects.count(), initial_count - 1)
