@@ -12,6 +12,7 @@ from ..models import Anotacion  # Add Anotacion here
 from ..models import ClientProfile  # Changed from .models
 from ..models import EstadoEquipoChoices  # Changed from .models
 from ..models import EstadoReporteChoices  # Changed from .models
+from ..models import ProcessStatusLog  # Added ProcessStatusLog
 from ..models import (  # Changed from .models
     Equipment,
     Process,
@@ -82,11 +83,14 @@ class ReportModelTest(TestCase):
             first_name="Test",
             last_name="User",
         )
-        # Removed ProcessType and ProcessStatus creation as they are no longer models
         self.process = Process.objects.create(
             user=self.user,
-            process_type=ProcessTypeChoices.ASESORIA,  # Directly use choice
-            estado=ProcessStatusChoices.EN_PROGRESO,  # Directly use choice
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        self.equipment = Equipment.objects.create(
+            nombre="Test Equipment",
+            user=self.user,  # Assuming client user owns equipment
         )
 
         self.temp_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
@@ -101,6 +105,7 @@ class ReportModelTest(TestCase):
                 description="Esta es una descripción de prueba",
                 pdf_file=SimpleUploadedFile("test.pdf", pdf.read()),
                 estado_reporte=EstadoReporteChoices.EN_GENERACION,
+                equipment=self.equipment,  # Associate with equipment
             )
 
     def tearDown(self):
@@ -120,6 +125,21 @@ class ReportModelTest(TestCase):
         self.assertTrue(self.report.created_at is not None)
         self.assertEqual(self.report.estado_reporte, EstadoReporteChoices.EN_GENERACION)
         self.assertIsNone(self.report.fecha_vencimiento)
+        self.assertEqual(
+            self.report.equipment, self.equipment
+        )  # Test equipment association
+
+    def test_report_creation_without_equipment(self):
+        """Test report creation without associating equipment."""
+        with open(self.temp_file.name, "rb") as pdf:
+            report_no_equipment = Report.objects.create(
+                user=self.user,
+                process=self.process,
+                title="Informe Sin Equipo",
+                pdf_file=SimpleUploadedFile("no_equip.pdf", pdf.read()),
+            )
+        self.assertIsNone(report_no_equipment.equipment)
+        self.assertEqual(report_no_equipment.title, "Informe Sin Equipo")
 
     def test_report_string_representation(self):
         expected_string = "Report by Test: Informe de prueba"
@@ -132,6 +152,39 @@ class ReportModelTest(TestCase):
     def test_process_reports_relationship(self):
         self.assertEqual(self.process.reports.count(), 1)
         self.assertEqual(self.process.reports.first(), self.report)
+
+    def test_equipment_reports_relationship(self):
+        """Test accessing reports from an equipment instance."""
+        self.assertEqual(self.equipment.reports.count(), 1)
+        self.assertEqual(self.equipment.reports.first(), self.report)
+
+        # Create another report for the same equipment
+        with open(self.temp_file.name, "rb") as pdf:
+            Report.objects.create(
+                user=self.user,
+                title="Otro Informe para Equipo",
+                pdf_file=SimpleUploadedFile("other_equip.pdf", pdf.read()),
+                equipment=self.equipment,
+            )
+        self.assertEqual(self.equipment.reports.count(), 2)
+
+    def test_report_equipment_set_null_on_delete(self):
+        """Test that report.equipment is set to NULL when equipment is deleted."""
+        equipment_to_delete = Equipment.objects.create(
+            nombre="Temp Equipment", user=self.user
+        )
+        with open(self.temp_file.name, "rb") as pdf:
+            report_with_temp_equip = Report.objects.create(
+                user=self.user,
+                title="Informe con Equipo Temporal",
+                pdf_file=SimpleUploadedFile("temp_equip_report.pdf", pdf.read()),
+                equipment=equipment_to_delete,
+            )
+        self.assertEqual(report_with_temp_equip.equipment, equipment_to_delete)
+
+        equipment_to_delete.delete()
+        report_with_temp_equip.refresh_from_db()
+        self.assertIsNone(report_with_temp_equip.equipment)
 
     def test_missing_title_validation(self):
         """Cannot create report without title."""
@@ -184,7 +237,9 @@ class RoleModelTest(TestCase):
 class ProcessModelTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="procuser", password="password")
-        # ProcessType and ProcessStatus are now CharFields with choices, no need to create separate objects
+        self.another_user = User.objects.create_user(
+            username="anotherprocuser", password="password"
+        )  # For testing user_who_modified
 
     def test_process_creation(self):
         """Test process creation and relationships."""
@@ -200,8 +255,87 @@ class ProcessModelTest(TestCase):
         self.assertIsNone(process.fecha_final)
         self.assertEqual(Process.objects.count(), 1)
         self.assertEqual(self.user.processes.count(), 1)
-        # No longer applicable: self.assertEqual(self.process_type.processes.count(), 1)
-        # No longer applicable: self.assertEqual(self.process_status.processes.count(), 1)
+
+        # Test that a ProcessStatusLog entry is created for a new process
+        self.assertEqual(ProcessStatusLog.objects.count(), 1)
+        log_entry = ProcessStatusLog.objects.first()
+        self.assertEqual(log_entry.proceso, process)
+        self.assertIsNone(log_entry.estado_anterior)
+        self.assertEqual(log_entry.estado_nuevo, ProcessStatusChoices.EN_PROGRESO)
+        self.assertIsNone(
+            log_entry.usuario_modifico
+        )  # No user_who_modified passed on initial create
+
+    def test_process_creation_with_user_who_modified(self):
+        """Test process creation logs status with user_who_modified when saving a new instance."""
+        ProcessStatusLog.objects.all().delete()  # Ensure a clean slate for log counting
+
+        process_new = Process(
+            user=self.user,
+            process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        # Call save() on a new, unsaved instance, passing user_who_modified
+        process_new.save(user_who_modified=self.another_user)
+
+        self.assertEqual(
+            ProcessStatusLog.objects.count(),
+            1,
+            "A log entry should be created for a new process.",
+        )
+        log_entry_new = ProcessStatusLog.objects.first()
+        self.assertIsNotNone(log_entry_new, "Log entry should exist.")
+        self.assertEqual(log_entry_new.proceso, process_new)
+        self.assertIsNone(
+            log_entry_new.estado_anterior,
+            "estado_anterior should be None for a new process log.",
+        )
+        self.assertEqual(log_entry_new.estado_nuevo, ProcessStatusChoices.EN_PROGRESO)
+        self.assertEqual(
+            log_entry_new.usuario_modifico,
+            self.another_user,
+            "usuario_modifico should be correctly logged.",
+        )
+
+    def test_process_status_change_logs_entry(self):
+        """Test that changing a process's status creates a log entry."""
+        process = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        # Initial creation log
+        self.assertEqual(ProcessStatusLog.objects.count(), 1)
+        initial_log = ProcessStatusLog.objects.first()
+
+        # Change status
+        process.estado = ProcessStatusChoices.EN_REVISION
+        process.save(user_who_modified=self.another_user)
+
+        self.assertEqual(ProcessStatusLog.objects.count(), 2)
+        change_log = ProcessStatusLog.objects.exclude(pk=initial_log.pk).first()
+
+        self.assertIsNotNone(change_log)
+        self.assertEqual(change_log.proceso, process)
+        self.assertEqual(change_log.estado_anterior, ProcessStatusChoices.EN_PROGRESO)
+        self.assertEqual(change_log.estado_nuevo, ProcessStatusChoices.EN_REVISION)
+        self.assertEqual(change_log.usuario_modifico, self.another_user)
+
+    def test_process_save_no_status_change_no_new_log(self):
+        """Test that saving a process without changing status does not create a new log."""
+        process = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        self.assertEqual(ProcessStatusLog.objects.count(), 1)  # Initial log
+
+        # Save again without changing status
+        process.save()
+        self.assertEqual(ProcessStatusLog.objects.count(), 1)  # Should still be 1
+
+        process.save(user_who_modified=self.another_user)  # Even with user
+        self.assertEqual(ProcessStatusLog.objects.count(), 1)
 
     def test_process_string_representation(self):
         """Test the string representation."""
@@ -715,3 +849,169 @@ class AnotacionModelTest(TestCase):
         self.assertTrue(
             Anotacion.objects.filter(pk=anotacion.pk, usuario__isnull=True).exists()
         )
+
+
+class ProcessStatusLogModelTest(TestCase):
+    def setUp(self):
+        self.user1 = User.objects.create_user(username="loguser1", password="password")
+        self.user2 = User.objects.create_user(username="loguser2", password="password")
+        # Create self.process WITHOUT it automatically creating a log entry here,
+        # so that test methods have full control over log creation for self.process.
+        # Or, be mindful that self.process.save() in Process.objects.create() WILL create a log.
+        # For clarity, let's allow it to create its initial log.
+        self.process = Process.objects.create(
+            user=self.user1,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        # At this point, one log exists for self.process due to its creation.
+
+    def test_process_status_log_creation(self):
+        """Test basic creation of a ProcessStatusLog entry."""
+        # One log already exists from self.process creation in setUp.
+        initial_log_count = ProcessStatusLog.objects.count()
+
+        log_entry = ProcessStatusLog.objects.create(
+            proceso=self.process,
+            estado_anterior=ProcessStatusChoices.EN_PROGRESO,
+            estado_nuevo=ProcessStatusChoices.EN_REVISION,
+            usuario_modifico=self.user2,
+        )
+        self.assertEqual(log_entry.proceso, self.process)
+        self.assertEqual(log_entry.estado_anterior, ProcessStatusChoices.EN_PROGRESO)
+        self.assertEqual(log_entry.estado_nuevo, ProcessStatusChoices.EN_REVISION)
+        self.assertEqual(log_entry.usuario_modifico, self.user2)
+        self.assertIsNotNone(log_entry.fecha_cambio)
+        # Check that a new log was added to the existing ones.
+        self.assertEqual(ProcessStatusLog.objects.count(), initial_log_count + 1)
+
+    def test_process_status_log_creation_no_anterior_no_user(self):
+        """Test log creation with no anterior_estado and no usuario_modifico."""
+        log_entry = ProcessStatusLog.objects.create(
+            proceso=self.process,
+            estado_nuevo=ProcessStatusChoices.RADICADO,
+            # usuario_modifico=None implicitly
+        )
+        self.assertIsNone(log_entry.estado_anterior)
+        self.assertIsNone(log_entry.usuario_modifico)
+        self.assertEqual(log_entry.estado_nuevo, ProcessStatusChoices.RADICADO)
+
+    def test_process_status_log_string_representation(self):
+        """Test the string representation of the log entry."""
+        log_entry = ProcessStatusLog.objects.create(
+            proceso=self.process,
+            estado_anterior=ProcessStatusChoices.EN_PROGRESO,
+            estado_nuevo=ProcessStatusChoices.EN_REVISION,
+            usuario_modifico=self.user2,
+        )
+        expected_str_part_proceso = (
+            f"{self.process.get_process_type_display()} ({self.process.id})"
+        )
+        expected_str = (
+            f"Proceso {expected_str_part_proceso}: {ProcessStatusChoices.EN_PROGRESO.label} -> "
+            f"{ProcessStatusChoices.EN_REVISION.label} por {self.user2.username} el "
+            f"{log_entry.fecha_cambio.strftime('%Y-%m-%d %H:%M')}"
+        )
+        self.assertEqual(str(log_entry), expected_str)
+
+    def test_process_status_log_string_representation_no_user_no_anterior(self):
+        """Test string representation with no user and no anterior estado."""
+        # One log from setUp.
+        initial_log_count = ProcessStatusLog.objects.count()
+        log_entry = ProcessStatusLog.objects.create(
+            proceso=self.process,
+            estado_nuevo=ProcessStatusChoices.FINALIZADO,
+            # usuario_modifico=None implicitly
+        )
+        expected_str_part_proceso = (
+            f"{self.process.get_process_type_display()} ({self.process.id})"
+        )
+        expected_str = (
+            f"Proceso {expected_str_part_proceso}: N/A -> "
+            f"{ProcessStatusChoices.FINALIZADO.label} por Sistema el "
+            f"{log_entry.fecha_cambio.strftime('%Y-%m-%d %H:%M')}"
+        )
+        self.assertEqual(str(log_entry), expected_str)
+        self.assertEqual(
+            ProcessStatusLog.objects.count(), initial_log_count + 1
+        )  # Ensure test isolation for count
+
+    def test_process_status_log_ordering(self):
+        """Test that logs are ordered by fecha_cambio descending."""
+        # Clear any logs for self.process created in setUp to ensure a clean test.
+        ProcessStatusLog.objects.filter(proceso=self.process).delete()
+
+        time_now = timezone.now()
+
+        # Create logs with controlled timestamps
+        log1_time = time_now - datetime.timedelta(days=2)  # Oldest
+        log2_time = time_now - datetime.timedelta(days=1)  # Middle
+        log3_time = time_now  # Newest
+
+        # Create in an order different from their timestamps to test sorting
+        log2 = ProcessStatusLog.objects.create(
+            proceso=self.process, estado_nuevo=ProcessStatusChoices.EN_REVISION
+        )
+        ProcessStatusLog.objects.filter(pk=log2.pk).update(fecha_cambio=log2_time)
+        log2.refresh_from_db()
+
+        log1 = ProcessStatusLog.objects.create(
+            proceso=self.process, estado_nuevo=ProcessStatusChoices.EN_PROGRESO
+        )
+        ProcessStatusLog.objects.filter(pk=log1.pk).update(fecha_cambio=log1_time)
+        log1.refresh_from_db()
+
+        log3 = ProcessStatusLog.objects.create(
+            proceso=self.process, estado_nuevo=ProcessStatusChoices.RADICADO
+        )
+        ProcessStatusLog.objects.filter(pk=log3.pk).update(
+            fecha_cambio=log3_time
+        )  # Ensure it's set if auto_add_now has variance
+        log3.refresh_from_db()
+
+        logs_for_process = ProcessStatusLog.objects.filter(proceso=self.process)
+
+        # Expected order: newest (log3), middle (log2), oldest (log1)
+        self.assertEqual(list(logs_for_process), [log3, log2, log1])
+
+    def test_cascade_delete_with_process(self):
+        """Test that logs are deleted when the associated process is deleted."""
+        # self.process has one log from setUp.
+        # Create an additional log entry for this process to ensure multiple are deleted.
+        ProcessStatusLog.objects.create(
+            proceso=self.process,
+            estado_anterior=ProcessStatusChoices.EN_PROGRESO,
+            estado_nuevo=ProcessStatusChoices.EN_REVISION,
+            usuario_modifico=self.user2,
+        )
+        # Now self.process should have 2 logs.
+        self.assertEqual(
+            self.process.status_logs.count(),
+            2,
+            "Process should have 2 logs before deletion.",
+        )
+
+        process_pk = self.process.pk  # Store pk for querying after delete
+        self.process.delete()
+
+        # Verify no logs exist for the deleted process_pk
+        self.assertFalse(
+            ProcessStatusLog.objects.filter(proceso_id=process_pk).exists(),
+            "Logs for the deleted process should also be deleted.",
+        )
+
+    def test_set_null_on_user_delete(self):
+        """Test that usuario_modifico is set to NULL when the user is deleted."""
+        user_to_delete = User.objects.create_user(
+            username="deletelogger", password="pass"
+        )
+        log_entry = ProcessStatusLog.objects.create(
+            proceso=self.process,
+            estado_nuevo=ProcessStatusChoices.EN_PROGRESO,
+            usuario_modifico=user_to_delete,
+        )
+        self.assertEqual(log_entry.usuario_modifico, user_to_delete)
+        user_to_delete.delete()
+        log_entry.refresh_from_db()
+        self.assertIsNone(log_entry.usuario_modifico)
+        self.assertTrue(ProcessStatusLog.objects.filter(pk=log_entry.pk).exists())

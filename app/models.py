@@ -85,6 +85,44 @@ class Process(models.Model):
     fecha_inicio = models.DateTimeField(auto_now_add=True)
     fecha_final = models.DateTimeField(null=True, blank=True)
 
+    def save(self, *args, **kwargs):
+        user_who_modified = kwargs.pop("user_who_modified", None)
+        is_new = self._state.adding
+
+        if is_new:
+            # For new instances, save first to get a PK, then log.
+            super().save(*args, **kwargs)
+            # Ensure ProcessStatusLog is accessible here.
+            # If it's defined later in the file, this is fine.
+            ProcessStatusLog.objects.create(
+                proceso=self,
+                estado_anterior=None,
+                estado_nuevo=self.estado,
+                usuario_modifico=user_who_modified,
+            )
+        else:
+            # For existing instances, get old state.
+            try:
+                old_instance = Process.objects.get(pk=self.pk)
+                old_estado = old_instance.estado
+            except Process.DoesNotExist:
+                # This case should ideally not happen for an existing instance
+                # if self.pk is valid. Fallback to prevent error.
+                old_estado = (
+                    None  # Or self.estado if no log entry is desired on failed fetch
+                )
+
+            # Log if 'estado' has changed.
+            if self.estado != old_estado:
+                ProcessStatusLog.objects.create(
+                    proceso=self,  # self contains the new state in memory
+                    estado_anterior=old_estado,
+                    estado_nuevo=self.estado,  # The new state about to be saved
+                    usuario_modifico=user_who_modified,
+                )
+
+            super().save(*args, **kwargs)  # Now save the changes to Process
+
     def __str__(self):
         return f"{self.get_process_type_display()} for {self.user.username} - Status: {self.get_estado_display()}"
 
@@ -193,6 +231,13 @@ class Report(models.Model):
         null=True,  # Allow NULL in the database
         blank=True,  # Allow the field to be blank in forms/admin
     )
+    equipment = models.ForeignKey(
+        Equipment,
+        on_delete=models.SET_NULL,  # If equipment is deleted, set this field to NULL
+        null=True,
+        blank=True,
+        related_name="reports",  # Equipment.reports.all() will give reports for that equipment
+    )
     title = models.CharField(max_length=200)
     description = models.CharField(max_length=400, blank=True, null=True)
     pdf_file = models.FileField(upload_to="reports_pdfs/", storage=PDFStorage())
@@ -255,3 +300,68 @@ class Anotacion(models.Model):
         ordering = ["-fecha_creacion"]
         verbose_name = _("Anotación")
         verbose_name_plural = _("Anotaciones")
+
+
+class ProcessStatusLog(models.Model):
+    proceso = models.ForeignKey(
+        Process,
+        on_delete=models.CASCADE,
+        related_name="status_logs",
+        verbose_name=_("Proceso"),
+    )
+    estado_anterior = models.CharField(
+        max_length=50,  # Adjusted to match Process.estado max_length if different
+        choices=ProcessStatusChoices.choices,
+        null=True,
+        blank=True,
+        verbose_name=_("Estado Anterior"),
+    )
+    estado_nuevo = models.CharField(
+        max_length=50,  # Adjusted to match Process.estado max_length if different
+        choices=ProcessStatusChoices.choices,
+        verbose_name=_("Estado Nuevo"),
+    )
+    fecha_cambio = models.DateTimeField(
+        auto_now_add=True, verbose_name=_("Fecha del Cambio")
+    )
+    usuario_modifico = models.ForeignKey(
+        User,  # Assuming User model is directly imported
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="process_status_changes_made",
+        verbose_name=_("Usuario que Modificó"),
+    )
+
+    def __str__(self):
+        user_display = (
+            self.usuario_modifico.username if self.usuario_modifico else _("Sistema")
+        )
+        # Ensure proceso and its fields are accessible for the string representation
+        proceso_display = str(
+            self.proceso_id
+        )  # Default to ID if full object not loaded
+        if hasattr(self, "proceso") and self.proceso:
+            proceso_display = (
+                f"{self.proceso.get_process_type_display()} ({self.proceso.id})"
+            )
+
+        estado_anterior_display = (
+            self.get_estado_anterior_display() if self.estado_anterior else _("N/A")
+        )
+        estado_nuevo_display = self.get_estado_nuevo_display()
+
+        return _(
+            "Proceso %(proceso_display)s: %(estado_anterior_display)s -> %(estado_nuevo_display)s por %(user_display)s el %(fecha_cambio)s"
+        ) % {
+            "proceso_display": proceso_display,
+            "estado_anterior_display": estado_anterior_display,
+            "estado_nuevo_display": estado_nuevo_display,
+            "user_display": user_display,
+            "fecha_cambio": self.fecha_cambio.strftime("%Y-%m-%d %H:%M"),
+        }
+
+    class Meta:
+        verbose_name = _("Log de Estado de Proceso")
+        verbose_name_plural = _("Logs de Estado de Procesos")
+        ordering = ["-fecha_cambio"]

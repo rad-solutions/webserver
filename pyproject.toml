@@ -27,6 +27,7 @@ sqlparse = "==0.5.3"
 urllib3 = "==2.3.0"
 whitenoise = "==6.6.0"
 pillow = "==10.2.0"
+faker = "^37.3.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "24.2.0"
