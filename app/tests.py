@@ -1,6 +1,6 @@
 import os
 import tempfile
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -390,6 +390,9 @@ class ReportAPITest(TestCase):
             first_name="Test",
             last_name="User",
         )
+        # Asignar rol de cliente para probar el filtrado por usuario en ReportListView
+        self.role_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        self.user.roles.add(self.role_cliente)
 
         self.admin_user = User.objects.create_user(
             username="adminuser",
@@ -398,12 +401,15 @@ class ReportAPITest(TestCase):
             first_name="Admin",
             last_name="User",
             is_staff=True,
-            is_superuser=True,
         )
 
         self.temp_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         self.temp_file.write(b"contenido de prueba del PDF")
         self.temp_file.close()
+
+        self.process_type_asesoria = ProcessTypeChoices.ASESORIA
+        self.process_type_calidad = ProcessTypeChoices.CONTROL_CALIDAD
+        self.process_status_progreso = ProcessStatusChoices.EN_PROGRESO
 
         self.process = Process.objects.create(
             user=self.user,
@@ -411,7 +417,79 @@ class ReportAPITest(TestCase):
             estado=ProcessStatusChoices.EN_PROGRESO,
         )
 
-        self.client.login(username="testuser", password="testpassword")
+        self.process_asesoria = Process.objects.create(
+            user=self.user,
+            process_type=self.process_type_asesoria,
+            estado=self.process_status_progreso,
+            fecha_inicio=datetime(2024, 1, 10, tzinfo=timezone.utc),
+        )
+        self.process_calidad = Process.objects.create(
+            user=self.user,
+            process_type=self.process_type_calidad,
+            estado=self.process_status_progreso,
+            fecha_inicio=datetime(2024, 2, 15, tzinfo=timezone.utc),
+        )
+        # Proceso para otro usuario (admin en este caso, para probar que no se listen sus reportes para el cliente)
+        self.process_admin = Process.objects.create(
+            user=self.admin_user,
+            process_type=self.process_type_asesoria,
+            estado=self.process_status_progreso,
+            fecha_inicio=datetime(2024, 3, 1, tzinfo=timezone.utc),
+        )
+
+        self.temp_file_content = b"contenido de prueba del PDF"
+        self.temp_file_name = "test.pdf"
+
+        # Crear reportes con diferentes fechas de creación y tipos de proceso
+        self.report1_asesoria_jan = Report.objects.create(
+            user=self.user,
+            process=self.process_asesoria,
+            title="Reporte Asesoria Enero",
+            pdf_file=SimpleUploadedFile(self.temp_file_name, self.temp_file_content),
+            estado_reporte=EstadoReporteChoices.EN_GENERACION,
+        )
+        # Forzar created_at para pruebas de filtro de fecha precisas
+        self.report1_asesoria_jan.created_at = datetime(
+            2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc
+        )
+        self.report1_asesoria_jan.save()
+
+        self.report2_calidad_feb = Report.objects.create(
+            user=self.user,
+            process=self.process_calidad,
+            title="Reporte Calidad Febrero",
+            pdf_file=SimpleUploadedFile(self.temp_file_name, self.temp_file_content),
+            estado_reporte=EstadoReporteChoices.REVISADO,
+        )
+        self.report2_calidad_feb.created_at = datetime(
+            2024, 2, 20, 11, 0, 0, tzinfo=timezone.utc
+        )
+        self.report2_calidad_feb.save()
+
+        self.report3_asesoria_mar = Report.objects.create(
+            user=self.user,
+            process=self.process_asesoria,
+            title="Reporte Asesoria Marzo",
+            pdf_file=SimpleUploadedFile(self.temp_file_name, self.temp_file_content),
+            estado_reporte=EstadoReporteChoices.APROBADO,
+        )
+        self.report3_asesoria_mar.created_at = datetime(
+            2024, 3, 25, 12, 0, 0, tzinfo=timezone.utc
+        )
+        self.report3_asesoria_mar.save()
+
+        # Reporte para el admin_user, no debería aparecer para el cliente
+        self.report_admin_user = Report.objects.create(
+            user=self.admin_user,
+            process=self.process_admin,
+            title="Reporte del Admin",
+            pdf_file=SimpleUploadedFile(self.temp_file_name, self.temp_file_content),
+            estado_reporte=EstadoReporteChoices.APROBADO,
+        )
+        self.report_admin_user.created_at = datetime(
+            2024, 3, 10, 10, 0, 0, tzinfo=timezone.utc
+        )
+        self.report_admin_user.save()
 
     def tearDown(self):
         self.temp_file.close()
@@ -427,6 +505,7 @@ class ReportAPITest(TestCase):
                         pass
 
     def test_report_list_view(self):
+        self.client.login(username="testuser", password="testpassword")
         with open(self.temp_file.name, "rb") as temp_file:
             Report.objects.create(
                 user=self.user,
@@ -444,6 +523,7 @@ class ReportAPITest(TestCase):
         self.assertIn("reports", response.context)
 
     def test_report_detail_view(self):
+        self.client.login(username="testuser", password="testpassword")
         with open(self.temp_file.name, "rb") as temp_file:
             report = Report.objects.create(
                 user=self.user,
@@ -460,6 +540,7 @@ class ReportAPITest(TestCase):
         self.assertEqual(response.context["report"], report)
 
     def test_report_create_view_get(self):
+        self.client.login(username="testuser", password="testpassword")
         url = reverse("report_create")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -467,6 +548,7 @@ class ReportAPITest(TestCase):
         self.assertIn("form", response.context)
 
     def test_report_create_view_post_valid(self):
+        self.client.login(username="testuser", password="testpassword")
         url = reverse("report_create")
         initial_count = Report.objects.count()
         with open(self.temp_file.name, "rb") as pdf:
@@ -488,6 +570,7 @@ class ReportAPITest(TestCase):
         self.assertEqual(new_report.user, self.user)
 
     def test_report_create_view_post_invalid_no_title(self):
+        self.client.login(username="testuser", password="testpassword")
         url = reverse("report_create")
         initial_count = Report.objects.count()
         with open(self.temp_file.name, "rb") as pdf:
@@ -511,6 +594,7 @@ class ReportAPITest(TestCase):
         self.assertFormError(form_in_context, "title", "This field is required.")
 
     def test_report_create_view_post_invalid_no_pdf(self):
+        self.client.login(username="testuser", password="testpassword")
         url = reverse("report_create")
         initial_count = Report.objects.count()
         data = {
@@ -530,6 +614,7 @@ class ReportAPITest(TestCase):
         self.assertFormError(form_in_context, "pdf_file", "This field is required.")
 
     def test_report_update_view_get(self):
+        self.client.login(username="testuser", password="testpassword")
         with open(self.temp_file.name, "rb") as temp_file:
             report = Report.objects.create(
                 user=self.user,
@@ -545,6 +630,7 @@ class ReportAPITest(TestCase):
         self.assertEqual(response.context["form"].instance, report)
 
     def test_report_update_view_post_valid(self):
+        self.client.login(username="testuser", password="testpassword")
         with open(self.temp_file.name, "rb") as temp_file:
             report = Report.objects.create(
                 user=self.user,
@@ -584,6 +670,7 @@ class ReportAPITest(TestCase):
         self.assertEqual(report.estado_reporte, updated_estado)
 
     def test_report_delete_view_get(self):
+        self.client.login(username="testuser", password="testpassword")
         with open(self.temp_file.name, "rb") as temp_file:
             report = Report.objects.create(
                 user=self.user,
@@ -599,6 +686,7 @@ class ReportAPITest(TestCase):
         self.assertEqual(response.context["report"], report)
 
     def test_report_delete_view_post(self):
+        self.client.login(username="testuser", password="testpassword")
         with open(self.temp_file.name, "rb") as temp_file:
             report = Report.objects.create(
                 user=self.user,
@@ -617,6 +705,136 @@ class ReportAPITest(TestCase):
         self.assertEqual(Report.objects.count(), initial_count - 1)
         with self.assertRaises(Report.DoesNotExist):
             Report.objects.get(id=report.id)
+
+    def test_report_list_view_no_filters_client_user(self):
+        """Test ReportListView sin filtros para un usuario cliente."""
+        self.client.login(username="testuser", password="testpassword")
+        url = reverse("report_list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "reports/report_list.html")
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 3)  # Solo los del self.user
+        self.assertIn(self.report1_asesoria_jan, reports_in_context)
+        self.assertIn(self.report2_calidad_feb, reports_in_context)
+        self.assertIn(self.report3_asesoria_mar, reports_in_context)
+        self.assertNotIn(
+            self.report_admin_user, reports_in_context
+        )  # No debe mostrar el del admin
+        self.assertEqual(response.context["selected_process_type"], "todos")
+        self.assertEqual(response.context["start_date"], "")
+        self.assertEqual(response.context["end_date"], "")
+
+    def test_report_list_view_no_filters_admin_user(self):
+        """Test ReportListView sin filtros para un usuario admin (debería ver todos)."""
+        self.client.login(username="adminuser", password="adminpassword")
+        url = reverse("report_list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 4)  # Todos los reportes
+        self.assertIn(self.report1_asesoria_jan, reports_in_context)
+        self.assertIn(self.report_admin_user, reports_in_context)
+
+    def test_report_list_view_filter_by_process_type(self):
+        """Test ReportListView filtrando por tipo de proceso."""
+        self.client.login(username="testuser", password="testpassword")
+        url = reverse("report_list") + f"?process_type={self.process_type_asesoria}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 2)
+        self.assertIn(self.report1_asesoria_jan, reports_in_context)
+        self.assertIn(self.report3_asesoria_mar, reports_in_context)
+        self.assertNotIn(self.report2_calidad_feb, reports_in_context)
+        self.assertEqual(
+            response.context["selected_process_type"], self.process_type_asesoria
+        )
+
+    def test_report_list_view_filter_by_start_date(self):
+        """Test ReportListView filtrando por fecha de inicio."""
+        self.client.login(username="testuser", password="testpassword")
+        # Filtra reportes creados desde el 1 de Febrero de 2024
+        start_date_filter = "2024-02-01"
+        url = reverse("report_list") + f"?start_date={start_date_filter}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(
+            len(reports_in_context), 2
+        )  # report2_calidad_feb y report3_asesoria_mar
+        self.assertIn(self.report2_calidad_feb, reports_in_context)
+        self.assertIn(self.report3_asesoria_mar, reports_in_context)
+        self.assertNotIn(self.report1_asesoria_jan, reports_in_context)
+        self.assertEqual(response.context["start_date"], start_date_filter)
+
+    def test_report_list_view_filter_by_end_date(self):
+        """Test ReportListView filtrando por fecha de fin."""
+        self.client.login(username="testuser", password="testpassword")
+        # Filtra reportes creados hasta el 28 de Febrero de 2024
+        end_date_filter = "2024-02-28"
+        url = reverse("report_list") + f"?end_date={end_date_filter}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(
+            len(reports_in_context), 2
+        )  # report1_asesoria_jan y report2_calidad_feb
+        self.assertIn(self.report1_asesoria_jan, reports_in_context)
+        self.assertIn(self.report2_calidad_feb, reports_in_context)
+        self.assertNotIn(self.report3_asesoria_mar, reports_in_context)
+        self.assertEqual(response.context["end_date"], end_date_filter)
+
+    def test_report_list_view_filter_by_date_range(self):
+        """Test ReportListView filtrando por rango de fechas."""
+        self.client.login(username="testuser", password="testpassword")
+        start_date_filter = "2024-02-01"
+        end_date_filter = "2024-02-29"  # Incluye todo Febrero
+        url = (
+            reverse("report_list")
+            + f"?start_date={start_date_filter}&end_date={end_date_filter}"
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 1)  # Solo report2_calidad_feb
+        self.assertIn(self.report2_calidad_feb, reports_in_context)
+        self.assertNotIn(self.report1_asesoria_jan, reports_in_context)
+        self.assertNotIn(self.report3_asesoria_mar, reports_in_context)
+        self.assertEqual(response.context["start_date"], start_date_filter)
+        self.assertEqual(response.context["end_date"], end_date_filter)
+
+    def test_report_list_view_filter_by_process_type_and_date_range(self):
+        """Test ReportListView filtrando por tipo de proceso y rango de fechas."""
+        self.client.login(username="testuser", password="testpassword")
+        process_type_filter = self.process_type_asesoria
+        start_date_filter = "2024-01-01"
+        end_date_filter = "2024-01-31"  # Solo Enero
+        url = (
+            reverse("report_list")
+            + f"?process_type={process_type_filter}&start_date={start_date_filter}&end_date={end_date_filter}"
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 1)  # Solo report1_asesoria_jan
+        self.assertIn(self.report1_asesoria_jan, reports_in_context)
+        self.assertNotIn(self.report2_calidad_feb, reports_in_context)
+        self.assertNotIn(self.report3_asesoria_mar, reports_in_context)
+        self.assertEqual(response.context["selected_process_type"], process_type_filter)
+        self.assertEqual(response.context["start_date"], start_date_filter)
+        self.assertEqual(response.context["end_date"], end_date_filter)
+
+    def test_report_list_view_filter_no_results(self):
+        """Test ReportListView con filtros que no devuelven resultados."""
+        self.client.login(username="testuser", password="testpassword")
+        start_date_filter = "2025-01-01"  # Fecha futura sin reportes
+        url = reverse("report_list") + f"?start_date={start_date_filter}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 0)
+        self.assertEqual(response.context["start_date"], start_date_filter)
 
 
 class AuthenticationTest(TestCase):
@@ -791,12 +1009,12 @@ class ClientDashboardTest(TestCase):
         )
         self.user.roles.add(self.role_cliente)
 
-        # Crear tipos de proceso
+        # Crear tipos de proceso (usando los valores de ProcessTypeChoices)
         self.process_type_blindajes = ProcessTypeChoices.CALCULO_BLINDAJES
         self.process_type_calidad = ProcessTypeChoices.CONTROL_CALIDAD
         self.process_type_asesoria = ProcessTypeChoices.ASESORIA
 
-        # Crear estados de proceso
+        # Crear estado de proceso
         self.process_status = ProcessStatusChoices.EN_PROGRESO
 
         # Crear procesos para el usuario
@@ -817,9 +1035,8 @@ class ClientDashboardTest(TestCase):
         )
 
         # Crear un archivo PDF temporal para los reportes
-        self.temp_pdf_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
-        self.temp_pdf_file.write(b"dummy pdf content")
-        self.temp_pdf_file.seek(0)  # Regresar al inicio del archivo para lectura
+        self.temp_pdf_file_content = b"dummy pdf content"
+        self.temp_pdf_file_name = "test_report.pdf"
 
         # Crear reportes asociados a los procesos
         self.report_blindajes = Report.objects.create(
@@ -829,10 +1046,9 @@ class ClientDashboardTest(TestCase):
             description="Descripción del reporte de blindajes",
             estado_reporte=EstadoReporteChoices.EN_GENERACION,
             pdf_file=SimpleUploadedFile(
-                self.temp_pdf_file.name, self.temp_pdf_file.read()
+                self.temp_pdf_file_name, self.temp_pdf_file_content
             ),
         )
-        self.temp_pdf_file.seek(0)
         self.report_calidad = Report.objects.create(
             user=self.user,
             process=self.process_calidad,
@@ -840,10 +1056,9 @@ class ClientDashboardTest(TestCase):
             description="Descripción del reporte de calidad",
             estado_reporte=EstadoReporteChoices.EN_GENERACION,
             pdf_file=SimpleUploadedFile(
-                self.temp_pdf_file.name, self.temp_pdf_file.read()
+                self.temp_pdf_file_name, self.temp_pdf_file_content
             ),
         )
-        self.temp_pdf_file.seek(0)
         self.report_asesoria = Report.objects.create(
             user=self.user,
             process=self.process_asesoria,
@@ -851,7 +1066,7 @@ class ClientDashboardTest(TestCase):
             description="Descripción del reporte de asesoría",
             estado_reporte=EstadoReporteChoices.EN_GENERACION,
             pdf_file=SimpleUploadedFile(
-                self.temp_pdf_file.name, self.temp_pdf_file.read()
+                self.temp_pdf_file_name, self.temp_pdf_file_content
             ),
         )
 
@@ -884,104 +1099,130 @@ class ClientDashboardTest(TestCase):
             fecha_vigencia_licencia=date.today()
             + timedelta(days=30),  # Licencia vence en 30 días
         )
+        self.equipment_licencia_lejana = Equipment.objects.create(
+            nombre="Equipo Licencia Lejana",
+            marca="MarcaD",
+            modelo="ModeloD1",
+            serial="SN004",
+            user=self.user,
+            fecha_vigencia_licencia=date.today()
+            + timedelta(days=365),  # Licencia vence en 1 año
+        )
 
     def tearDown(self):
-        self.temp_pdf_file.close()
-        if os.path.exists(self.temp_pdf_file.name):
-            os.remove(self.temp_pdf_file.name)
-        # Limpiar archivos PDF creados por los reportes si es necesario
+        # Limpiar archivos PDF creados por los reportes
         for report in Report.objects.all():
             if report.pdf_file and hasattr(report.pdf_file, "path"):
                 if os.path.exists(report.pdf_file.path):
                     try:
                         os.remove(report.pdf_file.path)
                     except OSError:
-                        pass  # Podría haber sido eliminado por el modelo
+                        pass
 
-    def test_dashboard_context_default(self):
-        """Verificar que el contexto del dashboard del cliente sea correcto por defecto."""
+    def test_dashboard_initial_state_for_client(self):
+        """Verificar el estado inicial del dashboard del cliente (sin proceso_activo)."""
         self.client.login(username="clientuser", password="testpassword")
         response = self.client.get(reverse("home"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "dashboard_cliente.html")
 
-        # Verificar claves de contexto
-        self.assertIn("reportes", response.context)
-        self.assertIn("equipos", response.context)
+        # Verificar claves de contexto principales
+        self.assertIn("titulo", response.context)
+        self.assertIn("mensaje_bienvenida", response.context)
         self.assertIn("equipos_licencia_por_vencer", response.context)
         self.assertIn("proceso_activo", response.context)
-        self.assertIn("reporte_activo", response.context)
+        self.assertIn("process_types_choices", response.context)
+        self.assertIn("reportes", response.context)
+        self.assertIn("equipos", response.context)
 
-        # Verificar valores por defecto
-        self.assertEqual(response.context["proceso_activo"], "calculo_blindajes")
-        self.assertEqual(response.context["reporte_activo"], "calculo_blindajes")
+        # Verificar valores en el estado inicial
+        self.assertIsNone(response.context["proceso_activo"])
+        self.assertIsNone(response.context["reportes"])
+        self.assertIsNone(response.context["equipos"])
 
-        # Verificar contenido de las listas por defecto
-        self.assertEqual(len(response.context["reportes"]), 1)
-        self.assertIn(self.report_blindajes, response.context["reportes"])
+        # Verificar equipos con licencia próxima a vencer
+        equipos_vencer = response.context["equipos_licencia_por_vencer"]
+        self.assertEqual(len(equipos_vencer), 1)
+        self.assertIn(self.equipment_licencia_proxima, equipos_vencer)
+        self.assertNotIn(self.equipment_licencia_lejana, equipos_vencer)
+        self.assertNotIn(self.equipment_blindajes, equipos_vencer)
 
-        self.assertEqual(len(response.context["equipos"]), 1)
-        self.assertIn(self.equipment_blindajes, response.context["equipos"])
-
-        self.assertEqual(len(response.context["equipos_licencia_por_vencer"]), 1)
-        self.assertIn(
-            self.equipment_licencia_proxima,
-            response.context["equipos_licencia_por_vencer"],
+        self.assertEqual(
+            response.context["process_types_choices"], list(ProcessTypeChoices.choices)
+        )
+        self.assertTrue(
+            response.context["mensaje_bienvenida"].startswith("Bienvenido, Client")
         )
 
-    def test_dashboard_filter_proceso_activo(self):
-        """Verificar que el filtro de proceso_activo funcione."""
+    def test_dashboard_with_proceso_activo_for_client(self):
+        """Verificar el dashboard del cliente cuando se selecciona un proceso_activo."""
         self.client.login(username="clientuser", password="testpassword")
-        response = self.client.get(reverse("home") + "?proceso_activo=control_calidad")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["proceso_activo"], "control_calidad")
-        # reporte_activo debería seguir siendo el por defecto
-        self.assertEqual(response.context["reporte_activo"], "calculo_blindajes")
+        # Probar con 'calculo_blindajes'
+        url_blindajes = (
+            reverse("home") + f"?proceso_activo={self.process_type_blindajes}"
+        )
+        response_blindajes = self.client.get(url_blindajes)
 
-        self.assertEqual(len(response.context["equipos"]), 1)
-        self.assertIn(self.equipment_calidad, response.context["equipos"])
-        self.assertNotIn(self.equipment_blindajes, response.context["equipos"])
+        self.assertEqual(response_blindajes.status_code, 200)
+        self.assertTemplateUsed(response_blindajes, "dashboard_cliente.html")
 
-        # Los reportes deben seguir siendo los de calculo_blindajes (default)
-        self.assertEqual(len(response.context["reportes"]), 1)
-        self.assertIn(self.report_blindajes, response.context["reportes"])
-
-    def test_dashboard_filter_reporte_activo(self):
-        """Verificar que el filtro de reporte_activo funcione."""
-        self.client.login(username="clientuser", password="testpassword")
-        response = self.client.get(reverse("home") + "?reporte_activo=control_calidad")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["reporte_activo"], "control_calidad")
-        # proceso_activo debería seguir siendo el por defecto
-        self.assertEqual(response.context["proceso_activo"], "calculo_blindajes")
-
-        self.assertEqual(len(response.context["reportes"]), 1)
-        self.assertIn(self.report_calidad, response.context["reportes"])
-        self.assertNotIn(self.report_blindajes, response.context["reportes"])
-
-        # Los equipos deben seguir siendo los de calculo_blindajes (default)
-        self.assertEqual(len(response.context["equipos"]), 1)
-        self.assertIn(self.equipment_blindajes, response.context["equipos"])
-
-    def test_dashboard_filter_both_activo(self):
-        """Verificar que los filtros de proceso_activo y reporte_activo funcionen juntos."""
-        self.client.login(username="clientuser", password="testpassword")
-        response = self.client.get(
-            reverse("home") + "?proceso_activo=control_calidad&reporte_activo=asesoria"
+        self.assertEqual(
+            response_blindajes.context["proceso_activo"], self.process_type_blindajes
         )
 
+        # Verificar reportes para calculo_blindajes (debería ser 1, y limitado a 5 por la vista)
+        reportes_blindajes = response_blindajes.context["reportes"]
+        self.assertIsNotNone(reportes_blindajes)
+        self.assertEqual(len(reportes_blindajes), 1)
+        self.assertIn(self.report_blindajes, reportes_blindajes)
+        self.assertNotIn(self.report_calidad, reportes_blindajes)
+
+        # Verificar equipos para calculo_blindajes (debería ser 1, y limitado a 5 por la vista)
+        equipos_blindajes = response_blindajes.context["equipos"]
+        self.assertIsNotNone(equipos_blindajes)
+        self.assertEqual(len(equipos_blindajes), 1)
+        self.assertIn(self.equipment_blindajes, equipos_blindajes)
+        self.assertNotIn(self.equipment_calidad, equipos_blindajes)
+
+        # Equipos con licencia próxima a vencer deben seguir presentes
+        self.assertIn("equipos_licencia_por_vencer", response_blindajes.context)
+        equipos_vencer_blindajes = response_blindajes.context[
+            "equipos_licencia_por_vencer"
+        ]
+        self.assertEqual(len(equipos_vencer_blindajes), 1)
+        self.assertIn(self.equipment_licencia_proxima, equipos_vencer_blindajes)
+
+        # Probar con 'control_calidad'
+        url_calidad = reverse("home") + f"?proceso_activo={self.process_type_calidad}"
+        response_calidad = self.client.get(url_calidad)
+        self.assertEqual(response_calidad.status_code, 200)
+        self.assertEqual(
+            response_calidad.context["proceso_activo"], self.process_type_calidad
+        )
+
+        reportes_calidad = response_calidad.context["reportes"]
+        self.assertEqual(len(reportes_calidad), 1)
+        self.assertIn(self.report_calidad, reportes_calidad)
+
+        equipos_calidad = response_calidad.context["equipos"]
+        self.assertEqual(len(equipos_calidad), 1)
+        self.assertIn(self.equipment_calidad, equipos_calidad)
+
+    def test_dashboard_non_client_user(self):
+        """Verificar que un usuario no cliente es redirigido a main.html."""
+        # Crear un usuario sin rol de cliente
+        User.objects.create_user(
+            username="staffuser", password="password", is_staff=True
+        )
+        self.client.login(username="staffuser", password="password")
+        response = self.client.get(reverse("home"))
+
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["proceso_activo"], "control_calidad")
-        self.assertEqual(response.context["reporte_activo"], "asesoria")
-
-        self.assertEqual(len(response.context["equipos"]), 1)
-        self.assertIn(self.equipment_calidad, response.context["equipos"])
-
-        self.assertEqual(len(response.context["reportes"]), 1)
-        self.assertIn(self.report_asesoria, response.context["reportes"])
+        self.assertTemplateUsed(response, "main.html")
+        self.assertNotIn("equipos_licencia_por_vencer", response.context)
+        self.assertNotIn("process_types_choices", response.context)
 
 
 class ProcessAPITest(TestCase):

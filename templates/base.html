@@ -13,6 +13,7 @@
     <!-- Estilos personalizados -->
     {% load static %}
     <link href="{% static 'css/styles.css' %}" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <!-- Barra de navegación -->

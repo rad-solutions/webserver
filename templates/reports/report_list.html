@@ -11,6 +11,32 @@
         {% endif %}
     </div>
 
+    <form method="get" class="mb-4 p-3 border rounded bg-light">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="process_type" class="form-label">Filtrar por tipo de proceso:</label>
+                <select name="process_type" id="process_type" class="form-select">
+                    {% for value, label in process_types %}
+                    <option value="{{ value }}" {% if value == selected_process_type %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="start_date" class="form-label">Fecha Desde:</label>
+                <input type="date" name="start_date" id="start_date" value="{{ start_date }}" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label">Fecha Hasta:</label>
+                <input type="date" name="end_date" id="end_date" value="{{ end_date }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-info w-100">Filtrar</button>
+            </div>
+        </div>
+    </form>
+
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">

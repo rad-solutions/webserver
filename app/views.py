@@ -1,5 +1,5 @@
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from django import forms
 from django.contrib.auth import logout
@@ -110,74 +110,39 @@ def main(request):
 
     # Si el usuario está autenticado, mostrar la página principal con acceso a todas las funcionalidades
     if request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
-        # Lógica específica para usuarios de tipo Cliente
-        # Determinar qué tipo de proceso y reporte mostrar
-        # Usa 'calculo_blindajes' como valor por defecto
-        proceso_activo = request.GET.get("proceso_activo", "calculo_blindajes")
-        reporte_activo = request.GET.get("reporte_activo", "calculo_blindajes")
+        proceso_activo = request.GET.get("proceso_activo")
+        reportes = None
+        equipos = None
 
-        # Filtrar reportes por tipo de proceso
-        if reporte_activo == "calculo_blindajes":
-            reportes = Report.objects.filter(
-                user=request.user,
-                process__process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
-            ).order_by("-created_at")[:5]
-        elif reporte_activo == "control_calidad":
-            reportes = Report.objects.filter(
-                user=request.user,
-                process__process_type=ProcessTypeChoices.CONTROL_CALIDAD,
-            ).order_by("-created_at")[:5]
-        elif reporte_activo == "asesoria":
-            reportes = Report.objects.filter(
-                user=request.user,
-                process__process_type=ProcessTypeChoices.ASESORIA,
-            ).order_by("-created_at")[:5]
-        elif reporte_activo == "otro":
-            reportes = Report.objects.filter(
-                user=request.user,
-                process__process_type=ProcessTypeChoices.OTRO,
-            ).order_by("-created_at")[:5]
-
-        # Filtrar equipos por tipo de proceso
-        if proceso_activo == "calculo_blindajes":
-            equipos = Equipment.objects.filter(
-                user=request.user,
-                process__process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
-            ).order_by("-process__fecha_inicio")[:5]
-        elif proceso_activo == "control_calidad":
-            equipos = Equipment.objects.filter(
-                user=request.user,
-                process__process_type=ProcessTypeChoices.CONTROL_CALIDAD,
-            ).order_by("-process__fecha_inicio")[:5]
-        elif proceso_activo == "asesoria":
-            equipos = Equipment.objects.filter(
-                user=request.user,
-                process__process_type=ProcessTypeChoices.ASESORIA,
-            ).order_by("-process__fecha_inicio")[:5]
-        elif proceso_activo == "otro":
-            equipos = Equipment.objects.filter(
-                user=request.user,
-                process__process_type=ProcessTypeChoices.OTRO,
-            ).order_by("-process__fecha_inicio")[:5]
-
-        # Filtrar equipos con licencia por vencer o vencida para el usuario cliente
         hoy = date.today()
-        seis_meses_despues = hoy + timedelta(weeks=6 * 4)  # Aproximación de 6 meses
-
+        seis_meses_despues = hoy + timedelta(weeks=6 * 4)
         equipos_licencia_por_vencer = Equipment.objects.filter(
             user=request.user,
             fecha_vigencia_licencia__isnull=False,
             fecha_vigencia_licencia__lte=seis_meses_despues,
         ).order_by("fecha_vigencia_licencia")
 
+        if proceso_activo:
+            # Filtrar reportes por tipo de proceso
+            reportes = Report.objects.filter(
+                user=request.user,
+                process__process_type=proceso_activo,
+            ).order_by("-created_at")[:5]
+
+            # Filtrar equipos por tipo de proceso
+            equipos = Equipment.objects.filter(
+                user=request.user,
+                process__process_type=proceso_activo,
+            ).order_by("-process__fecha_inicio")[:5]
+
         context = {
-            "titulo": "Página Principal - Cliente",
-            "mensaje": f"Bienvenido, {request.user.first_name or ''} {request.user.last_name or ''}",
+            "titulo": "RadSolutions",
+            "mensaje_bienvenida": f"Bienvenido, {request.user.first_name or ''} {request.user.last_name or ''}",
             "reportes": reportes,
             "equipos": equipos,
             "equipos_licencia_por_vencer": equipos_licencia_por_vencer,
-            "proceso_activo": proceso_activo,  # Pasa el tipo de proceso activo al contexto
-            "reporte_activo": reporte_activo,  # Pasa el tipo de reporte activo al contexto
+            "proceso_activo": proceso_activo,
+            "process_types_choices": ProcessTypeChoices.choices,
         }
         return render(request, "dashboard_cliente.html", context)
     else:
@@ -235,6 +200,56 @@ class ReportListView(LoginRequiredMixin, ListView):
     template_name = "reports/report_list.html"
     context_object_name = "reports"
     login_url = "/login/"
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filtrar por usuario si es CLIENTE
+        if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
+            queryset = queryset.filter(user=self.request.user)
+        # Para otros roles (admin, etc.), por defecto se muestran todos los reportes
+        # o podrías añadir lógica de filtrado adicional si es necesario.
+
+        # Obtener parámetros de filtro
+        process_type_filter = self.request.GET.get("process_type", "todos")
+        start_date_str = self.request.GET.get("start_date")
+        end_date_str = self.request.GET.get("end_date")
+
+        # Filtrar por tipo de proceso
+        if process_type_filter != "todos":
+            queryset = queryset.filter(process__process_type=process_type_filter)
+
+        # Filtrar por fecha de inicio
+        if start_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+                queryset = queryset.filter(created_at__date__gte=start_date)
+            except ValueError:
+                pass  # Ignorar fecha inválida
+
+        # Filtrar por fecha de fin
+        if end_date_str:
+            try:
+                end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+                queryset = queryset.filter(created_at__date__lte=end_date)
+            except ValueError:
+                pass  # Ignorar fecha inválida
+
+        return queryset.order_by("-created_at")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Para el filtro de tipo de proceso
+        choices_list = [("todos", "Todos")] + list(ProcessTypeChoices.choices)
+        context["process_types"] = choices_list
+        context["selected_process_type"] = self.request.GET.get("process_type", "todos")
+
+        # Para los filtros de fecha
+        context["start_date"] = self.request.GET.get("start_date", "")
+        context["end_date"] = self.request.GET.get("end_date", "")
+
+        return context
 
 
 class ReportDetailView(LoginRequiredMixin, DetailView):
