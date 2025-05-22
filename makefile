@@ -26,3 +26,7 @@ format:
 
 precommit:
 	poetry run pre-commit run --all-files
+
+populate-db:
+	docker compose exec web poetry run python manage.py populate_db
+	@echo "Base de datos poblada con datos sintéticos."
