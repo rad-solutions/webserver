@@ -1,3 +1,4 @@
+import datetime  # Added for timedelta
 import os
 import tempfile
 
@@ -5,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
 from django.test import TestCase
+from django.utils import timezone  # Added for setting created_at
 
 from ..models import ClientProfile  # Changed from .models
 from ..models import EstadoEquipoChoices  # Changed from .models
@@ -219,10 +221,21 @@ class ProcessModelTest(TestCase):
 class EquipmentModelTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="equipuser", password="password")
-        self.process = Process.objects.create(
+        # Process for general use, not necessarily for QC
+        self.general_process = Process.objects.create(
             user=self.user,
             process_type=ProcessTypeChoices.ASESORIA,
             estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        # Process specifically for Quality Control
+        self.qc_process = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.CONTROL_CALIDAD,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        # Dummy PDF file for reports
+        self.dummy_pdf = SimpleUploadedFile(
+            "dummy.pdf", b"pdf_content", content_type="application/pdf"
         )
 
     def test_equipment_creation(self):
@@ -310,6 +323,156 @@ class EquipmentModelTest(TestCase):
         eq1.save()
         eq2.save()
         self.assertEqual(Equipment.objects.count(), 2)
+
+    def test_get_last_quality_control_report_no_process(self):
+        """Test when equipment has no process linked."""
+        equipment = Equipment.objects.create(
+            nombre="Equipo Sin Proceso", user=self.user
+        )
+        self.assertIsNone(equipment.get_last_quality_control_report())
+
+    def test_get_last_quality_control_report_wrong_process_type(self):
+        """Test when equipment's process is not CONTROL_CALIDAD."""
+        equipment = Equipment.objects.create(
+            nombre="Equipo Proceso Erroneo",
+            user=self.user,
+            process=self.general_process,  # Linked to an ASESORIA process
+        )
+        self.assertIsNone(equipment.get_last_quality_control_report())
+
+    def test_get_last_quality_control_report_qc_process_no_reports(self):
+        """Test with QC process but no reports for that process."""
+        equipment = Equipment.objects.create(
+            nombre="Equipo QC Sin Informes", user=self.user, process=self.qc_process
+        )
+        self.assertIsNone(equipment.get_last_quality_control_report())
+
+    def test_get_last_quality_control_report_one_report(self):
+        """Test with QC process and one report."""
+        equipment = Equipment.objects.create(
+            nombre="Equipo Con Un Informe QC", user=self.user, process=self.qc_process
+        )
+        report = Report.objects.create(
+            user=self.user,
+            process=self.qc_process,  # Linked to the equipment's process
+            title="Informe QC Unico",
+            pdf_file=self.dummy_pdf,
+        )
+        self.assertEqual(equipment.get_last_quality_control_report(), report)
+
+    def test_get_last_quality_control_report_multiple_reports(self):
+        """Test with QC process and multiple reports, ensuring latest is returned."""
+        equipment = Equipment.objects.create(
+            nombre="Equipo Con Varios Informes QC",
+            user=self.user,
+            process=self.qc_process,
+        )
+        report_old = Report.objects.create(
+            user=self.user,
+            process=self.qc_process,
+            title="Informe QC Antiguo",
+            pdf_file=self.dummy_pdf,
+            created_at=timezone.now() - datetime.timedelta(days=1),
+        )
+        report_new = Report.objects.create(
+            user=self.user,
+            process=self.qc_process,
+            title="Informe QC Reciente",
+            pdf_file=self.dummy_pdf,
+            created_at=timezone.now(),
+        )
+        # Manually update created_at for older report to ensure test reliability
+        Report.objects.filter(pk=report_old.pk).update(
+            created_at=timezone.now() - datetime.timedelta(days=1)
+        )
+        report_new.refresh_from_db()  # Ensure created_at is current
+
+        self.assertEqual(equipment.get_last_quality_control_report(), report_new)
+
+    def test_get_quality_control_history_no_process(self):
+        """Test history when equipment has no process linked."""
+        equipment = Equipment.objects.create(
+            nombre="Equipo Sin Proceso Hist", user=self.user
+        )
+        self.assertQuerySetEqual(equipment.get_quality_control_history(), [])
+
+    def test_get_quality_control_history_wrong_process_type(self):
+        """Test history when equipment's process is not CONTROL_CALIDAD."""
+        equipment = Equipment.objects.create(
+            nombre="Equipo Proceso Erroneo Hist",
+            user=self.user,
+            process=self.general_process,
+        )
+        self.assertQuerySetEqual(equipment.get_quality_control_history(), [])
+
+    def test_get_quality_control_history_qc_process_no_reports(self):
+        """Test history with QC process but no reports for that process."""
+        equipment = Equipment.objects.create(
+            nombre="Equipo QC Sin Informes Hist",
+            user=self.user,
+            process=self.qc_process,
+        )
+        self.assertQuerySetEqual(equipment.get_quality_control_history(), [])
+
+    def test_get_quality_control_history_one_report(self):
+        """Test history with QC process and one report."""
+        equipment = Equipment.objects.create(
+            nombre="Equipo Con Un Informe QC Hist",
+            user=self.user,
+            process=self.qc_process,
+        )
+        report = Report.objects.create(
+            user=self.user,
+            process=self.qc_process,
+            title="Informe QC Unico Hist",
+            pdf_file=self.dummy_pdf,
+        )
+        history = equipment.get_quality_control_history()
+        self.assertEqual(history.count(), 1)
+        self.assertEqual(history.first(), report)
+
+    def test_get_quality_control_history_multiple_reports_ordered(self):
+        """Test history with QC process and multiple reports, ensuring correct order."""
+        equipment = Equipment.objects.create(
+            nombre="Equipo Con Varios Informes QC Hist",
+            user=self.user,
+            process=self.qc_process,
+        )
+        report_oldest = Report.objects.create(
+            user=self.user,
+            process=self.qc_process,
+            title="Informe QC Mas Antiguo",
+            pdf_file=self.dummy_pdf,
+        )
+        # Ensure created_at is distinct and in order
+        Report.objects.filter(pk=report_oldest.pk).update(
+            created_at=timezone.now() - datetime.timedelta(days=2)
+        )
+        report_oldest.refresh_from_db()
+
+        report_middle = Report.objects.create(
+            user=self.user,
+            process=self.qc_process,
+            title="Informe QC Intermedio",
+            pdf_file=self.dummy_pdf,
+        )
+        Report.objects.filter(pk=report_middle.pk).update(
+            created_at=timezone.now() - datetime.timedelta(days=1)
+        )
+        report_middle.refresh_from_db()
+
+        report_newest = Report.objects.create(
+            user=self.user,
+            process=self.qc_process,
+            title="Informe QC Mas Reciente",
+            pdf_file=self.dummy_pdf,
+            created_at=timezone.now(),  # This will be the latest
+        )
+        report_newest.refresh_from_db()
+
+        history = equipment.get_quality_control_history()
+        self.assertEqual(history.count(), 3)
+        self.assertEqual(list(history), [report_oldest, report_middle, report_newest])
 
 
 class ClientProfileModelTest(TestCase):

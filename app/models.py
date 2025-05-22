@@ -123,6 +123,50 @@ class Equipment(models.Model):
     )
     sede = models.CharField(max_length=150, blank=True, null=True)
 
+    def get_last_quality_control_report(self):
+        """Return the last quality control report for this equipment.
+
+        This method relies on the equipment's 'process' field. It fetches
+        the latest report associated with this 'process', but only if the
+        'process' itself is of type 'Control de Calidad' (ProcessTypeChoices.CONTROL_CALIDAD).
+
+        Returns None if the equipment has no 'process' assigned, if the assigned
+        'process' is not a 'Control de Calidad' type, or if no reports are
+        found for that specific process.
+        """
+        if (
+            self.process
+            and self.process.process_type == ProcessTypeChoices.CONTROL_CALIDAD
+        ):
+            # Fetches reports linked to the specific 'process' instance currently associated with this equipment.
+            return (
+                Report.objects.filter(process=self.process)
+                .order_by("-created_at")
+                .first()
+            )
+        return None
+
+    def get_quality_control_history(self):
+        """Return a queryset of all quality control reports for this equipment.
+
+        Ordered chronologically by creation date.
+
+        This method relies on the equipment's 'process' field. It fetches
+        all reports associated with this 'process', but only if the 'process'
+        itself is of type 'Control de Calidad' (ProcessTypeChoices.CONTROL_CALIDAD).
+
+        Returns an empty queryset if the equipment has no 'process' assigned,
+        or if the assigned 'process' is not a 'Control de Calidad' type,
+        or if no reports are found for that specific process.
+        """
+        if (
+            self.process
+            and self.process.process_type == ProcessTypeChoices.CONTROL_CALIDAD
+        ):
+            # Fetches reports linked to the specific 'process' instance currently associated with this equipment.
+            return Report.objects.filter(process=self.process).order_by("created_at")
+        return Report.objects.none()
+
     def __str__(self):
         return f"{self.nombre} ({self.serial or 'No Serial'}) - Owner: {self.user.username if self.user else 'None'}"
 
