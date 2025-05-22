@@ -8,6 +8,7 @@ from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone  # Added for setting created_at
 
+from ..models import Anotacion  # Add Anotacion here
 from ..models import ClientProfile  # Changed from .models
 from ..models import EstadoEquipoChoices  # Changed from .models
 from ..models import EstadoReporteChoices  # Changed from .models
@@ -542,3 +543,175 @@ class ClientProfileModelTest(TestCase):
                 departamento="Dep D",
                 municipio="Mun D",
             )
+
+
+class AnotacionModelTest(TestCase):
+    def setUp(self):
+        self.user1 = User.objects.create_user(
+            username="testuser1",
+            email="test1@example.com",
+            password="testpassword1",
+            first_name="Test1",
+            last_name="User1",
+        )
+        self.user2 = User.objects.create_user(
+            username="testuser2",
+            email="test2@example.com",
+            password="testpassword2",
+            first_name="Test2",
+            last_name="User2",
+        )
+        self.process = Process.objects.create(
+            user=self.user1,  # Assuming a process needs a user
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+
+    def test_anotacion_creation(self):
+        """Test that an anotacion can be created successfully."""
+        anotacion = Anotacion.objects.create(
+            proceso=self.process,
+            usuario=self.user1,
+            contenido="Esta es una anotación de prueba.",
+        )
+        self.assertEqual(Anotacion.objects.count(), 1)
+        self.assertEqual(anotacion.proceso, self.process)
+        self.assertEqual(anotacion.usuario, self.user1)
+        self.assertEqual(anotacion.contenido, "Esta es una anotación de prueba.")
+        self.assertIsNotNone(anotacion.fecha_creacion)
+
+    def test_anotacion_string_representation(self):
+        """Test the string representation of an anotacion."""
+        anotacion = Anotacion.objects.create(
+            proceso=self.process,
+            usuario=self.user1,
+            contenido="Contenido para str.",
+        )
+        expected_str = f"Anotación para {self.process.get_process_type_display()} ({self.process.id}) por {self.user1.username} el {anotacion.fecha_creacion.strftime('%Y-%m-%d %H:%M')}"
+        self.assertEqual(str(anotacion), expected_str)
+
+    def test_anotacion_string_representation_no_user(self):
+        """Test the string representation when usuario is None."""
+        anotacion = Anotacion.objects.create(
+            proceso=self.process, usuario=None, contenido="Sistema generó esta nota."
+        )
+        expected_str = f"Anotación para {self.process.get_process_type_display()} ({self.process.id}) por Sistema el {anotacion.fecha_creacion.strftime('%Y-%m-%d %H:%M')}"
+        self.assertEqual(str(anotacion), expected_str)
+
+    def test_anotacion_ordering(self):
+        """Test that anotaciones are ordered by fecha_creacion descending."""
+        anotacion1 = Anotacion.objects.create(
+            proceso=self.process,
+            usuario=self.user1,
+            contenido="Anotación antigua.",
+            fecha_creacion=timezone.now() - datetime.timedelta(days=1),
+        )
+        anotacion2 = Anotacion.objects.create(
+            proceso=self.process,
+            usuario=self.user1,
+            contenido="Anotación más reciente.",
+            fecha_creacion=timezone.now(),
+        )
+        anotacion3 = Anotacion.objects.create(
+            proceso=self.process,
+            usuario=self.user2,
+            contenido="Anotación intermedia.",
+            fecha_creacion=timezone.now() - datetime.timedelta(hours=12),
+        )
+
+        # Manually set dates to ensure order for testing, as auto_now_add might be too close
+        Anotacion.objects.filter(pk=anotacion1.pk).update(
+            fecha_creacion=timezone.now() - datetime.timedelta(days=1)
+        )
+        Anotacion.objects.filter(pk=anotacion2.pk).update(fecha_creacion=timezone.now())
+        Anotacion.objects.filter(pk=anotacion3.pk).update(
+            fecha_creacion=timezone.now() - datetime.timedelta(hours=12)
+        )
+
+        # Re-fetch to get updated timestamps
+        anotacion1.refresh_from_db()
+        anotacion2.refresh_from_db()
+        anotacion3.refresh_from_db()
+
+        anotaciones = list(Anotacion.objects.filter(proceso=self.process))
+        self.assertEqual(anotaciones, [anotacion2, anotacion3, anotacion1])
+
+    def test_related_name_from_process(self):
+        """Test accessing anotaciones from a process instance."""
+        Anotacion.objects.create(
+            proceso=self.process, usuario=self.user1, contenido="Nota 1"
+        )
+        Anotacion.objects.create(
+            proceso=self.process, usuario=self.user2, contenido="Nota 2"
+        )
+        self.assertEqual(self.process.anotaciones.count(), 2)
+
+    def test_related_name_from_user(self):
+        """Test accessing anotaciones_creadas from a user instance."""
+        Anotacion.objects.create(
+            proceso=self.process, usuario=self.user1, contenido="Nota de User1"
+        )
+        another_process = Process.objects.create(
+            user=self.user2,
+            process_type=ProcessTypeChoices.CONTROL_CALIDAD,
+            estado=ProcessStatusChoices.FINALIZADO,
+        )
+        Anotacion.objects.create(
+            proceso=another_process, usuario=self.user1, contenido="Otra nota de User1"
+        )
+        self.assertEqual(self.user1.anotaciones_creadas.count(), 2)
+        self.assertEqual(self.user2.anotaciones_creadas.count(), 0)
+
+    def test_anotacion_without_user(self):
+        """Test creating an anotacion with a null user."""
+        anotacion = Anotacion.objects.create(
+            proceso=self.process, usuario=None, contenido="Anotación del sistema."
+        )
+        self.assertIsNone(anotacion.usuario)
+        self.assertEqual(Anotacion.objects.count(), 1)
+
+    def test_cascade_delete_with_process(self):
+        """Test that anotaciones are deleted when their process is deleted."""
+        Anotacion.objects.create(
+            proceso=self.process, usuario=self.user1, contenido="Contenido"
+        )
+        self.assertEqual(Anotacion.objects.count(), 1)
+        self.process.delete()
+        self.assertEqual(Anotacion.objects.count(), 0)
+
+    def test_set_null_on_user_delete(self):
+        """Test that anotacion.usuario is set to NULL when the user is deleted."""
+        # Create a process associated with user2, so it doesn't get deleted
+        # when user1 (the anotacion's author) is deleted.
+        process_for_this_test = Process.objects.create(
+            user=self.user2,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        anotacion = Anotacion.objects.create(
+            proceso=process_for_this_test,  # Use the process linked to user2
+            usuario=self.user1,  # user1 is the author we will delete
+            contenido="Contenido",
+        )
+        self.assertEqual(anotacion.usuario, self.user1)
+
+        # Ensure the anotacion exists before user deletion
+        self.assertTrue(Anotacion.objects.filter(pk=anotacion.pk).exists())
+
+        self.user1.delete()  # Delete user1 (the author)
+
+        # The anotacion itself should still exist
+        self.assertTrue(
+            Anotacion.objects.filter(pk=anotacion.pk).exists(),
+            "Anotacion should still exist after its author is deleted.",
+        )
+
+        anotacion.refresh_from_db()  # This should now work
+        self.assertIsNone(
+            anotacion.usuario, "Anotacion.usuario should be None after author deletion."
+        )
+
+        # Verify the specific anotacion we are testing still exists and its user is null
+        self.assertTrue(
+            Anotacion.objects.filter(pk=anotacion.pk, usuario__isnull=True).exists()
+        )

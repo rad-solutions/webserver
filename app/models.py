@@ -224,3 +224,34 @@ class Report(models.Model):
                 storage.delete(file_name)
         else:
             super().delete(*args, **kwargs)
+
+
+class Anotacion(models.Model):
+    proceso = models.ForeignKey(
+        Process, on_delete=models.CASCADE, related_name="anotaciones"
+    )
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="anotaciones_creadas",
+    )
+    contenido = models.TextField()
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        process_display = self.proceso.get_process_type_display()
+        process_id = self.proceso.id
+        user_display = self.usuario.username if self.usuario else "Sistema"
+        # auto_now_add=True ensures fecha_creacion is set, so direct strftime is safe
+        date_display = self.fecha_creacion.strftime("%Y-%m-%d %H:%M")
+        return (
+            f"Anotación para {process_display} ({process_id}) "
+            f"por {user_display} el {date_display}"
+        )
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+        verbose_name = _("Anotación")
+        verbose_name_plural = _("Anotaciones")
