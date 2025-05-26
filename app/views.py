@@ -16,7 +16,15 @@ from django.views.generic import (
     UpdateView,
 )
 
-from .models import Equipment, Process, ProcessTypeChoices, Report, RoleChoices, User
+from .models import (
+    Equipment,
+    Process,
+    ProcessStatusChoices,
+    ProcessTypeChoices,
+    Report,
+    RoleChoices,
+    User,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -111,8 +119,8 @@ def main(request):
     # Si el usuario está autenticado, mostrar la página principal con acceso a todas las funcionalidades
     if request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
         proceso_activo = request.GET.get("proceso_activo")
-        reportes = None
-        equipos = None
+        reportes_para_tabla = None
+        equipos_asociados = None
 
         hoy = date.today()
         seis_meses_despues = hoy + timedelta(weeks=6 * 4)
@@ -122,15 +130,15 @@ def main(request):
             fecha_vigencia_licencia__lte=seis_meses_despues,
         ).order_by("fecha_vigencia_licencia")
 
-        if proceso_activo:
-            # Filtrar reportes por tipo de proceso
-            reportes = Report.objects.filter(
-                user=request.user,
-                process__process_type=proceso_activo,
-            ).order_by("-created_at")[:5]
+        procesos_activos_cliente = (
+            Process.objects.filter(user=request.user)
+            .exclude(estado=ProcessStatusChoices.FINALIZADO)
+            .order_by("-fecha_inicio")
+        )
 
+        if proceso_activo:
             # Filtrar equipos por tipo de proceso
-            equipos = Equipment.objects.filter(
+            equipos_asociados = Equipment.objects.filter(
                 user=request.user,
                 process__process_type=proceso_activo,
             ).order_by("-process__fecha_inicio")[:5]
@@ -138,11 +146,13 @@ def main(request):
         context = {
             "titulo": "RadSolutions",
             "mensaje_bienvenida": f"Bienvenido, {request.user.first_name or ''} {request.user.last_name or ''}",
-            "reportes": reportes,
-            "equipos": equipos,
+            "reportes_para_tabla": reportes_para_tabla,
+            "equipos_asociados": equipos_asociados,
             "equipos_licencia_por_vencer": equipos_licencia_por_vencer,
+            "procesos_activos_cliente": procesos_activos_cliente,
             "proceso_activo": proceso_activo,
             "process_types_choices": ProcessTypeChoices.choices,
+            "ProcessTypeChoices": ProcessTypeChoices,
         }
         return render(request, "dashboard_cliente.html", context)
     else:
@@ -214,6 +224,7 @@ class ReportListView(LoginRequiredMixin, ListView):
         process_type_filter = self.request.GET.get("process_type", "todos")
         start_date_str = self.request.GET.get("start_date")
         end_date_str = self.request.GET.get("end_date")
+        equipment_id_filter = self.request.GET.get("equipment_id")
 
         # Filtrar por tipo de proceso
         if process_type_filter != "todos":
@@ -235,6 +246,15 @@ class ReportListView(LoginRequiredMixin, ListView):
             except ValueError:
                 pass  # Ignorar fecha inválida
 
+        if equipment_id_filter:
+            try:
+                equipment_id = int(equipment_id_filter)
+                queryset = queryset.filter(process__equipment__id=equipment_id)
+
+            except (ValueError, TypeError):
+                # Si equipment_id no es un entero válido, no aplicar este filtro
+                pass
+
         return queryset.order_by("-created_at")
 
     def get_context_data(self, **kwargs):
@@ -248,6 +268,15 @@ class ReportListView(LoginRequiredMixin, ListView):
         # Para los filtros de fecha
         context["start_date"] = self.request.GET.get("start_date", "")
         context["end_date"] = self.request.GET.get("end_date", "")
+        context["selected_equipment_id"] = self.request.GET.get("equipment_id")
+
+        if context["selected_equipment_id"]:
+            try:
+                context["filtered_equipment"] = Equipment.objects.get(
+                    id=context["selected_equipment_id"]
+                )
+            except Equipment.DoesNotExist:
+                pass
 
         return context
 

@@ -20,7 +20,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="{% url 'home' %}">
-                <i class="fas fa-file-medical-alt me-2"></i>RadSolutions
+                <img src="{% static 'images/logo.png' %}" alt="RadSolutions Logo" class="navbar-logo">RadSolutions
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -74,12 +74,12 @@
     </nav>
 
     <!-- Contenido principal -->
-    <main class="py-4">
+    <main class="{% block main_classes %}py-4{% endblock %}">
         {% block content %}{% endblock %}
     </main>
 
     <!-- Pie de página -->
-    <footer class="bg-dark text-white py-4">
+    <footer class="bg-primary text-white py-4">
         <div class="container text-center">
             <p class="mb-0">&copy; {% now "Y" %} RadSolutions. Todos los derechos reservados.</p>
         </div>

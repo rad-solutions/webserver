@@ -437,6 +437,22 @@ class ReportAPITest(TestCase):
             fecha_inicio=datetime(2024, 3, 1, tzinfo=timezone.utc),
         )
 
+        self.equipment1_calidad = Equipment.objects.create(
+            nombre="Equipo Calidad Alpha",
+            user=self.user,
+            process=self.process_calidad,
+            serial="EQCALPHA",
+        )
+        self.equipment2_asesoria = Equipment.objects.create(
+            nombre="Equipo Asesoria Beta",
+            user=self.user,
+            process=self.process_asesoria,
+            serial="EQASBETA",
+        )
+        self.equipment3_otro_proceso = Equipment.objects.create(
+            nombre="Equipo Otro Gamma", user=self.user, serial="EQOTGAMMA"
+        )
+
         self.temp_file_content = b"contenido de prueba del PDF"
         self.temp_file_name = "test.pdf"
 
@@ -836,6 +852,84 @@ class ReportAPITest(TestCase):
         self.assertEqual(len(reports_in_context), 0)
         self.assertEqual(response.context["start_date"], start_date_filter)
 
+    def test_report_list_view_filter_by_equipment_id(self):
+        """Test ReportListView filtrando por ID de equipo."""
+        self.client.login(username="testuser", password="testpassword")
+        # Filtrar por equipment1_calidad (asociado a process_calidad, que tiene report2_calidad_feb)
+        url = reverse("report_list") + f"?equipment_id={self.equipment1_calidad.id}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 1)
+        self.assertIn(self.report2_calidad_feb, reports_in_context)
+        self.assertNotIn(self.report1_asesoria_jan, reports_in_context)
+        self.assertNotIn(self.report3_asesoria_mar, reports_in_context)
+        self.assertEqual(
+            str(response.context["selected_equipment_id"]),
+            str(self.equipment1_calidad.id),
+        )
+        self.assertEqual(
+            response.context["filtered_equipment"], self.equipment1_calidad
+        )
+
+    def test_report_list_view_filter_by_equipment_id_and_process_type(self):
+        """Test ReportListView filtrando por ID de equipo y tipo de proceso."""
+        self.client.login(username="testuser", password="testpassword")
+        # Filtrar por equipment1_calidad Y process_type=control_calidad
+        url = (
+            reverse("report_list")
+            + f"?equipment_id={self.equipment1_calidad.id}&process_type={self.process_type_calidad}"
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 1)
+        self.assertIn(self.report2_calidad_feb, reports_in_context)
+        self.assertEqual(
+            str(response.context["selected_equipment_id"]),
+            str(self.equipment1_calidad.id),
+        )
+        self.assertEqual(
+            response.context["selected_process_type"], self.process_type_calidad
+        )
+
+    def test_report_list_view_filter_by_equipment_id_wrong_process_type(self):
+        """Test ReportListView con ID de equipo y un tipo de proceso que no coincide."""
+        self.client.login(username="testuser", password="testpassword")
+        # Filtrar por equipment1_calidad (cuyo proceso es 'control_calidad') pero pedir 'asesoria'
+        url = (
+            reverse("report_list")
+            + f"?equipment_id={self.equipment1_calidad.id}&process_type={self.process_type_asesoria}"
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 0)  # No debería haber resultados
+        self.assertEqual(
+            str(response.context["selected_equipment_id"]),
+            str(self.equipment1_calidad.id),
+        )
+        self.assertEqual(
+            response.context["selected_process_type"], self.process_type_asesoria
+        )
+
+    def test_report_list_view_filter_by_non_existent_equipment_id(self):
+        """Test ReportListView con un ID de equipo que no existe."""
+        self.client.login(username="testuser", password="testpassword")
+        non_existent_equipment_id = 99999
+        url = reverse("report_list") + f"?equipment_id={non_existent_equipment_id}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 0)
+        self.assertEqual(
+            str(response.context["selected_equipment_id"]),
+            str(non_existent_equipment_id),
+        )
+        self.assertNotIn(
+            "filtered_equipment", response.context
+        )  # No debería encontrar el equipo
+
 
 class AuthenticationTest(TestCase):
     def setUp(self):
@@ -1033,6 +1127,26 @@ class ClientDashboardTest(TestCase):
             process_type=self.process_type_asesoria,
             estado=self.process_status,
         )
+        self.proceso_blindajes_activo = Process.objects.create(
+            user=self.user,
+            process_type=self.process_type_blindajes,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        self.proceso_calidad_en_revision = Process.objects.create(
+            user=self.user,
+            process_type=self.process_type_calidad,
+            estado=ProcessStatusChoices.EN_REVISION,
+        )
+        self.proceso_asesoria_finalizado = Process.objects.create(
+            user=self.user,
+            process_type=self.process_type_asesoria,
+            estado=ProcessStatusChoices.FINALIZADO,
+        )
+        self.proceso_asesoria_activo = Process.objects.create(
+            user=self.user,
+            process_type=self.process_type_asesoria,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
 
         # Crear un archivo PDF temporal para los reportes
         self.temp_pdf_file_content = b"dummy pdf content"
@@ -1089,6 +1203,15 @@ class ClientDashboardTest(TestCase):
             process=self.process_calidad,
             fecha_vigencia_licencia="2026-06-15",
         )
+        self.equipment_asesoria = Equipment.objects.create(
+            nombre="Equipo Asesoría 1",
+            marca="MarcaC",
+            modelo="ModeloC1",
+            serial="SN1003",
+            user=self.user,
+            process=self.process_asesoria,
+            fecha_vigencia_licencia="2026-06-15",
+        )
         # Equipo sin proceso para probar la sección de licencias por vencer
         self.equipment_licencia_proxima = Equipment.objects.create(
             nombre="Equipo Licencia Próxima",
@@ -1108,6 +1231,7 @@ class ClientDashboardTest(TestCase):
             fecha_vigencia_licencia=date.today()
             + timedelta(days=365),  # Licencia vence en 1 año
         )
+        self.client.login(username="clientuser", password="testpassword")
 
     def tearDown(self):
         # Limpiar archivos PDF creados por los reportes
@@ -1120,99 +1244,114 @@ class ClientDashboardTest(TestCase):
                         pass
 
     def test_dashboard_initial_state_for_client(self):
-        """Verificar el estado inicial del dashboard del cliente (sin proceso_activo)."""
-        self.client.login(username="clientuser", password="testpassword")
+        """Verificar el estado inicial del dashboard: bienvenida, licencias y procesos activos."""
         response = self.client.get(reverse("home"))
-
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "dashboard_cliente.html")
 
-        # Verificar claves de contexto principales
-        self.assertIn("titulo", response.context)
-        self.assertIn("mensaje_bienvenida", response.context)
-        self.assertIn("equipos_licencia_por_vencer", response.context)
-        self.assertIn("proceso_activo", response.context)
-        self.assertIn("process_types_choices", response.context)
-        self.assertIn("reportes", response.context)
-        self.assertIn("equipos", response.context)
-
-        # Verificar valores en el estado inicial
         self.assertIsNone(response.context["proceso_activo"])
-        self.assertIsNone(response.context["reportes"])
-        self.assertIsNone(response.context["equipos"])
+        self.assertContains(response, "Bienvenido, Client User")
 
-        # Verificar equipos con licencia próxima a vencer
+        # Verificar licencias por vencer
         equipos_vencer = response.context["equipos_licencia_por_vencer"]
-        self.assertEqual(len(equipos_vencer), 1)
         self.assertIn(self.equipment_licencia_proxima, equipos_vencer)
-        self.assertNotIn(self.equipment_licencia_lejana, equipos_vencer)
-        self.assertNotIn(self.equipment_blindajes, equipos_vencer)
+        self.assertNotIn(
+            self.equipment_licencia_lejana, equipos_vencer
+        )  # Licencia lejana
+        self.assertContains(response, self.equipment_licencia_proxima.nombre)
+        self.assertContains(response, "Licencias Próximas a Vencer")
 
+        # Verificar procesos activos del cliente
+        procesos_activos_ctx = response.context["procesos_activos_cliente"]
+        self.assertIn(self.proceso_blindajes_activo, procesos_activos_ctx)
+        self.assertIn(self.proceso_calidad_en_revision, procesos_activos_ctx)
+        self.assertIn(self.proceso_asesoria_activo, procesos_activos_ctx)
+        self.assertNotIn(
+            self.proceso_asesoria_finalizado, procesos_activos_ctx
+        )  # Finalizado no debe estar
+        self.assertContains(response, "Mis Procesos Activos")
+        self.assertContains(
+            response, self.proceso_blindajes_activo.get_process_type_display()
+        )
+        self.assertContains(
+            response, self.proceso_calidad_en_revision.get_estado_display()
+        )
+
+    def test_dashboard_calculo_blindajes_selected(self):
+        """Dashboard con 'Cálculo de Blindajes' activo: muestra equipos con botón a sus reportes."""
+        url = reverse("home") + f"?proceso_activo={self.process_type_blindajes.value}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            response.context["process_types_choices"], list(ProcessTypeChoices.choices)
-        )
-        self.assertTrue(
-            response.context["mensaje_bienvenida"].startswith("Bienvenido, Client")
+            response.context["proceso_activo"], self.process_type_blindajes.value
         )
 
-    def test_dashboard_with_proceso_activo_for_client(self):
-        """Verificar el dashboard del cliente cuando se selecciona un proceso_activo."""
-        self.client.login(username="clientuser", password="testpassword")
-
-        # Probar con 'calculo_blindajes'
-        url_blindajes = (
-            reverse("home") + f"?proceso_activo={self.process_type_blindajes}"
+        # Verificar sección de equipos
+        self.assertIn(self.equipment_blindajes, response.context["equipos_asociados"])
+        self.assertContains(response, self.equipment_blindajes.nombre)
+        # Verificar botón de informes para el equipo
+        expected_report_link = (
+            reverse("report_list")
+            + f"?equipment_id={self.equipment_blindajes.id}&process_type={self.process_type_blindajes.value}"
         )
-        response_blindajes = self.client.get(url_blindajes)
+        self.assertContains(response, f'href="{expected_report_link}"')
+        self.assertContains(response, "Ver Informes")
 
-        self.assertEqual(response_blindajes.status_code, 200)
-        self.assertTemplateUsed(response_blindajes, "dashboard_cliente.html")
+        # Verificar que la tabla de reportes general NO está
+        self.assertNotContains(response, "Reportes Asociados</h5>")
+        self.assertIsNone(response.context.get("reportes_para_tabla"))
 
+    def test_dashboard_control_calidad_selected(self):
+        """Dashboard con 'Control de Calidad' activo: muestra equipos con botón a sus reportes."""
+        url = reverse("home") + f"?proceso_activo={self.process_type_calidad.value}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            response_blindajes.context["proceso_activo"], self.process_type_blindajes
+            response.context["proceso_activo"], self.process_type_calidad.value
         )
 
-        # Verificar reportes para calculo_blindajes (debería ser 1, y limitado a 5 por la vista)
-        reportes_blindajes = response_blindajes.context["reportes"]
-        self.assertIsNotNone(reportes_blindajes)
-        self.assertEqual(len(reportes_blindajes), 1)
-        self.assertIn(self.report_blindajes, reportes_blindajes)
-        self.assertNotIn(self.report_calidad, reportes_blindajes)
+        self.assertIn(self.equipment_calidad, response.context["equipos_asociados"])
+        self.assertContains(response, self.equipment_calidad.nombre)
+        expected_report_link = (
+            reverse("report_list")
+            + f"?equipment_id={self.equipment_calidad.id}&process_type={self.process_type_calidad.value}"
+        )
+        self.assertContains(response, f'href="{expected_report_link}"')
 
-        # Verificar equipos para calculo_blindajes (debería ser 1, y limitado a 5 por la vista)
-        equipos_blindajes = response_blindajes.context["equipos"]
-        self.assertIsNotNone(equipos_blindajes)
-        self.assertEqual(len(equipos_blindajes), 1)
-        self.assertIn(self.equipment_blindajes, equipos_blindajes)
-        self.assertNotIn(self.equipment_calidad, equipos_blindajes)
+        self.assertNotContains(response, "Reportes Asociados</h5>")
+        self.assertIsNone(response.context.get("reportes_para_tabla"))
 
-        # Equipos con licencia próxima a vencer deben seguir presentes
-        self.assertIn("equipos_licencia_por_vencer", response_blindajes.context)
-        equipos_vencer_blindajes = response_blindajes.context[
-            "equipos_licencia_por_vencer"
-        ]
-        self.assertEqual(len(equipos_vencer_blindajes), 1)
-        self.assertIn(self.equipment_licencia_proxima, equipos_vencer_blindajes)
-
-        # Probar con 'control_calidad'
-        url_calidad = reverse("home") + f"?proceso_activo={self.process_type_calidad}"
-        response_calidad = self.client.get(url_calidad)
-        self.assertEqual(response_calidad.status_code, 200)
+    def test_dashboard_asesoria_selected(self):
+        """Dashboard con 'Asesoría' activo: muestra botón a documentos asociados."""
+        url = reverse("home") + f"?proceso_activo={self.process_type_asesoria.value}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            response_calidad.context["proceso_activo"], self.process_type_calidad
+            response.context["proceso_activo"], self.process_type_asesoria.value
         )
 
-        reportes_calidad = response_calidad.context["reportes"]
-        self.assertEqual(len(reportes_calidad), 1)
-        self.assertIn(self.report_calidad, reportes_calidad)
+        # Aquí verificamos el botón de documentos.
+        self.assertIn(
+            self.equipment_asesoria, response.context["equipos_asociados"]
+        )  # Si se muestran equipos
+        self.assertContains(response, self.equipment_asesoria.nombre)
 
-        equipos_calidad = response_calidad.context["equipos"]
-        self.assertEqual(len(equipos_calidad), 1)
-        self.assertIn(self.equipment_calidad, equipos_calidad)
+        # Verificar botón de "Documentos Asociados"
+        expected_docs_link = (
+            reverse("report_list") + f"?process_type={self.process_type_asesoria.value}"
+        )
+        self.assertContains(response, f'href="{expected_docs_link}"')
+        self.assertContains(response, "Ver Documentos Asociados")
+
+        # Verificar que la tabla de reportes general NO está
+        self.assertNotContains(
+            response, "Reportes Asociados</h5>"
+        )  # El título de la tabla de reportes
+        self.assertIsNone(response.context.get("reportes_para_tabla"))
 
     def test_dashboard_non_client_user(self):
         """Verificar que un usuario no cliente es redirigido a main.html."""
-        # Crear un usuario sin rol de cliente
+        self.client.logout()  # Desloguear cliente
         User.objects.create_user(
             username="staffuser", password="password", is_staff=True
         )
@@ -1222,7 +1361,7 @@ class ClientDashboardTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "main.html")
         self.assertNotIn("equipos_licencia_por_vencer", response.context)
-        self.assertNotIn("process_types_choices", response.context)
+        self.assertNotIn("procesos_activos_cliente", response.context)
 
 
 class ProcessAPITest(TestCase):

@@ -27,13 +27,19 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 700;
 }
 
+.navbar-logo {
+    height: 35px;
+    margin-right: 8px;
+    vertical-align: middle; /* Ayuda a alinear mejor con el texto adyacente */
+}
+
 /* Personalización de colores */
 .bg-primary {
-    background-color: #0d3b66 !important; /* Azul oscuro */
+    background-color: #002B5A !important; /* Azul oscuro */
 }
 
 .bg-dark {
-    background-color: #1a252f !important;
+    background-color: #0d1a30 !important;
 }
 
 footer {
@@ -51,13 +57,13 @@ footer {
 
 /* Botones personalizados */
 .btn-primary {
-    background-color: #0d3b66;
-    border-color: #0d3b66;
+    background-color: #009dd1;
+    border-color: #009dd1;
 }
 
 .btn-primary:hover {
-    background-color: #082b4d;
-    border-color: #082b4d;
+    background-color: #007FAA;
+    border-color: #007FAA;
 }
 
 /* Para mantener consistencia con el azul en links activos */
