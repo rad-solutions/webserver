@@ -336,6 +336,14 @@ class EquiposListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         # Obtener el tipo de proceso desde los parámetros GET
         process_type_filter = self.request.GET.get("process_type", "todos")
+        inicio_adq_date_str = self.request.GET.get("inicio_adq_date")
+        inicio_vig_lic_date_str = self.request.GET.get("inicio_vig_lic_date")
+        inicio_last_cc_date_str = self.request.GET.get("inicio_last_cc_date")
+        inicio_venc_cc_date_str = self.request.GET.get("inicio_venc_cc_date")
+        end_adq_date_str = self.request.GET.get("end_adq_date")
+        end_vig_lic_date_str = self.request.GET.get("end_vig_lic_date")
+        end_last_cc_date_str = self.request.GET.get("end_last_cc_date")
+        end_venc_cc_date_str = self.request.GET.get("end_venc_cc_date")
         if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
             queryset = Equipment.objects.filter(user=self.request.user)
         else:
@@ -344,6 +352,92 @@ class EquiposListView(LoginRequiredMixin, ListView):
         if process_type_filter != "todos":  # Si se especifica un tipo y no es "todos"
             queryset = queryset.filter(process__process_type=process_type_filter)
         # Si process_type_filter es "todos", no se aplica filtro adicional de tipo de proceso.
+
+        # Filtrar por fecha de adquisición
+        if inicio_adq_date_str:
+            try:
+                inicio_adq_date = datetime.strptime(
+                    inicio_adq_date_str, "%Y-%m-%d"
+                ).date()
+                queryset = queryset.filter(fecha_adquisicion__gte=inicio_adq_date)
+            except ValueError:
+                pass  # Ignorar fecha inválida
+
+        if end_adq_date_str:
+            try:
+                end_adq_date = datetime.strptime(end_adq_date_str, "%Y-%m-%d").date()
+                queryset = queryset.filter(fecha_adquisicion__lte=end_adq_date)
+            except ValueError:
+                pass  # Ignorar fecha inválida
+
+        # Filtrar por fecha de vigencia de licencia
+        if inicio_vig_lic_date_str:
+            try:
+                inicio_vig_lic_date = datetime.strptime(
+                    inicio_vig_lic_date_str, "%Y-%m-%d"
+                ).date()
+                queryset = queryset.filter(
+                    fecha_vigencia_licencia__gte=inicio_vig_lic_date
+                )
+            except ValueError:
+                pass  # Ignorar fecha inválida
+
+        if end_vig_lic_date_str:
+            try:
+                end_vig_lic_date = datetime.strptime(
+                    end_vig_lic_date_str, "%Y-%m-%d"
+                ).date()
+                queryset = queryset.filter(
+                    fecha_vigencia_licencia__lte=end_vig_lic_date
+                )
+            except ValueError:
+                pass  # Ignorar fecha inválida
+
+        # Filtrar por fecha de último control de calidad
+        if inicio_last_cc_date_str:
+            try:
+                inicio_last_cc_date = datetime.strptime(
+                    inicio_last_cc_date_str, "%Y-%m-%d"
+                ).date()
+                queryset = queryset.filter(
+                    fecha_ultimo_control_calidad__gte=inicio_last_cc_date
+                )
+            except ValueError:
+                pass  # Ignorar fecha inválida
+
+        if end_last_cc_date_str:
+            try:
+                end_last_cc_date = datetime.strptime(
+                    end_last_cc_date_str, "%Y-%m-%d"
+                ).date()
+                queryset = queryset.filter(
+                    fecha_ultimo_control_calidad__lte=end_last_cc_date
+                )
+            except ValueError:
+                pass  # Ignorar fecha inválida
+
+        # Filtrar por fecha de vencimiento de control de calidad
+        if inicio_venc_cc_date_str:
+            try:
+                inicio_venc_cc_date = datetime.strptime(
+                    inicio_venc_cc_date_str, "%Y-%m-%d"
+                ).date()
+                queryset = queryset.filter(
+                    fecha_vencimiento_control_calidad__gte=inicio_venc_cc_date
+                )
+            except ValueError:
+                pass  # Ignorar fecha inválida
+
+        if end_venc_cc_date_str:
+            try:
+                end_venc_cc_date = datetime.strptime(
+                    end_venc_cc_date_str, "%Y-%m-%d"
+                ).date()
+                queryset = queryset.filter(
+                    fecha_vencimiento_control_calidad__lte=end_venc_cc_date
+                )
+            except ValueError:
+                pass  # Ignorar fecha inválida
 
         return queryset.order_by("-process__fecha_inicio")
 
@@ -354,6 +448,15 @@ class EquiposListView(LoginRequiredMixin, ListView):
         # Pasar todos los tipos de proceso al contexto para el dropdown
         choices_list = [("todos", "Todos")] + list(ProcessTypeChoices.choices)
         context["process_types"] = choices_list
+        # Para los filtros de fecha
+        context["inicio_adq_date"] = self.request.GET.get("inicio_adq_date", "")
+        context["inicio_vig_lic_date"] = self.request.GET.get("inicio_vig_lic_date", "")
+        context["inicio_last_cc_date"] = self.request.GET.get("inicio_last_cc_date", "")
+        context["inicio_venc_cc_date"] = self.request.GET.get("inicio_venc_cc_date", "")
+        context["end_adq_date"] = self.request.GET.get("end_adq_date", "")
+        context["end_vig_lic_date"] = self.request.GET.get("end_vig_lic_date", "")
+        context["end_last_cc_date"] = self.request.GET.get("end_last_cc_date", "")
+        context["end_venc_cc_date"] = self.request.GET.get("end_venc_cc_date", "")
         return context
 
 
@@ -410,6 +513,10 @@ class ProcessListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         # Obtener el tipo de proceso desde los parámetros GET
         process_type_filter = self.request.GET.get("process_type", "todos")
+        inicio_start_date_str = self.request.GET.get("inicio_start_date")
+        inicio_end_date_str = self.request.GET.get("inicio_end_date")
+        fin_start_date_str = self.request.GET.get("fin_start_date")
+        fin_end_date_str = self.request.GET.get("fin_end_date")
         if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
             queryset = Equipment.objects.filter(user=self.request.user)
         else:
@@ -418,6 +525,48 @@ class ProcessListView(LoginRequiredMixin, ListView):
         if process_type_filter != "todos":  # Si se especifica un tipo y no es "todos"
             queryset = queryset.filter(process__process_type=process_type_filter)
         # Si process_type_filter es "todos", no se aplica filtro adicional de tipo de proceso.
+
+        # Filtrar por fecha de inicio
+        if inicio_start_date_str:
+            try:
+                inicio_start_date = datetime.strptime(
+                    inicio_start_date_str, "%Y-%m-%d"
+                ).date()
+                queryset = queryset.filter(
+                    process__fecha_inicio__date__gte=inicio_start_date
+                )
+            except ValueError:
+                pass  # Ignorar fecha inválida
+
+        if inicio_end_date_str:
+            try:
+                inicio_end_date = datetime.strptime(
+                    inicio_end_date_str, "%Y-%m-%d"
+                ).date()
+                queryset = queryset.filter(
+                    process__fecha_inicio__date__lte=inicio_end_date
+                )
+            except ValueError:
+                pass  # Ignorar fecha inválida
+
+        # Filtrar por fecha de fin
+        if fin_start_date_str:
+            try:
+                fin_start_date = datetime.strptime(
+                    fin_start_date_str, "%Y-%m-%d"
+                ).date()
+                queryset = queryset.filter(
+                    process__fecha_final__date__gte=fin_start_date
+                )
+            except ValueError:
+                pass  # Ignorar fecha inválida
+
+        if fin_end_date_str:
+            try:
+                fin_end_date = datetime.strptime(fin_end_date_str, "%Y-%m-%d").date()
+                queryset = queryset.filter(process__fecha_final__date__lte=fin_end_date)
+            except ValueError:
+                pass  # Ignorar fecha inválida
 
         return queryset.order_by("-process__fecha_inicio")
 
@@ -428,6 +577,11 @@ class ProcessListView(LoginRequiredMixin, ListView):
         # Pasar todos los tipos de proceso al contexto para el dropdown
         choices_list = [("todos", "Todos")] + list(ProcessTypeChoices.choices)
         context["process_types"] = choices_list
+        # Para los filtros de fecha
+        context["inicio_start_date"] = self.request.GET.get("inicio_start_date", "")
+        context["inicio_end_date"] = self.request.GET.get("inicio_end_date", "")
+        context["fin_start_date"] = self.request.GET.get("fin_start_date", "")
+        context["fin_end_date"] = self.request.GET.get("fin_end_date", "")
         return context
 
 

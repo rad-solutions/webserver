@@ -19,15 +19,38 @@
         {% endif %}
     </div>
 
-    <form method="get" class="mb-4">
-        <label for="process_type" class="form-label">Filtrar por tipo de proceso:</label>
-        <select name="process_type" id="process_type" class="form-select" onchange="this.form.submit()">
-            {% for value, label in process_types %}
-            <option value="{{ value }}" {% if value == selected_process_type %}selected{% endif %}>
-                {{ label }}
-            </option>
-            {% endfor %}
-        </select>
+    <form method="get" class="mb-4 p-3 border rounded bg-light">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label for="process_type" class="form-label">Filtrar por tipo de proceso:</label>
+                <select name="process_type" id="process_type" class="form-select">
+                    {% for value, label in process_types %}
+                    <option value="{{ value }}" {% if value == selected_process_type %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="inicio_start_date" class="form-label">Fecha Inicio Desde:</label>
+                <input type="date" name="inicio_start_date" id="inicio_start_date" value="{{ inicio_start_date }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <label for="inicio_end_date" class="form-label">Fecha Inicio Hasta:</label>
+                <input type="date" name="inicio_end_date" id="inicio_end_date" value="{{ inicio_end_date }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <label for="fin_start_date" class="form-label">Fecha Finalización Desde:</label>
+                <input type="date" name="fin_start_date" id="fin_start_date" value="{{ fin_start_date }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <label for="fin_end_date" class="form-label">Fecha Finalización Hasta:</label>
+                <input type="date" name="fin_end_date" id="fin_end_date" value="{{ fin_end_date }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-info w-100">Filtrar</button>
+            </div>
+        </div>
     </form>
 
     <div class="card">

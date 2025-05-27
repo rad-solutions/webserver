@@ -1366,11 +1366,69 @@ class ClientDashboardTest(TestCase):
 
 class ProcessAPITest(TestCase):
     def setUp(self):
+        self.user_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
         self.user = User.objects.create_user(username="procuser", password="password")
+        self.user.roles.add(self.user_cliente)
+
+        self.admin_user = User.objects.create_user(
+            username="admin_proc", password="password", is_staff=True
+        )
         self.other_user = User.objects.create_user(
             username="otherprocuser", password="password"
         )
+        # Procesos con fechas variadas
+        self.proc1 = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+            # fecha_inicio se setea automáticamente por auto_now_add
+        )
+        # Forzar fechas para testing preciso
+        self.proc1.fecha_inicio = datetime(2023, 3, 10, tzinfo=timezone.utc)
+        self.proc1.fecha_final = datetime(2023, 9, 15, tzinfo=timezone.utc)
+        self.proc1.save()
+
+        self.proc2 = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.CONTROL_CALIDAD,
+            estado=ProcessStatusChoices.FINALIZADO,
+        )
+        self.proc2.fecha_inicio = datetime(2023, 8, 5, tzinfo=timezone.utc)
+        self.proc2.fecha_final = datetime(2024, 1, 20, tzinfo=timezone.utc)
+        self.proc2.save()
+
+        self.proc3_admin = Process.objects.create(  # Proceso de otro usuario
+            user=self.admin_user,
+            process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
+            estado=ProcessStatusChoices.EN_REVISION,
+        )
+        self.proc3_admin.fecha_inicio = datetime(2024, 2, 1, tzinfo=timezone.utc)
+        self.proc3_admin.save()
+
+        self.proc4_no_final = Process.objects.create(  # Sin fecha final
+            user=self.user,
+            process_type=ProcessTypeChoices.OTRO,
+            estado=ProcessStatusChoices.RADICADO,
+        )
+        self.proc4_no_final.fecha_inicio = datetime(2024, 3, 1, tzinfo=timezone.utc)
+        self.proc4_no_final.save()
+
+        # Equipos asociados a estos procesos (ya que la vista lista equipos)
+        self.eq_p1 = Equipment.objects.create(
+            nombre="Equipo P1", user=self.user, process=self.proc1
+        )
+        self.eq_p2 = Equipment.objects.create(
+            nombre="Equipo P2", user=self.user, process=self.proc2
+        )
+        self.eq_p3_admin = Equipment.objects.create(
+            nombre="Equipo P3 Admin", user=self.admin_user, process=self.proc3_admin
+        )
+        self.eq_p4 = Equipment.objects.create(
+            nombre="Equipo P4", user=self.user, process=self.proc4_no_final
+        )
+
         self.client.login(username="procuser", password="password")
+        self.url = reverse("process_list")
 
     def test_process_list_view(self):
         Process.objects.create(
@@ -1483,6 +1541,101 @@ class ProcessAPITest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(Process.objects.count(), initial_count - 1)
 
+    def test_process_list_filter_by_fecha_inicio_range(self):
+        """Testea el filtro por rango de fecha de inicio del proceso."""
+        # Filtro para procesos iniciados en Agosto 2023
+        response = self.client.get(
+            self.url,
+            {"inicio_start_date": "2023-08-01", "inicio_end_date": "2023-08-31"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "process/process_list.html")
+        equipos_en_contexto = response.context["equipos"]  # La vista devuelve 'equipos'
+        self.assertEqual(len(equipos_en_contexto), 1)
+        self.assertIn(
+            self.eq_p2, equipos_en_contexto
+        )  # Proceso eq_p2 inició 2023-08-05
+        self.assertNotIn(
+            self.eq_p1, equipos_en_contexto
+        )  # Proceso eq_p1 inició 2023-03-10
+        self.assertEqual(response.context["inicio_start_date"], "2023-08-01")
+        self.assertEqual(response.context["inicio_end_date"], "2023-08-31")
+
+    def test_process_list_filter_by_fecha_final_desde(self):
+        """Testea el filtro por fecha de finalización del proceso (desde)."""
+        # Filtro para procesos finalizados desde Enero 2024
+        response = self.client.get(self.url, {"fin_start_date": "2024-01-01"})
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 1)
+        self.assertIn(
+            self.eq_p2, equipos_en_contexto
+        )  # Proceso eq_p2 finalizó 2024-01-20
+        self.assertNotIn(
+            self.eq_p1, equipos_en_contexto
+        )  # Proceso eq_p1 finalizó 2023-09-15
+        self.assertNotIn(
+            self.eq_p4, equipos_en_contexto
+        )  # Proceso eq_p4 no ha finalizado
+        self.assertEqual(response.context["fin_start_date"], "2024-01-01")
+
+    def test_process_list_filter_by_fecha_final_exact_date(self):
+        """Testea el filtro por fecha de finalización del proceso (exacta)."""
+        response = self.client.get(
+            self.url, {"fin_start_date": "2023-09-15", "fin_end_date": "2023-09-15"}
+        )
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 1)
+        self.assertIn(self.eq_p1, equipos_en_contexto)
+        self.assertEqual(response.context["fin_start_date"], "2023-09-15")
+        self.assertEqual(response.context["fin_end_date"], "2023-09-15")
+
+    def test_process_list_filter_combined_type_and_fecha_inicio(self):
+        """Testea combinación de filtro de tipo de proceso y fecha de inicio."""
+        response = self.client.get(
+            self.url,
+            {
+                "process_type": ProcessTypeChoices.ASESORIA,
+                "inicio_start_date": "2023-03-01",
+                "inicio_end_date": "2023-03-31",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 1)
+        self.assertIn(
+            self.eq_p1, equipos_en_contexto
+        )  # Proceso Asesoría, inició 2023-03-10
+        self.assertNotIn(self.eq_p2, equipos_en_contexto)
+        self.assertEqual(
+            response.context["selected_process_type"], ProcessTypeChoices.ASESORIA
+        )
+        self.assertEqual(response.context["inicio_start_date"], "2023-03-01")
+
+    def test_process_list_filter_no_results_for_final_date(self):
+        """Testea filtros de fecha final que no devuelven resultados."""
+        response = self.client.get(self.url, {"fin_start_date": "2099-01-01"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["equipos"]), 0)
+        self.assertEqual(response.context["fin_start_date"], "2099-01-01")
+
+    def test_process_list_admin_sees_all_relevant_equipments(self):
+        """Testea que un admin vea equipos cuyos procesos cumplen el filtro (si la lógica lo permite)."""
+        self.client.logout()
+        self.client.login(username="admin_proc", password="password")
+        # Filtro para procesos iniciados en Febrero 2024 (debería encontrar proc3_admin)
+        response = self.client.get(
+            self.url,
+            {"inicio_start_date": "2024-02-01", "inicio_end_date": "2024-02-29"},
+        )
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        # La vista actual filtra por usuario si es cliente, sino muestra todos los equipos
+        # y luego aplica los filtros de fecha del proceso.
+        self.assertEqual(len(equipos_en_contexto), 1)
+        self.assertIn(self.eq_p3_admin, equipos_en_contexto)
+
 
 class EquipmentAPITest(TestCase):
     def setUp(self):
@@ -1500,7 +1653,46 @@ class EquipmentAPITest(TestCase):
             process_type=ProcessTypeChoices.ASESORIA,
             estado=ProcessStatusChoices.EN_PROGRESO,
         )
+        self.process_calidad = Process.objects.create(
+            user=self.user_client, process_type=ProcessTypeChoices.CONTROL_CALIDAD
+        )
+        self.process_blindajes = Process.objects.create(
+            user=self.user_client, process_type=ProcessTypeChoices.CALCULO_BLINDAJES
+        )
+        # Equipos con fechas variadas
+        self.eq1 = Equipment.objects.create(
+            nombre="Equipo Alfa",
+            user=self.user_client,
+            process=self.process_calidad,
+            fecha_adquisicion=date(2023, 1, 15),
+            fecha_vigencia_licencia=date(2025, 6, 30),
+            fecha_ultimo_control_calidad=date(2024, 1, 10),
+            fecha_vencimiento_control_calidad=date(2025, 1, 10),
+        )
+        self.eq2 = Equipment.objects.create(
+            nombre="Equipo Beta",
+            user=self.user_client,
+            process=self.process_blindajes,
+            fecha_adquisicion=date(2023, 7, 20),
+            fecha_vigencia_licencia=date(2026, 1, 15),
+            fecha_ultimo_control_calidad=date(2024, 7, 5),
+            fecha_vencimiento_control_calidad=date(2025, 7, 5),
+        )
+        self.eq3 = Equipment.objects.create(
+            nombre="Equipo Gamma (Admin)",
+            user=self.admin_user,  # Para probar filtro de usuario
+            fecha_adquisicion=date(2024, 1, 1),
+            fecha_vigencia_licencia=date(2025, 12, 1),
+            fecha_ultimo_control_calidad=date(2024, 6, 1),
+            fecha_vencimiento_control_calidad=date(2025, 6, 1),
+        )
+        self.eq4_no_dates = Equipment.objects.create(
+            nombre="Equipo Delta Sin Fechas",
+            user=self.user_client,
+            process=self.process_calidad,
+        )
         self.client.login(username="equipadmin", password="password")
+        self.url = reverse("equipos_list")
 
     def test_equipment_list_view(self):
         Equipment.objects.create(
@@ -1616,3 +1808,92 @@ class EquipmentAPITest(TestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, 302)
         self.assertEqual(Equipment.objects.count(), initial_count - 1)
+
+    def test_equipos_list_filter_by_fecha_adquisicion_range(self):
+        """Testea el filtro por rango de fecha de adquisición."""
+        response = self.client.get(
+            self.url, {"inicio_adq_date": "2023-07-01", "end_adq_date": "2023-12-31"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "equipos/equipos_list.html")
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 1)
+        self.assertIn(self.eq2, equipos_en_contexto)
+        self.assertNotIn(self.eq1, equipos_en_contexto)
+        self.assertEqual(response.context["inicio_adq_date"], "2023-07-01")
+        self.assertEqual(response.context["end_adq_date"], "2023-12-31")
+
+    def test_equipos_list_filter_by_fecha_vigencia_licencia_desde(self):
+        """Testea el filtro por fecha de vigencia de licencia (desde)."""
+        response = self.client.get(self.url, {"inicio_vig_lic_date": "2026-01-01"})
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 1)
+        self.assertIn(self.eq2, equipos_en_contexto)  # Licencia 2026-01-15
+        self.assertNotIn(self.eq1, equipos_en_contexto)  # Licencia 2025-06-30
+        self.assertEqual(response.context["inicio_vig_lic_date"], "2026-01-01")
+
+    def test_equipos_list_filter_by_fecha_ultimo_control_calidad_hasta(self):
+        """Testea el filtro por fecha de último control de calidad (hasta)."""
+        response = self.client.get(self.url, {"end_last_cc_date": "2024-06-30"})
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 2)
+        self.assertIn(self.eq1, equipos_en_contexto)  # Ultimo CC 2024-01-10
+        self.assertIn(self.eq3, equipos_en_contexto)  # Ultimo CC 2024-06-01
+        self.assertNotIn(self.eq2, equipos_en_contexto)  # Ultimo CC 2024-07-05
+        self.assertEqual(response.context["end_last_cc_date"], "2024-06-30")
+
+    def test_equipos_list_filter_by_fecha_vencimiento_control_calidad_range(self):
+        """Testea el filtro por rango de fecha de vencimiento de control de calidad."""
+        response = self.client.get(
+            self.url,
+            {"inicio_venc_cc_date": "2025-01-01", "end_venc_cc_date": "2025-06-30"},
+        )
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 2)
+        self.assertIn(self.eq1, equipos_en_contexto)  # Vence CC 2025-01-10
+        self.assertIn(self.eq3, equipos_en_contexto)  # Vence CC 2025-06-01
+        self.assertNotIn(self.eq2, equipos_en_contexto)  # Vence CC 2025-07-05
+        self.assertEqual(response.context["inicio_venc_cc_date"], "2025-01-01")
+        self.assertEqual(response.context["end_venc_cc_date"], "2025-06-30")
+
+    def test_equipos_list_filter_combined_process_type_and_adq_date(self):
+        """Testea combinación de filtro de tipo de proceso y fecha de adquisición."""
+        response = self.client.get(
+            self.url,
+            {
+                "process_type": ProcessTypeChoices.CONTROL_CALIDAD,
+                "inicio_adq_date": "2023-01-01",
+                "end_adq_date": "2023-12-31",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 1)
+        self.assertIn(self.eq1, equipos_en_contexto)  # Proceso Calidad, Adq 2023-01-15
+        self.assertNotIn(self.eq2, equipos_en_contexto)  # Proceso Blindajes
+        self.assertEqual(
+            response.context["selected_process_type"],
+            ProcessTypeChoices.CONTROL_CALIDAD,
+        )
+        self.assertEqual(response.context["inicio_adq_date"], "2023-01-01")
+
+    def test_equipos_list_filter_no_results(self):
+        """Testea filtros que no devuelven resultados."""
+        response = self.client.get(self.url, {"inicio_adq_date": "2099-01-01"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["equipos"]), 0)
+        self.assertEqual(response.context["inicio_adq_date"], "2099-01-01")
+
+    def test_equipos_list_admin_sees_all_without_date_filters(self):
+        """Testea que un admin vea todos los equipos si no hay filtros de fecha (solo para verificar el setup)."""
+        self.client.logout()
+        self.client.login(username="equipadmin", password="password")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        # Esperamos 4 equipos: eq1, eq2, eq3 (admin), eq4_no_dates
+        # La vista actual filtra por usuario si es cliente, sino muestra todos.
+        self.assertEqual(len(response.context["equipos"]), 4)
+        self.assertIn(self.eq3, response.context["equipos"])

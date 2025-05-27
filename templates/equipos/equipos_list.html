@@ -12,15 +12,54 @@
 
     </div>
 
-    <form method="get" class="mb-4">
-        <label for="process_type" class="form-label">Filtrar por tipo de proceso:</label>
-        <select name="process_type" id="process_type" class="form-select" onchange="this.form.submit()">
-            {% for value, label in process_types %}
-            <option value="{{ value }}" {% if value == selected_process_type %}selected{% endif %}>
-                {{ label }}
-            </option>
-            {% endfor %}
-        </select>
+    <form method="get" class="mb-4 p-3 border rounded bg-light">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="process_type" class="form-label">Filtrar por tipo de proceso:</label>
+                <select name="process_type" id="process_type" class="form-select">
+                    {% for value, label in process_types %}
+                    <option value="{{ value }}" {% if value == selected_process_type %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="inicio_adq_date" class="form-label">Fecha Adquisición Desde:</label>
+                <input type="date" name="inicio_adq_date" id="inicio_adq_date" value="{{ inicio_adq_date }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <label for="end_adq_date" class="form-label">Fecha Adquisición Hasta:</label>
+                <input type="date" name="end_adq_date" id="end_adq_date" value="{{ end_adq_date }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <label for="inicio_vig_lic_date" class="form-label">Fecha Vigencia de la Licencia Desde:</label>
+                <input type="date" name="inicio_vig_lic_date" id="inicio_vig_lic_date" value="{{ inicio_vig_lic_date }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <label for="end_vig_lic_date" class="form-label">Fecha Vigencia de la Licencia Hasta:</label>
+                <input type="date" name="end_vig_lic_date" id="end_vig_lic_date" value="{{ end_vig_lic_date }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <label for="inicio_last_cc_date" class="form-label">Fecha Ultimo Control de Calidad Desde:</label>
+                <input type="date" name="inicio_last_cc_date" id="inicio_last_cc_date" value="{{ inicio_last_cc_date }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <label for="end_last_cc_date" class="form-label">Fecha Ultimo Control de Calidad Hasta:</label>
+                <input type="date" name="end_last_cc_date" id="end_last_cc_date" value="{{ end_last_cc_date }}" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label for="inicio_venc_cc_date" class="form-label">Fecha Vencimiento Control de Calidad Desde:</label>
+                <input type="date" name="inicio_venc_cc_date" id="inicio_venc_cc_date" value="{{ inicio_venc_cc_date }}" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label for="end_venc_cc_date" class="form-label">Fecha Vencimiento Control de Calidad Hasta:</label>
+                <input type="date" name="end_venc_cc_date" id="end_venc_cc_date" value="{{ end_venc_cc_date }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-info w-100">Filtrar</button>
+            </div>
+        </div>
     </form>
 
     <div class="card">
