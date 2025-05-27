@@ -1192,7 +1192,7 @@ class ClientDashboardTest(TestCase):
             serial="SN001",
             user=self.user,
             process=self.process_blindajes,
-            fecha_vigencia_licencia="2025-12-31",
+            fecha_vigencia_licencia=date.today() + timedelta(days=217),
         )
         self.equipment_calidad = Equipment.objects.create(
             nombre="Equipo Calidad 1",
@@ -1201,7 +1201,7 @@ class ClientDashboardTest(TestCase):
             serial="SN002",
             user=self.user,
             process=self.process_calidad,
-            fecha_vigencia_licencia="2026-06-15",
+            fecha_vigencia_licencia=date.today() + timedelta(days=365),
         )
         self.equipment_asesoria = Equipment.objects.create(
             nombre="Equipo Asesoría 1",
@@ -1210,7 +1210,7 @@ class ClientDashboardTest(TestCase):
             serial="SN1003",
             user=self.user,
             process=self.process_asesoria,
-            fecha_vigencia_licencia="2026-06-15",
+            fecha_vigencia_licencia=date.today() + timedelta(days=365),
         )
         # Equipo sin proceso para probar la sección de licencias por vencer
         self.equipment_licencia_proxima = Equipment.objects.create(
