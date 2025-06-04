@@ -2,7 +2,7 @@ import os
 import tempfile
 from datetime import date, datetime, timedelta, timezone
 
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group, Permission
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
@@ -278,6 +278,7 @@ class ReportAPITest(TestCase):
             "description": "Este informe no tiene archivo PDF",
             "process": self.process.id,
             "user": self.user.id,
+            "estado_reporte": EstadoReporteChoices.EN_GENERACION,
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 200)
@@ -1004,8 +1005,8 @@ class ClientDashboardTest(TestCase):
 
         # Verificar que la tabla de reportes general NO está
         self.assertNotContains(
-            response, "Reportes Asociados</h5>"
-        )  # El título de la tabla de reportes
+            response, "Reportes Asociados</h5>"  # El título de la tabla de reportes
+        )
         self.assertIsNone(response.context.get("reportes_para_tabla"))
 
     def test_dashboard_non_client_user(self):
@@ -1307,6 +1308,17 @@ class EquipmentAPITest(TestCase):
         self.admin_user = User.objects.create_user(
             username="equipadmin", password="password", is_staff=True
         )
+        # Assign a role with manage_equipment permission
+        try:
+            gerente_group = Group.objects.get(name=RoleChoices.GERENTE)
+            self.admin_user.groups.add(gerente_group)
+        except Group.DoesNotExist:
+            # This might happen if migrations haven't run or groups aren't created yet
+            # For testing, we might need to ensure groups are created or mock permissions
+            # For now, let's assume the group exists as per migrations
+            pass
+        self.admin_user.save()  # Ensure the user's group membership is saved
+
         self.process = Process.objects.create(
             user=self.user_client,
             process_type=ProcessTypeChoices.ASESORIA,

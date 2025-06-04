@@ -75,12 +75,10 @@
         </div>
         <div class="card-footer">
             <a href="{% url 'equipos_list' %}" class="btn btn-secondary">Volver</a>
-            {% if not user.roles.all|dictsort:"name"|yesno:"CLIENTE" %}
+            {% if perms.app.manage_equipment %}
                 <a href="{% url 'equipos_update' equipo.id %}" class="btn btn-warning">Editar Equipo</a>
                 <a href="{% url 'equipos_delete' equipo.id %}" class="btn btn-danger">Eliminar Equipo</a>
-            {% endif %}
-
-            {% if user.roles.all|dictsort:"name"|yesno:"CLIENTE" %}
+            {% else %}
                 {% if equipo.process and equipo.process.process_type == "control_calidad" %}
                     <a href="{% url 'process_detail' equipo.process.id %}" class="btn btn-info">Ver Detalles del Control de Calidad</a>
                     {% if equipo.process.reports.all %}
@@ -99,7 +97,9 @@
                         <span class="ms-2 fst-italic text-muted">Aún no hay informe para este proceso.</span>
                     {% endif %}
                 {% else %}
-                    <a href="{% url 'process_detail' equipo.process.id %}" class="btn btn-info">Ver Detalles del Proceso</a>
+                    {% if equipo.process %}
+                        <a href="{% url 'process_detail' equipo.process.id %}" class="btn btn-info">Ver Detalles del Proceso</a>
+                    {% endif %}
                     {% if equipo.process.reports.all %}
                         <a href="{% url 'report_detail' equipo.process.reports.last.id %}" class="btn btn-primary">Ver Último Informe</a>
                     {% else %}

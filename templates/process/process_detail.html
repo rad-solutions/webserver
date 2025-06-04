@@ -31,7 +31,7 @@
         </div>
         <div class="card-footer">
             <a href="{% url 'process_list' %}" class="btn btn-secondary">Volver</a>
-            {% if not user.roles.all|dictsort:"name"|yesno:"CLIENTE" %}
+            {% if perms.app.manage_equipment %}
             <a href="{% url 'process_update' process.id %}" class="btn btn-warning">Editar</a>
             <a href="{% url 'process_delete' process.id %}" class="btn btn-danger">Eliminar</a>
             {% endif %}

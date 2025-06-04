@@ -36,7 +36,7 @@
 
         <div class="card-footer">
             <a href="{% url 'report_list' %}" class="btn btn-secondary">Volver</a>
-            {% if not user.roles.all|dictsort:"name"|yesno:"CLIENTE" %}
+            {% if perms.app.change_report %}
             <a href="{% url 'report_update' report.id %}" class="btn btn-warning">Editar</a>
             <a href="{% url 'report_delete' report.id %}" class="btn btn-danger">Eliminar</a>
             {% endif %}

@@ -195,6 +195,17 @@ class UserDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     permission_required = "app.view_user"
     raise_exception = True
 
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return redirect_to_login(
+                self.request.get_full_path(),
+                self.get_login_url(),
+                self.get_redirect_field_name(),
+            )
+        # User is authenticated, but lacks permission.
+        # Delegate to PermissionRequiredMixin's original behavior.
+        return PermissionRequiredMixin.handle_no_permission(self)
+
 
 class UserCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = User
@@ -226,6 +237,17 @@ class UserUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     permission_required = "app.change_user"
     raise_exception = True
 
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return redirect_to_login(
+                self.request.get_full_path(),
+                self.get_login_url(),
+                self.get_redirect_field_name(),
+            )
+        # User is authenticated, but lacks permission.
+        # Delegate to PermissionRequiredMixin's original behavior.
+        return PermissionRequiredMixin.handle_no_permission(self)
+
 
 class UserDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
     model = User
@@ -234,6 +256,17 @@ class UserDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
     login_url = "/login/"
     permission_required = "app.delete_user"
     raise_exception = True
+
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return redirect_to_login(
+                self.request.get_full_path(),
+                self.get_login_url(),
+                self.get_redirect_field_name(),
+            )
+        # User is authenticated, but lacks permission.
+        # Delegate to PermissionRequiredMixin's original behavior.
+        return PermissionRequiredMixin.handle_no_permission(self)
 
 
 # Report Views
@@ -564,12 +597,25 @@ class EquiposDetailView(LoginRequiredMixin, DetailView):
     login_url = "/login/"
 
 
-class EquiposCreateView(LoginRequiredMixin, CreateView):
+class EquiposCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = Equipment
     form_class = EquipmentForm
     template_name = "equipos/equipos_form.html"
     success_url = reverse_lazy("equipos_list")
     login_url = "/login/"
+    permission_required = "app.manage_equipment"
+    raise_exception = True
+
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return redirect_to_login(
+                self.request.get_full_path(),
+                self.get_login_url(),
+                self.get_redirect_field_name(),
+            )
+        # User is authenticated, but lacks permission.
+        # Delegate to PermissionRequiredMixin's original behavior.
+        return PermissionRequiredMixin.handle_no_permission(self)
 
     def form_valid(self, form):
         try:
@@ -585,19 +631,45 @@ class EquiposCreateView(LoginRequiredMixin, CreateView):
             return self.form_invalid(form)
 
 
-class EquiposDeleteView(LoginRequiredMixin, DeleteView):
+class EquiposDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
     model = Equipment
     template_name = "equipos/equipos_confirm_delete.html"
     success_url = reverse_lazy("equipos_list")
     login_url = "/login/"
+    permission_required = "app.manage_equipment"
+    raise_exception = True
+
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return redirect_to_login(
+                self.request.get_full_path(),
+                self.get_login_url(),
+                self.get_redirect_field_name(),
+            )
+        # User is authenticated, but lacks permission.
+        # Delegate to PermissionRequiredMixin's original behavior.
+        return PermissionRequiredMixin.handle_no_permission(self)
 
 
-class EquiposUpdateView(LoginRequiredMixin, UpdateView):
+class EquiposUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = Equipment
     form_class = EquipmentForm
     template_name = "equipos/equipos_form.html"
     success_url = reverse_lazy("equipos_list")
     login_url = "/login/"
+    permission_required = "app.manage_equipment"
+    raise_exception = True
+
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return redirect_to_login(
+                self.request.get_full_path(),
+                self.get_login_url(),
+                self.get_redirect_field_name(),
+            )
+        # User is authenticated, but lacks permission.
+        # Delegate to PermissionRequiredMixin's original behavior.
+        return PermissionRequiredMixin.handle_no_permission(self)
 
 
 # Process Views

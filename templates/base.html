@@ -31,7 +31,7 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'home' %}">Inicio</a>
                     </li>
-                    {% if user.roles.all|dictsort:"name"|yesno:"CLIENTE" %}
+                    {% if not perms.app.change_report %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'report_list' %}">Mis Reportes</a>
                     </li>
@@ -51,9 +51,11 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'equipos_list' %}">Equipos</a>
                     </li>
+                    {% if perms.app.add_external_user %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'user_list' %}">Usuarios</a>
                     </li>
+                    {% endif %}
                     {% endif %}
                 </ul>
                 {% endif %}
