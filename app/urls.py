@@ -1,6 +1,7 @@
 from django.urls import path
 
 from app.views import (
+    AnotacionCreateView,
     CustomLoginView,
     EquiposCreateView,
     EquiposDeleteView,
@@ -52,6 +53,9 @@ urlpatterns = [
     ),
     path(
         "processes/<int:pk>/delete/", ProcessDeleteView.as_view(), name="process_delete"
+    ),
+    path(
+        "processes/anotacion/", AnotacionCreateView.as_view(), name="anotacion_create"
     ),
     # Equipment URLs
     path("equipos/", EquiposListView.as_view(), name="equipos_list"),

@@ -17,6 +17,7 @@ from django.views.generic import (
 )
 
 from .models import (
+    Anotacion,
     Equipment,
     Process,
     ProcessStatusChoices,
@@ -57,6 +58,17 @@ class ProcessForm(forms.ModelForm):
     class Meta:
         model = Process
         fields = ["process_type", "estado", "user", "fecha_final"]
+        widgets = {
+            "fecha_final": forms.DateTimeInput(
+                attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"
+            ),
+        }
+
+
+class AnotacionForm(forms.ModelForm):
+    class Meta:
+        model = Anotacion
+        fields = ["contenido", "usuario", "proceso"]
         widgets = {
             "fecha_final": forms.DateTimeInput(
                 attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"
@@ -796,3 +808,24 @@ class ProcessUpdateView(LoginRequiredMixin, UpdateView):
     template_name = "process/process_form.html"
     success_url = reverse_lazy("process_list")
     login_url = "/login/"
+
+
+class AnotacionCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    model = Anotacion
+    form_class = AnotacionForm
+    template_name = "process/anotacion_create.html"
+    success_url = reverse_lazy("process_list")
+    login_url = "/login/"
+    permission_required = "app.add_anotacion"
+    raise_exception = True
+
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return redirect_to_login(
+                self.request.get_full_path(),
+                self.get_login_url(),
+                self.get_redirect_field_name(),
+            )
+        # User is authenticated, but lacks permission.
+        # Delegate to PermissionRequiredMixin's original behavior.
+        return PermissionRequiredMixin.handle_no_permission(self)

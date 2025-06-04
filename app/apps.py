@@ -16,6 +16,7 @@ ROLES_PERMISSIONS = {
         ("manage_equipment", "equipment", "app"),
         ("view_report", "report", "app"),
         ("change_report", "report", "app"),
+        ("add_anotacion", "anotacion", "app"),
     ],
     "director_tecnico": [
         ("manage_equipment", "equipment", "app"),
@@ -23,17 +24,20 @@ ROLES_PERMISSIONS = {
         ("view_report", "report", "app"),
         ("change_report", "report", "app"),
         ("approve_report", "report", "app"),
+        ("add_anotacion", "anotacion", "app"),
     ],
     "personal_tecnico_apoyo": [
         ("manage_equipment", "equipment", "app"),
         ("upload_report", "report", "app"),
         ("view_report", "report", "app"),
         ("change_report", "report", "app"),
+        ("add_anotacion", "anotacion", "app"),
     ],
     "personal_administrativo": [
         ("add_external_user", "user", "app"),
         ("view_report", "report", "app"),
         ("change_report", "report", "app"),
+        ("add_anotacion", "anotacion", "app"),
     ],
 }
 
