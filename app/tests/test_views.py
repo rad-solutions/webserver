@@ -729,22 +729,22 @@ class ProtectedResourceTest(TestCase):
         for name, url in urls_to_test.items():
             with self.subTest(url_name=name):
                 response = self.client.get(url)
-                self.assertEqual(response.status_code, 403, f"Failed for GET {url}")
-                # self.assertTrue(
-                #     response.url.startswith("/login/"), f"Failed for GET {url}"
-                # )
+                self.assertEqual(response.status_code, 302, f"Failed for GET {url}")
+                self.assertTrue(
+                    response.url.startswith("/login/"), f"Failed for GET {url}"
+                )
 
                 # Para vistas create, update, delete, también probar POST si es relevante
                 # (aunque DeleteView y UpdateView suelen requerir GET primero para la confirmación/formulario)
                 if "create" in name or "update" in name or "delete" in name:
                     response_post = self.client.post(url, {})
                     self.assertEqual(
-                        response_post.status_code, 403, f"Failed for POST {url}"
+                        response_post.status_code, 302, f"Failed for POST {url}"
                     )
-                    # self.assertTrue(
-                    #     response_post.url.startswith("/login/"),
-                    #     f"Failed for POST {url}",
-                    # )
+                    self.assertTrue(
+                        response_post.url.startswith("/login/"),
+                        f"Failed for POST {url}",
+                    )
 
 
 class ClientDashboardTest(TestCase):
