@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from ..models import (
+    Anotacion,
     Equipment,
     EstadoEquipoChoices,
     EstadoReporteChoices,
@@ -19,6 +20,7 @@ from ..models import (
     RoleChoices,
     User,
 )
+from ..views import AnotacionForm
 
 
 class ReportAPITest(TestCase):
@@ -1027,12 +1029,14 @@ class ClientDashboardTest(TestCase):
 class ProcessAPITest(TestCase):
     def setUp(self):
         self.user_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        self.user_gerente, _ = Role.objects.get_or_create(name=RoleChoices.GERENTE)
         self.user = User.objects.create_user(username="procuser", password="password")
         self.user.roles.add(self.user_cliente)
 
         self.admin_user = User.objects.create_user(
             username="admin_proc", password="password", is_staff=True
         )
+        self.admin_user.roles.add(self.user_gerente)
         self.other_user = User.objects.create_user(
             username="otherprocuser", password="password"
         )
@@ -1047,6 +1051,33 @@ class ProcessAPITest(TestCase):
         self.proc1.fecha_inicio = datetime(2023, 3, 10, tzinfo=timezone.utc)
         self.proc1.fecha_final = datetime(2023, 9, 15, tzinfo=timezone.utc)
         self.proc1.save()
+
+        # Anotaciones para el proceso 1
+        self.anotacion1_p1 = Anotacion.objects.create(
+            proceso=self.proc1,
+            usuario=self.admin_user,
+            contenido="Primera anotación para P1",
+            fecha_creacion=datetime(
+                2023, 1, 1, 10, 0, 0, tzinfo=timezone.utc
+            ),  # Fecha explícita
+        )
+        self.anotacion2_p1 = Anotacion.objects.create(
+            proceso=self.proc1,
+            usuario=self.user,
+            contenido="Segunda anotación para P1",
+            fecha_creacion=datetime(
+                2023, 1, 2, 11, 0, 0, tzinfo=timezone.utc
+            ),  # Fecha explícita
+        )
+        # Forzar la actualización de fecha_creacion si auto_now_add interfiere con fechas explícitas
+        Anotacion.objects.filter(id=self.anotacion1_p1.id).update(
+            fecha_creacion=datetime(2023, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
+        )
+        Anotacion.objects.filter(id=self.anotacion2_p1.id).update(
+            fecha_creacion=datetime(2023, 1, 2, 11, 0, 0, tzinfo=timezone.utc)
+        )
+        self.anotacion1_p1.refresh_from_db()
+        self.anotacion2_p1.refresh_from_db()
 
         self.proc2 = Process.objects.create(
             user=self.user,
@@ -1295,6 +1326,98 @@ class ProcessAPITest(TestCase):
         # y luego aplica los filtros de fecha del proceso.
         self.assertEqual(len(equipos_en_contexto), 1)
         self.assertIn(self.eq_p3_admin, equipos_en_contexto)
+
+    def test_process_detail_view_shows_anotaciones(self):
+        self.client.login(username="clientuser", password="password123")
+        url = reverse("process_detail", args=[self.proc1.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "process/process_detail.html")
+        self.assertContains(response, self.anotacion1_p1.contenido)
+        self.assertContains(response, self.anotacion2_p1.contenido)
+
+        # Verificar el orden (la más reciente primero)
+        # El contenido de la anotacion2 (más reciente) debe aparecer antes que el de la anotacion1
+        content_str = response.content.decode("utf-8")
+        pos_anotacion2 = content_str.find(self.anotacion2_p1.contenido)
+        pos_anotacion1 = content_str.find(self.anotacion1_p1.contenido)
+        self.assertTrue(
+            pos_anotacion1 != -1 and pos_anotacion2 != -1,
+            "Ambas anotaciones deben estar en la respuesta",
+        )
+        self.assertTrue(
+            pos_anotacion2 < pos_anotacion1,
+            "La anotación más reciente debe aparecer primero.",
+        )
+
+        # Verificar enlace para agregar anotación (si el usuario tiene permiso)
+        # El cliente no tiene permiso para añadir anotaciones en este setup.
+        self.assertNotContains(
+            response, reverse("anotacion_create", kwargs={"process_id": self.proc1.id})
+        )
+
+        # Probar con usuario que sí tiene permiso
+        self.client.logout()
+        self.client.login(username="admin_proc", password="password")
+        url = reverse("process_detail", args=[self.proc1.id])
+        response_manager = self.client.get(url)
+        self.assertEqual(response_manager.status_code, 200)
+        self.assertContains(
+            response_manager,
+            reverse("anotacion_create", kwargs={"process_id": self.proc1.id}),
+        )
+
+    def test_anotacion_create_for_process_view_get(self):
+        self.client.login(
+            username="admin_proc", password="password"
+        )  # Usuario con permiso
+        url = reverse("anotacion_create", kwargs={"process_id": self.proc1.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "process/anotacion_form.html")
+        self.assertIsInstance(response.context["form"], AnotacionForm)
+        self.assertEqual(response.context["proceso"], self.proc1)
+
+    def test_anotacion_create_for_process_view_post(self):
+        self.client.login(username="admin_proc", password="password")
+        url = reverse("anotacion_create", kwargs={"process_id": self.proc1.id})
+        initial_anotaciones_count = Anotacion.objects.filter(proceso=self.proc1).count()
+        data = {
+            "contenido": "Nueva anotación desde test POST",
+        }
+        response = self.client.post(url, data)
+
+        # Debería redirigir a process_detail
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("process_detail", args=[self.proc1.id]))
+
+        self.assertEqual(
+            Anotacion.objects.filter(proceso=self.proc1).count(),
+            initial_anotaciones_count + 1,
+        )
+        nueva_anotacion = (
+            Anotacion.objects.filter(proceso=self.proc1)
+            .order_by("-fecha_creacion")
+            .first()
+        )
+        self.assertEqual(nueva_anotacion.contenido, "Nueva anotación desde test POST")
+        self.assertEqual(
+            nueva_anotacion.usuario, self.admin_user
+        )  # Asignado automáticamente
+        self.assertEqual(nueva_anotacion.proceso, self.proc1)  # Asignado desde URL
+
+    def test_anotacion_create_for_process_view_no_permission(self):
+        self.client.login(
+            username="procuser", password="password"
+        )  # Usuario SIN permiso
+        url = reverse("anotacion_create", kwargs={"process_id": self.proc1.id})
+        response = self.client.get(url)
+        self.assertEqual(
+            response.status_code, 403
+        )  # O la redirección a login si raise_exception=False
+
+        response_post = self.client.post(url, {"contenido": "Intento fallido"})
+        self.assertEqual(response_post.status_code, 403)
 
 
 class EquipmentAPITest(TestCase):

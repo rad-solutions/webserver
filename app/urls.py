@@ -55,7 +55,9 @@ urlpatterns = [
         "processes/<int:pk>/delete/", ProcessDeleteView.as_view(), name="process_delete"
     ),
     path(
-        "processes/anotacion/", AnotacionCreateView.as_view(), name="anotacion_create"
+        "processes/<int:process_id>/anotacion/create/",
+        AnotacionCreateView.as_view(),
+        name="anotacion_create",
     ),
     # Equipment URLs
     path("equipos/", EquiposListView.as_view(), name="equipos_list"),

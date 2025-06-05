@@ -6,7 +6,7 @@ from django.contrib.auth import logout
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.views import LoginView, redirect_to_login
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
     CreateView,
@@ -68,7 +68,7 @@ class ProcessForm(forms.ModelForm):
 class AnotacionForm(forms.ModelForm):
     class Meta:
         model = Anotacion
-        fields = ["contenido", "usuario", "proceso"]
+        fields = ["contenido"]
         widgets = {
             "fecha_final": forms.DateTimeInput(
                 attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"
@@ -813,11 +813,30 @@ class ProcessUpdateView(LoginRequiredMixin, UpdateView):
 class AnotacionCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = Anotacion
     form_class = AnotacionForm
-    template_name = "process/anotacion_create.html"
-    success_url = reverse_lazy("process_list")
+    template_name = "process/anotacion_form.html"
     login_url = "/login/"
     permission_required = "app.add_anotacion"
     raise_exception = True
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        process_id = self.kwargs.get("process_id")
+        context["proceso"] = get_object_or_404(Process, id=process_id)
+        return context
+
+    def form_valid(self, form):
+        process_id = self.kwargs.get("process_id")
+        proceso_obj = get_object_or_404(Process, id=process_id)
+
+        form.instance.proceso = proceso_obj
+        form.instance.usuario = self.request.user  # Asignar el usuario logueado
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        # Redirigir de vuelta a la página de detalle del proceso
+        return reverse_lazy(
+            "process_detail", kwargs={"pk": self.kwargs.get("process_id")}
+        )
 
     def handle_no_permission(self):
         if not self.request.user.is_authenticated:
