@@ -46,6 +46,7 @@ class ReportForm(forms.ModelForm):
             "pdf_file",
             "user",
             "process",
+            "equipment",
             "estado_reporte",
             "fecha_vencimiento",
         ]
@@ -316,8 +317,21 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         end_date_str = self.request.GET.get("end_date")
         equipment_id_filter = self.request.GET.get("equipment_id")
 
+        # Variable para saber si el filtro de equipo se aplicó y tuvo éxito
+        equipment_filter_applied_successfully = False
+
+        if equipment_id_filter:
+            try:
+                equipment_id = int(equipment_id_filter)
+                equipo = Equipment.objects.get(id=equipment_id)
+                queryset = equipo.get_quality_control_history()
+                equipment_filter_applied_successfully = True
+            except (ValueError, TypeError, Equipment.DoesNotExist):
+                # Si equipment_id no es un entero válido, no aplicar este filtro
+                pass
+
         # Filtrar por tipo de proceso
-        if process_type_filter != "todos":
+        if not equipment_filter_applied_successfully and process_type_filter != "todos":
             queryset = queryset.filter(process__process_type=process_type_filter)
 
         # Filtrar por fecha de inicio
@@ -335,15 +349,6 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 queryset = queryset.filter(created_at__date__lte=end_date)
             except ValueError:
                 pass  # Ignorar fecha inválida
-
-        if equipment_id_filter:
-            try:
-                equipment_id = int(equipment_id_filter)
-                queryset = queryset.filter(process__equipment__id=equipment_id)
-
-            except (ValueError, TypeError):
-                # Si equipment_id no es un entero válido, no aplicar este filtro
-                pass
 
         return queryset.order_by("-created_at")
 

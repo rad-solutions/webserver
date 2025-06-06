@@ -116,6 +116,7 @@ class ReportAPITest(TestCase):
         self.report2_calidad_feb = Report.objects.create(
             user=self.user,
             process=self.process_calidad,
+            equipment=self.equipment1_calidad,
             title="Reporte Calidad Febrero",
             pdf_file=SimpleUploadedFile(self.temp_file_name, self.temp_file_content),
             estado_reporte=EstadoReporteChoices.REVISADO,
@@ -236,6 +237,7 @@ class ReportAPITest(TestCase):
                 "pdf_file": pdf,
                 "process": self.process.id,
                 "user": self.user.id,
+                "equipment": self.equipment2_asesoria.id,
                 "estado_reporte": EstadoReporteChoices.EN_GENERACION,
                 "fecha_vencimiento": date.today() + timedelta(days=30),
             }
@@ -516,15 +518,24 @@ class ReportAPITest(TestCase):
         self.assertEqual(response.context["start_date"], start_date_filter)
 
     def test_report_list_view_filter_by_equipment_id(self):
-        """Test ReportListView filtrando por ID de equipo."""
+        """Test ReportListView filtrando por ID de equipo.
+
+        Debe mostrar solo el historial de control de calidad para ese equipo.
+        """
         self.client.login(username="testuser", password="testpassword")
-        # Filtrar por equipment1_calidad (asociado a process_calidad, que tiene report2_calidad_feb)
+        # Asumiendo que report2_calidad_feb está asociado a equipment1_calidad
+        # y es un reporte de control de calidad.
         url = reverse("report_list") + f"?equipment_id={self.equipment1_calidad.id}"
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         reports_in_context = response.context["reports"]
+
+        # Verificar que solo se listen los reportes de CC del equipo especificado
+        # y que el método get_quality_control_history() los devuelva.
+        # Si solo hay uno (report2_calidad_feb):
         self.assertEqual(len(reports_in_context), 1)
         self.assertIn(self.report2_calidad_feb, reports_in_context)
+
         self.assertNotIn(self.report1_asesoria_jan, reports_in_context)
         self.assertNotIn(self.report3_asesoria_mar, reports_in_context)
         self.assertEqual(
@@ -534,11 +545,18 @@ class ReportAPITest(TestCase):
         self.assertEqual(
             response.context["filtered_equipment"], self.equipment1_calidad
         )
+        # El process_type seleccionado debería ser 'todos' o no estar presente si el filtro de equipo tuvo prioridad.
+        # La vista actual lo deja como 'todos' si no se especifica en la URL.
+        self.assertEqual(response.context["selected_process_type"], "todos")
 
     def test_report_list_view_filter_by_equipment_id_and_process_type(self):
-        """Test ReportListView filtrando por ID de equipo y tipo de proceso."""
+        """Test ReportListView con ID de equipo y tipo de proceso.
+
+        Si equipment_id es válido, el process_type de la URL es ignorado
+        y se usa equipo.get_quality_control_history().
+        """
         self.client.login(username="testuser", password="testpassword")
-        # Filtrar por equipment1_calidad Y process_type=control_calidad
+        # Filtrar por equipment1_calidad Y process_type=control_calidad (que coincide)
         url = (
             reverse("report_list")
             + f"?equipment_id={self.equipment1_calidad.id}&process_type={self.process_type_calidad}"
@@ -546,20 +564,30 @@ class ReportAPITest(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         reports_in_context = response.context["reports"]
+
+        # Debería devolver solo los reportes de CC de equipment1_calidad
         self.assertEqual(len(reports_in_context), 1)
         self.assertIn(self.report2_calidad_feb, reports_in_context)
+
         self.assertEqual(
             str(response.context["selected_equipment_id"]),
             str(self.equipment1_calidad.id),
         )
+        # Aunque process_type se pasó en la URL, el contexto reflejará lo que se usó para el filtro.
+        # Dado que equipment_id tuvo prioridad, selected_process_type en el contexto
+        # será el que se pasó en la URL, pero el filtrado real fue por get_quality_control_history.
         self.assertEqual(
             response.context["selected_process_type"], self.process_type_calidad
         )
 
     def test_report_list_view_filter_by_equipment_id_wrong_process_type(self):
-        """Test ReportListView con ID de equipo y un tipo de proceso que no coincide."""
+        """Test ReportListView con ID de equipo y un tipo de proceso que no coincide.
+
+        Si equipment_id es válido, el process_type de la URL es ignorado
+        y se usa equipo.get_quality_control_history().
+        """
         self.client.login(username="testuser", password="testpassword")
-        # Filtrar por equipment1_calidad (cuyo proceso es 'control_calidad') pero pedir 'asesoria'
+        # Filtrar por equipment1_calidad pero pedir 'asesoria'
         url = (
             reverse("report_list")
             + f"?equipment_id={self.equipment1_calidad.id}&process_type={self.process_type_asesoria}"
@@ -567,7 +595,12 @@ class ReportAPITest(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         reports_in_context = response.context["reports"]
-        self.assertEqual(len(reports_in_context), 0)  # No debería haber resultados
+
+        # Debería devolver solo los reportes de CC de equipment1_calidad,
+        # ignorando el process_type='asesoria' de la URL.
+        self.assertEqual(len(reports_in_context), 1)
+        self.assertIn(self.report2_calidad_feb, reports_in_context)
+
         self.assertEqual(
             str(response.context["selected_equipment_id"]),
             str(self.equipment1_calidad.id),
@@ -577,21 +610,76 @@ class ReportAPITest(TestCase):
         )
 
     def test_report_list_view_filter_by_non_existent_equipment_id(self):
-        """Test ReportListView con un ID de equipo que no existe."""
+        """Test ReportListView con un ID de equipo que no existe.
+
+        En este caso, el filtro de equipo falla, y se aplican los filtros generales.
+        """
         self.client.login(username="testuser", password="testpassword")
         non_existent_equipment_id = 99999
-        url = reverse("report_list") + f"?equipment_id={non_existent_equipment_id}"
+        # Probar con un process_type general para ver si se aplica cuando equipment_id falla
+        url = (
+            reverse("report_list")
+            + f"?equipment_id={non_existent_equipment_id}&process_type={self.process_type_asesoria}"
+        )
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         reports_in_context = response.context["reports"]
-        self.assertEqual(len(reports_in_context), 0)
+
+        # Como equipment_id no existe, se deberían aplicar los otros filtros.
+        # En este caso, process_type=asesoria.
+        self.assertEqual(
+            len(reports_in_context), 2
+        )  # report1_asesoria_jan, report3_asesoria_mar
+        self.assertIn(self.report1_asesoria_jan, reports_in_context)
+        self.assertIn(self.report3_asesoria_mar, reports_in_context)
+        self.assertNotIn(self.report2_calidad_feb, reports_in_context)
+
         self.assertEqual(
             str(response.context["selected_equipment_id"]),
             str(non_existent_equipment_id),
         )
-        self.assertNotIn(
-            "filtered_equipment", response.context
-        )  # No debería encontrar el equipo
+        self.assertNotIn("filtered_equipment", response.context)
+        self.assertEqual(
+            response.context["selected_process_type"], self.process_type_asesoria
+        )
+
+    def test_report_list_view_filter_by_equipment_id_and_dates(self):
+        """Test filtrando por ID de equipo y rango de fechas."""
+        self.client.login(username="testuser", password="testpassword")
+        # Crear otro reporte de CC para equipment1_calidad con fecha diferente
+        report_cc_anterior = Report.objects.create(
+            user=self.user,
+            process=self.process_calidad,  # Mismo proceso que equipment1_calidad
+            equipment=self.equipment1_calidad,
+            title="Reporte Calidad Enero para Equipo1",
+            pdf_file=SimpleUploadedFile("cc_enero.pdf", self.temp_file_content),
+        )
+        report_cc_anterior.created_at = datetime(2024, 1, 20, tzinfo=timezone.utc)
+        report_cc_anterior.save()
+
+        # self.report2_calidad_feb.created_at es 2024-02-20
+        start_date_filter = "2024-02-01"
+        end_date_filter = "2024-02-28"
+
+        url = (
+            reverse("report_list")
+            + f"?equipment_id={self.equipment1_calidad.id}&start_date={start_date_filter}&end_date={end_date_filter}"
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+
+        # Debería obtener el historial de CC de equipment1_calidad y LUEGO filtrar por fecha.
+        self.assertEqual(len(reports_in_context), 1)
+        self.assertIn(self.report2_calidad_feb, reports_in_context)
+        self.assertNotIn(report_cc_anterior, reports_in_context)
+
+        self.assertEqual(
+            str(response.context["selected_equipment_id"]),
+            str(self.equipment1_calidad.id),
+        )
+        self.assertEqual(response.context["start_date"], start_date_filter)
+        self.assertEqual(response.context["end_date"], end_date_filter)
 
 
 class AuthenticationTest(TestCase):

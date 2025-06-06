@@ -164,46 +164,37 @@ class Equipment(models.Model):
     def get_last_quality_control_report(self):
         """Return the last quality control report for this equipment.
 
-        This method relies on the equipment's 'process' field. It fetches
-        the latest report associated with this 'process', but only if the
-        'process' itself is of type 'Control de Calidad' (ProcessTypeChoices.CONTROL_CALIDAD).
+        This method searches through all reports directly associated with this
+        equipment and filters for those linked to a 'Control de Calidad' process.
+        It then returns the most recent one.
 
-        Returns None if the equipment has no 'process' assigned, if the assigned
-        'process' is not a 'Control de Calidad' type, or if no reports are
-        found for that specific process.
+        Returns None if no such reports are found.
         """
-        if (
-            self.process
-            and self.process.process_type == ProcessTypeChoices.CONTROL_CALIDAD
-        ):
-            # Fetches reports linked to the specific 'process' instance currently associated with this equipment.
-            return (
-                Report.objects.filter(process=self.process)
-                .order_by("-created_at")
-                .first()
+        # Access reports directly related to this equipment instance via 'self.reports'
+        # Then filter by the process_type of the associated process
+        return (
+            self.reports.filter(
+                process__process_type=ProcessTypeChoices.CONTROL_CALIDAD
             )
-        return None
+            .order_by("-created_at")
+            .first()
+        )
 
     def get_quality_control_history(self):
         """Return a queryset of all quality control reports for this equipment.
 
         Ordered chronologically by creation date.
 
-        This method relies on the equipment's 'process' field. It fetches
-        all reports associated with this 'process', but only if the 'process'
-        itself is of type 'Control de Calidad' (ProcessTypeChoices.CONTROL_CALIDAD).
+        This method searches through all reports directly associated with this
+        equipment and filters for those linked to a 'Control de Calidad' process.
 
-        Returns an empty queryset if the equipment has no 'process' assigned,
-        or if the assigned 'process' is not a 'Control de Calidad' type,
-        or if no reports are found for that specific process.
+        Returns an empty queryset if no such reports are found.
         """
-        if (
-            self.process
-            and self.process.process_type == ProcessTypeChoices.CONTROL_CALIDAD
-        ):
-            # Fetches reports linked to the specific 'process' instance currently associated with this equipment.
-            return Report.objects.filter(process=self.process).order_by("created_at")
-        return Report.objects.none()
+        # Access reports directly related to this equipment instance via 'self.reports'
+        # Then filter by the process_type of the associated process
+        return self.reports.filter(
+            process__process_type=ProcessTypeChoices.CONTROL_CALIDAD
+        ).order_by("created_at")
 
     def __str__(self):
         return f"{self.nombre} ({self.serial or 'No Serial'}) - Owner: {self.user.username if self.user else 'None'}"

@@ -80,14 +80,16 @@
                 <a href="{% url 'equipos_delete' equipo.id %}" class="btn btn-danger">Eliminar Equipo</a>
             {% else %}
                 {% if equipo.process and equipo.process.process_type == "control_calidad" %}
-                    <a href="{% url 'process_detail' equipo.process.id %}" class="btn btn-info">Ver Detalles del Control de Calidad</a>
-                    {% if equipo.process.reports.all %}
-                        <a href="{% url 'report_detail' equipo.process.reports.last.id %}" class="btn btn-primary">Ver Último Informe de Calidad</a>
-                    {% else %}
-                        <span class="ms-2 fst-italic text-muted">No hay informes para este proceso de calidad.</span>
-                    {% endif %}
+                    {% with ultimo_informe_calidad=equipo.get_last_quality_control_report %}
+                        <a href="{% url 'process_detail' equipo.process.id %}" class="btn btn-info">Ver Detalles del Control de Calidad</a>
+                        {% if ultimo_informe_calidad %}
+                            <a href="{% url 'report_detail' ultimo_informe_calidad.id %}" class="btn btn-primary">Ver Último Informe de Calidad</a>
+                        {% elif equipo.process and equipo.process.process_type == ProcessTypeChoices.CONTROL_CALIDAD %}
+                            <span class="ms-2 fst-italic text-muted">No hay informes para este proceso de calidad.</span>
+                        {% endif %}
+                    {% endwith %}
 
-                    <a href="{% url 'report_list' %}?equipment_id={{ equipo.id }}&process_type=control_calidad" class="btn btn-outline-secondary">Historial de Informes de Calidad</a>
+                    <a href="{% url 'report_list' %}?equipment_id={{ equipo.id }}" class="btn btn-outline-secondary ms-2">Historial de Informes de Calidad</a>
 
                 {% elif equipo.process and equipo.process.process_type == "calculo_blindajes" %}
                     <a href="{% url 'process_detail' equipo.process.id %}" class="btn btn-info">Ver Detalles del Cálculo de Blindajes</a>
