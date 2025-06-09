@@ -294,6 +294,52 @@ class ReportAPITest(TestCase):
         )
         self.assertFormError(form_in_context, "pdf_file", "This field is required.")
 
+    def test_report_create_view_post_invalid_file_type(self):
+        """
+        Test que verifica la validación del tipo de archivo.
+
+        Debe fallar si se sube un archivo que no es PDF.
+        """
+        self.client.login(username="testuser", password="testpassword")
+        url = reverse("report_create")
+        initial_count = Report.objects.count()
+
+        # Crear un archivo temporal .txt
+        txt_content = b"Este no es un archivo PDF."
+        txt_file = SimpleUploadedFile(
+            "test_file.txt", txt_content, content_type="text/plain"
+        )
+
+        data = {
+            "title": "Informe con archivo incorrecto",
+            "description": "Intento de subir un .txt",
+            "pdf_file": txt_file,  # Archivo no PDF
+            "process": self.process.id,
+            "user": self.user.id,
+            "equipment": self.equipment2_asesoria.id,
+            "estado_reporte": EstadoReporteChoices.EN_GENERACION,
+            "fecha_vencimiento": date.today() + timedelta(days=30),
+        }
+        response = self.client.post(url, data, format="multipart")
+
+        self.assertEqual(
+            response.status_code, 200
+        )  # Debería volver a mostrar el formulario
+        self.assertEqual(
+            Report.objects.count(), initial_count
+        )  # No se debe crear el reporte
+        form_in_context = response.context.get("form")
+        self.assertIsNotNone(
+            form_in_context,
+            "El formulario no se encontró en el contexto de la respuesta.",
+        )
+        self.assertTrue(form_in_context.errors, "El formulario debería tener errores.")
+        self.assertFormError(
+            form_in_context,
+            "pdf_file",
+            "Archivo no válido. Solo se permiten archivos PDF.",
+        )
+
     def test_report_update_view_get(self):
         self.client.login(username="testuser", password="testpassword")
         with open(self.temp_file.name, "rb") as temp_file:

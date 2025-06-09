@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import date, datetime, timedelta
 
 from django import forms
@@ -6,6 +7,7 @@ from django.contrib.auth import logout
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.views import LoginView, redirect_to_login
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
@@ -53,6 +55,23 @@ class ReportForm(forms.ModelForm):
         widgets = {
             "fecha_vencimiento": forms.DateInput(attrs={"type": "date"}),
         }
+
+    def clean_pdf_file(self):
+        file = self.cleaned_data.get("pdf_file", False)
+        if file:
+            # Verificar si el archivo tiene un nombre (necesario para obtener la extensión)
+            if not hasattr(file, "name"):
+                raise ValidationError("No se pudo determinar el nombre del archivo.")
+
+            ext = os.path.splitext(file.name)[1]  # Obtiene la extensión del archivo
+            valid_extensions = [".pdf"]
+            if not ext.lower() in valid_extensions:
+                raise ValidationError(
+                    "Archivo no válido. Solo se permiten archivos PDF."
+                )
+        # Si el campo no es obligatorio y no se sube archivo, no hay nada que validar aquí.
+        # Si es obligatorio, la validación de 'required' se maneja antes.
+        return file
 
 
 class ProcessForm(forms.ModelForm):
