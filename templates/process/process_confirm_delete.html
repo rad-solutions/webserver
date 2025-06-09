@@ -17,7 +17,7 @@
             <form method="post">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-danger">Sí, Eliminar</button>
-                <a href="{% url 'process_list' %}" class="btn btn-secondary">Cancelar</a>
+                <a href="javascript:window.history.back();" class="btn btn-secondary">Cancelar</a>
             </form>
         </div>
     </div>

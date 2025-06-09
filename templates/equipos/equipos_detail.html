@@ -74,7 +74,7 @@
             </div>
         </div>
         <div class="card-footer">
-            <a href="{% url 'equipos_list' %}" class="btn btn-secondary">Volver</a>
+            <a href="javascript:window.history.back();" class="btn btn-secondary">Volver</a>
             {% if perms.app.manage_equipment %}
                 <a href="{% url 'equipos_update' equipo.id %}" class="btn btn-warning">Editar Equipo</a>
                 <a href="{% url 'equipos_delete' equipo.id %}" class="btn btn-danger">Eliminar Equipo</a>
