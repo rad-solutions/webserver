@@ -59,8 +59,10 @@
                             <td>{{ report.created_at|date:"d/m/Y H:i" }}</td>
                             <td>
                                 <a href="{% url 'report_detail' report.id %}" class="btn btn-sm btn-info">Ver</a>
+                                {% if perms.app.change_report%}
                                 <a href="{% url 'report_update' report.id %}" class="btn btn-sm btn-warning">Editar</a>
                                 <a href="{% url 'report_delete' report.id %}" class="btn btn-sm btn-danger">Eliminar</a>
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}
