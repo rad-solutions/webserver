@@ -55,6 +55,13 @@ class ClientProfile(models.Model):
         return f"{self.razon_social} ({self.nit})"
 
 
+class PracticeCategoryChoices(models.TextChoices):
+    VETERINARIA = "veterinaria", _("Veterinaria")
+    INDUSTRIAL = "industrial", _("Industrial")
+    MEDICA_CAT1 = "medica_cat1", _("Médica Categoría 1")
+    MEDICA_CAT2 = "medica_cat2", _("Médica Categoría 2")
+
+
 class ProcessTypeChoices(models.TextChoices):
     CALCULO_BLINDAJES = "calculo_blindajes", _("Cálculo de Blindajes")
     CONTROL_CALIDAD = "control_calidad", _("Control de Calidad")
@@ -71,11 +78,17 @@ class ProcessStatusChoices(models.TextChoices):
 
 
 class Process(models.Model):
-
     process_type = models.CharField(
         max_length=20,
         choices=ProcessTypeChoices.choices,
         default=ProcessTypeChoices.OTRO,
+    )
+    practice_category = models.CharField(
+        max_length=30,
+        choices=PracticeCategoryChoices.choices,
+        null=True,
+        blank=True,
+        verbose_name=_("Categoría de Práctica"),
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="processes")
     estado = models.CharField(
@@ -122,11 +135,13 @@ class Process(models.Model):
                 self._create_checklist_items()
 
     def _create_checklist_items(self):
-        """Create checklist items for this process based on its type if they don't already exist."""
+        """Create checklist items for this process based on its type and practice category if they don't already exist."""
         if not self.checklist_items.exists():
-            definitions = ChecklistItemDefinition.objects.filter(
-                process_type=self.process_type
-            )
+            filter_kwargs = {"process_type": self.process_type}
+            # Only filter by practice_category if process_type is ASESORIA
+            if self.process_type == ProcessTypeChoices.ASESORIA:
+                filter_kwargs["practice_category"] = self.practice_category
+            definitions = ChecklistItemDefinition.objects.filter(**filter_kwargs)
             for definition in definitions:
                 ProcessChecklistItem.objects.create(process=self, definition=definition)
 
@@ -191,46 +206,37 @@ class Equipment(models.Model):
     def get_last_quality_control_report(self):
         """Return the last quality control report for this equipment.
 
-        This method relies on the equipment's 'process' field. It fetches
-        the latest report associated with this 'process', but only if the
-        'process' itself is of type 'Control de Calidad' (ProcessTypeChoices.CONTROL_CALIDAD).
+        This method searches through all reports directly associated with this
+        equipment and filters for those linked to a 'Control de Calidad' process.
+        It then returns the most recent one.
 
-        Returns None if the equipment has no 'process' assigned, if the assigned
-        'process' is not a 'Control de Calidad' type, or if no reports are
-        found for that specific process.
+        Returns None if no such reports are found.
         """
-        if (
-            self.process
-            and self.process.process_type == ProcessTypeChoices.CONTROL_CALIDAD
-        ):
-            # Fetches reports linked to the specific 'process' instance currently associated with this equipment.
-            return (
-                Report.objects.filter(process=self.process)
-                .order_by("-created_at")
-                .first()
+        # Access reports directly related to this equipment instance via 'self.reports'
+        # Then filter by the process_type of the associated process
+        return (
+            self.reports.filter(
+                process__process_type=ProcessTypeChoices.CONTROL_CALIDAD
             )
-        return None
+            .order_by("-created_at")
+            .first()
+        )
 
     def get_quality_control_history(self):
         """Return a queryset of all quality control reports for this equipment.
 
         Ordered chronologically by creation date.
 
-        This method relies on the equipment's 'process' field. It fetches
-        all reports associated with this 'process', but only if the 'process'
-        itself is of type 'Control de Calidad' (ProcessTypeChoices.CONTROL_CALIDAD).
+        This method searches through all reports directly associated with this
+        equipment and filters for those linked to a 'Control de Calidad' process.
 
-        Returns an empty queryset if the equipment has no 'process' assigned,
-        or if the assigned 'process' is not a 'Control de Calidad' type,
-        or if no reports are found for that specific process.
+        Returns an empty queryset if no such reports are found.
         """
-        if (
-            self.process
-            and self.process.process_type == ProcessTypeChoices.CONTROL_CALIDAD
-        ):
-            # Fetches reports linked to the specific 'process' instance currently associated with this equipment.
-            return Report.objects.filter(process=self.process).order_by("created_at")
-        return Report.objects.none()
+        # Access reports directly related to this equipment instance via 'self.reports'
+        # Then filter by the process_type of the associated process
+        return self.reports.filter(
+            process__process_type=ProcessTypeChoices.CONTROL_CALIDAD
+        ).order_by("created_at")
 
     def __str__(self):
         return f"{self.nombre} ({self.serial or 'No Serial'}) - Owner: {self.user.username if self.user else 'None'}"
@@ -335,6 +341,13 @@ class ChecklistItemDefinition(models.Model):
         choices=ProcessTypeChoices.choices,
         verbose_name=_("Tipo de Proceso"),
     )
+    practice_category = models.CharField(
+        max_length=30,
+        choices=PracticeCategoryChoices.choices,
+        null=True,
+        blank=True,
+        verbose_name=_("Categoría de Práctica"),
+    )
     name = models.CharField(max_length=255, verbose_name=_("Nombre del Ítem"))
     order = models.PositiveIntegerField(verbose_name=_("Orden"))
     percentage = models.PositiveIntegerField(verbose_name=_("Porcentaje"))
@@ -342,8 +355,11 @@ class ChecklistItemDefinition(models.Model):
     class Meta:
         verbose_name = _("Definición de Ítem de Checklist")
         verbose_name_plural = _("Definiciones de Ítems de Checklist")
-        ordering = ["process_type", "order"]
-        unique_together = [("process_type", "name"), ("process_type", "order")]
+        ordering = ["process_type", "practice_category", "order"]
+        unique_together = [
+            ("process_type", "practice_category", "name"),
+            ("process_type", "practice_category", "order"),
+        ]
 
     def __str__(self):
         return f"{self.get_process_type_display()} - {self.name} ({self.percentage}%)"

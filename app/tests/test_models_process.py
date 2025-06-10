@@ -2,14 +2,316 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
-from app.models import (  # ProcessChecklistItem, # Removed this import; AsesoriaSubtypeChoices, # Removed this import; Role,; RoleChoices
+from app.models import (
     ChecklistItemDefinition,
+    PracticeCategoryChoices,
     Process,
     ProcessStatusChoices,
     ProcessTypeChoices,
 )
 
 User = get_user_model()
+
+
+class AsesoriaChecklistCreationTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.test_user = User.objects.create_user(
+            username="testuser_asesoria_checklist",
+            password="password123",
+            email="test_ac@example.com",
+        )
+
+    def test_create_checklist_items_asesoria_veterinaria(self):
+        """Test checklist creation for Asesoría - Veterinaria."""
+        ChecklistItemDefinition.objects.filter(
+            process_type=ProcessTypeChoices.ASESORIA,
+            practice_category=PracticeCategoryChoices.VETERINARIA,
+        ).delete()
+        # Create definitions for Asesoría - Veterinaria
+        items = [
+            "CARTA SOLICITUD DE LICENCIA (Bogotá no)",
+            "ANEXO 4",
+            "RUT",
+            "CÉDULA Y DIPLOMAS EPR",
+            "PROGRAMA DE PROTECCIÓN RADIOLÓGICA",
+            "ESTUDIO AMBIENTAL",
+            "ESTUDIO MEDIO AMBIENTAL",
+            "CÁLCULO DE BLINDAJES",
+            "PROGRAMA DE VIGILANCIA POST MERCADO",
+            "CERTIFICADO DE CURSO DE PROTECCIÓN RADIOLÓGICA TOES",
+            "CONSTANCIA ASISTENCIA A CURSO SOBRE MANEJO DE EQUIPOS RX",
+            "PROGRAMA DE CAPACITACIÓN EN PROTECCIÓN RADIOLÓGICA",
+            "CERTIFICADO DE DOSIMETRÍA",
+            "EVALUACIÓN DE EMERGENCIAS. (NO APLICA PARA INDUSTRIALES CAT I)",
+            "HOJA DE VIDA DEL EQUIPO/MANTENIMIENTO/FICHA TECNICA/MANUAL DE USUARIO / REGISTRO DE IMPORTACIÓN",
+            "LICENCIA ANTERIOR/PUESTA EN MARCHA O PRUEBAS INICIALES",
+            "PLANO GENERAL",
+        ]
+        percentage = round(100 / len(items), 2)
+        for idx, name in enumerate(items, 1):
+            ChecklistItemDefinition.objects.get_or_create(
+                process_type=ProcessTypeChoices.ASESORIA,
+                practice_category=PracticeCategoryChoices.VETERINARIA,
+                name=name,
+                order=idx,
+                defaults={"percentage": percentage},
+            )
+        process = Process.objects.create(
+            process_type=ProcessTypeChoices.ASESORIA,
+            practice_category=PracticeCategoryChoices.VETERINARIA,
+            user=self.test_user,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        self.assertEqual(process.checklist_items.count(), len(items))
+        for idx, name in enumerate(items, 1):
+            self.assertTrue(
+                process.checklist_items.filter(
+                    definition__name=name, definition__order=idx
+                ).exists()
+            )
+
+    def test_create_checklist_items_asesoria_medica_cat1(self):
+        """Test checklist creation for Asesoría - Médica Categoría 1."""
+        ChecklistItemDefinition.objects.filter(
+            process_type=ProcessTypeChoices.ASESORIA,
+            practice_category=PracticeCategoryChoices.MEDICA_CAT1,
+        ).delete()
+        items = [
+            "ANEXO 3 SOLICITUD DE REGISTRO.",
+            "CEDULA SOLICITANTE Y RUT",
+            "CERTIFICADO REPRESENTANTE LEGAL",
+            "DOCUMENTOS OPR (acta de grado)",
+            "CÁLCULO DE BLINDAJE",
+            "CONTROL DE CALIDAD",
+            "REPORTE DE DOSIMETRÍA.",
+            "NIVELES DE REFERENCIA (anexo)",
+            "PLANO DE LA INSTALACIÓN Revisa:1. Elementos consumibles en cada área 2. Aire o ventilación en cada área Y los demás requerimientos.",
+            "CURSOS DE PROTECCIÓN RADIOLÓGICA DEL PERSONAL.(actas de grado)",
+            "PROGRAMA DE CAPACITACIÓN (anexo asistencia)",
+            "HOJA DE VIDA EQUIPOS - REGISTROS DE MANTENIMIENTO DEL EQUIPO - INVIMA – ",
+            "FORMATO DE PUESTA EN MARCHA (SI EL EQUIPO ES NUEVO)",
+            "MANUAL DE TECNOVIGILANCIA (anexo foreia)",
+            "MANUAL DE PROTECCIÓN RADIOLÓGICA anexo(incidentes -accidentes)",
+            "LICENCIA ANTERIOR DEL EQUIPO (no si el equipo es nuevo) "
+            '("CUNDINAMARCA, si son equipos fabricados antes del 2005 factura o '
+            "certificado de ingreso al inventario de la entidad). o para Cundinamarca – "
+            "inclusión en el inventario.",
+        ]
+        percentage = round(100 / len(items), 2)
+        for idx, name in enumerate(items, 1):
+            ChecklistItemDefinition.objects.get_or_create(
+                process_type=ProcessTypeChoices.ASESORIA,
+                practice_category=PracticeCategoryChoices.MEDICA_CAT1,
+                name=name,
+                order=idx,
+                defaults={"percentage": percentage},
+            )
+        process = Process.objects.create(
+            process_type=ProcessTypeChoices.ASESORIA,
+            practice_category=PracticeCategoryChoices.MEDICA_CAT1,
+            user=self.test_user,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        self.assertEqual(process.checklist_items.count(), len(items))
+        for idx, name in enumerate(items, 1):
+            self.assertTrue(
+                process.checklist_items.filter(
+                    definition__name=name, definition__order=idx
+                ).exists()
+            )
+
+    def test_create_checklist_items_asesoria_medica_cat2(self):
+        """Test checklist creation for Asesoría - Médica Categoría 2."""
+        ChecklistItemDefinition.objects.filter(
+            process_type=ProcessTypeChoices.ASESORIA,
+            practice_category=PracticeCategoryChoices.MEDICA_CAT2,
+        ).delete()
+        items = [
+            "ANEXO 3 SOLICITUD DE REGISTRO.",
+            "CÁMARA DE COMERCIO Y RUT",
+            "CEDULA REPRESENTANTE LEGAL",
+            "DOCUMENTOS OPR (actas de grado)",
+            "CÁLCULO DE BLINDAJE.",
+            "CONTROL DE CALIDAD.",
+            "REPORTE DE DOSIMETRÍA",
+            "PLANO DE LA INSTALACIÓN",
+            "CURSOS DE PROTECCIÓN RADIOLÓGICA DEL PERSONAL.",
+            "PROGRAMA DE CAPACITACIÓN",
+            "NIVELES DE REFERENCIA",
+            "DESCRIPCIÓN SISTEMAS DE SEGURIDAD",
+            "HOJA DE VIDA EQUIPOS - REGISTROS DE MANTENIMIENTO DEL EQUIPO - INVIMA – PERMISO DE IMPORTACIÓN",
+            "1 FORMATO DE PUESTA EN MARCHA (SI EL EQUIPO ES NUEVO).",
+            "MANUAL DE PROTECCIÓN RADIOLÓGICA",
+            "MANUAL DE TECNOVIGILANCIA",
+            "LICENCIA ANTERIOR DEL EQUIPO (no si el equipo es nuevo) REGISTRO",
+            "EVALUACIÓN DE PUESTO DE TRABAJO",
+            "ACEPTACIÓN DE RESPONSABILIDADES OPR",
+        ]
+        percentage = round(100 / len(items), 2)
+        for idx, name in enumerate(items, 1):
+            ChecklistItemDefinition.objects.get_or_create(
+                process_type=ProcessTypeChoices.ASESORIA,
+                practice_category=PracticeCategoryChoices.MEDICA_CAT2,
+                name=name,
+                order=idx,
+                defaults={"percentage": percentage},
+            )
+        process = Process.objects.create(
+            process_type=ProcessTypeChoices.ASESORIA,
+            practice_category=PracticeCategoryChoices.MEDICA_CAT2,
+            user=self.test_user,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        self.assertEqual(process.checklist_items.count(), len(items))
+        for idx, name in enumerate(items, 1):
+            self.assertTrue(
+                process.checklist_items.filter(
+                    definition__name=name, definition__order=idx
+                ).exists()
+            )
+
+    def test_get_progress_percentage_asesoria_medica_cat1(self):
+        """Test progress percentage for Asesoría - Médica Categoría 1 reaches 100%."""
+        ChecklistItemDefinition.objects.filter(
+            process_type=ProcessTypeChoices.ASESORIA,
+            practice_category=PracticeCategoryChoices.MEDICA_CAT1,
+        ).delete()
+        items_data = [
+            ("ANEXO 3 SOLICITUD DE REGISTRO.", 7),
+            ("CEDULA SOLICITANTE Y RUT", 7),
+            ("CERTIFICADO REPRESENTANTE LEGAL", 7),
+            ("DOCUMENTOS OPR (acta de grado)", 7),
+            ("CÁLCULO DE BLINDAJE", 6),
+            ("CONTROL DE CALIDAD", 6),
+            ("REPORTE DE DOSIMETRÍA.", 6),
+            ("NIVELES DE REFERENCIA (anexo)", 6),
+            (
+                "PLANO DE LA INSTALACIÓN Revisa:1. Elementos consumibles en cada área 2. Aire o ventilación en cada área Y los demás requerimientos.",
+                6,
+            ),
+            ("CURSOS DE PROTECCIÓN RADIOLÓGICA DEL PERSONAL.(actas de grado)", 6),
+            ("PROGRAMA DE CAPACITACIÓN (anexo asistencia)", 6),
+            (
+                "HOJA DE VIDA EQUIPOS - REGISTROS DE MANTENIMIENTO DEL EQUIPO - INVIMA – ",
+                6,
+            ),
+            ("FORMATO DE PUESTA EN MARCHA (SI EL EQUIPO ES NUEVO)", 6),
+            ("MANUAL DE TECNOVIGILANCIA (anexo foreia)", 6),
+            ("MANUAL DE PROTECCIÓN RADIOLÓGICA anexo(incidentes -accidentes)", 6),
+            (
+                "LICENCIA ANTERIOR DEL EQUIPO (no si el equipo es nuevo) "
+                '("CUNDINAMARCA, si son equipos fabricados antes del 2005 factura o '
+                "certificado de ingreso al inventario de la entidad). o para Cundinamarca – "
+                "inclusión en el inventario.",
+                6,
+            ),
+        ]  # 4*7 + 12*6 = 28 + 72 = 100
+
+        self.assertEqual(
+            sum(p[1] for p in items_data),
+            100,
+            "Percentages for MEDICA_CAT1 definitions must sum to 100",
+        )
+
+        for idx, (name, percentage) in enumerate(items_data, 1):
+            ChecklistItemDefinition.objects.get_or_create(
+                process_type=ProcessTypeChoices.ASESORIA,
+                practice_category=PracticeCategoryChoices.MEDICA_CAT1,
+                name=name,
+                order=idx,
+                defaults={"percentage": percentage},
+            )
+
+        process = Process.objects.create(
+            process_type=ProcessTypeChoices.ASESORIA,
+            practice_category=PracticeCategoryChoices.MEDICA_CAT1,
+            user=self.test_user,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        self.assertEqual(process.checklist_items.count(), len(items_data))
+        self.assertEqual(
+            process.get_progress_percentage(), 0, "Initial progress should be 0"
+        )
+
+        for item in process.checklist_items.all():
+            item.is_completed = True
+            item.completed_at = timezone.now()
+            item.save()
+
+        self.assertEqual(
+            process.get_progress_percentage(),
+            100,
+            "Progress should be 100% after completing all MEDICA_CAT1 items",
+        )
+
+    def test_get_progress_percentage_asesoria_medica_cat2(self):
+        """Test progress percentage for Asesoría - Médica Categoría 2 reaches 100%."""
+        ChecklistItemDefinition.objects.filter(
+            process_type=ProcessTypeChoices.ASESORIA,
+            practice_category=PracticeCategoryChoices.MEDICA_CAT2,
+        ).delete()
+        items_data = [
+            ("ANEXO 3 SOLICITUD DE REGISTRO.", 6),
+            ("CÁMARA DE COMERCIO Y RUT", 6),
+            ("CEDULA REPRESENTANTE LEGAL", 6),
+            ("DOCUMENTOS OPR (actas de grado)", 6),
+            ("CÁLCULO DE BLINDAJE.", 6),
+            ("CONTROL DE CALIDAD.", 5),
+            ("REPORTE DE DOSIMETRÍA", 5),
+            ("PLANO DE LA INSTALACIÓN", 5),
+            ("CURSOS DE PROTECCIÓN RADIOLÓGICA DEL PERSONAL.", 5),
+            ("PROGRAMA DE CAPACITACIÓN", 5),
+            ("NIVELES DE REFERENCIA", 5),
+            ("DESCRIPCIÓN SISTEMAS DE SEGURIDAD", 5),
+            (
+                "HOJA DE VIDA EQUIPOS - REGISTROS DE MANTENIMIENTO DEL EQUIPO - INVIMA – PERMISO DE IMPORTACIÓN",
+                5,
+            ),
+            ("1 FORMATO DE PUESTA EN MARCHA (SI EL EQUIPO ES NUEVO).", 5),
+            ("MANUAL DE PROTECCIÓN RADIOLÓGICA", 5),
+            ("MANUAL DE TECNOVIGILANCIA", 5),
+            ("LICENCIA ANTERIOR DEL EQUIPO (no si el equipo es nuevo) REGISTRO", 5),
+            ("EVALUACIÓN DE PUESTO DE TRABAJO", 5),
+            ("ACEPTACIÓN DE RESPONSABILIDADES OPR", 5),
+        ]  # 5*6 + 14*5 = 30 + 70 = 100
+
+        self.assertEqual(
+            sum(p[1] for p in items_data),
+            100,
+            "Percentages for MEDICA_CAT2 definitions must sum to 100",
+        )
+
+        for idx, (name, percentage) in enumerate(items_data, 1):
+            ChecklistItemDefinition.objects.get_or_create(
+                process_type=ProcessTypeChoices.ASESORIA,
+                practice_category=PracticeCategoryChoices.MEDICA_CAT2,
+                name=name,
+                order=idx,
+                defaults={"percentage": percentage},
+            )
+
+        process = Process.objects.create(
+            process_type=ProcessTypeChoices.ASESORIA,
+            practice_category=PracticeCategoryChoices.MEDICA_CAT2,
+            user=self.test_user,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        self.assertEqual(process.checklist_items.count(), len(items_data))
+        self.assertEqual(
+            process.get_progress_percentage(), 0, "Initial progress should be 0"
+        )
+
+        for item in process.checklist_items.all():
+            item.is_completed = True
+            item.completed_at = timezone.now()
+            item.save()
+
+        self.assertEqual(
+            process.get_progress_percentage(),
+            100,
+            "Progress should be 100% after completing all MEDICA_CAT2 items",
+        )
 
 
 class ProcessChecklistModelTests(TestCase):
