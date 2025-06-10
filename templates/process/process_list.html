@@ -20,10 +20,11 @@
     </div>
 
     <form method="get" class="mb-4 p-3 border rounded bg-light">
-        <div class="row g-3 align-items-end">
-            <div class="col-md-2">
-                <label for="process_type" class="form-label">Filtrar por tipo de proceso:</label>
-                <select name="process_type" id="process_type" class="form-select">
+        <div class="row g-3 align-items-center mb-3">
+            {# Filtro por Tipo de Proceso #}
+            <div class="col-md-3">
+                <label for="process_type" class="form-label">Tipo de Proceso:</label>
+                <select name="process_type" id="process_type" class="form-select form-select-sm">
                     {% for value, label in process_types %}
                     <option value="{{ value }}" {% if value == selected_process_type %}selected{% endif %}>
                         {{ label }}
@@ -31,26 +32,50 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
-                <label for="inicio_start_date" class="form-label">Fecha Inicio Desde:</label>
-                <input type="date" name="inicio_start_date" id="inicio_start_date" value="{{ inicio_start_date }}" class="form-control">
+
+            {# Filtro por Estado del Proceso #}
+            <div class="col-md-3">
+                <label for="estado" class="form-label">Estado:</label>
+                <select name="estado" id="estado" class="form-select form-select-sm">
+                    {% for value, label in process_statuses %} {# Necesitarás pasar 'process_statuses' desde la vista #}
+                    <option value="{{ value }}" {% if value == selected_estado %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
             </div>
-            <div class="col-md-2">
-                <label for="inicio_end_date" class="form-label">Fecha Inicio Hasta:</label>
-                <input type="date" name="inicio_end_date" id="inicio_end_date" value="{{ inicio_end_date }}" class="form-control">
+
+            {# Checkbox para Filtro por Fecha de Inicio #}
+            <div class="col-md-3">
+                <div class="form-check mt-4">
+                    <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_inicio_date" data-bs-toggle="collapse" data-bs-target="#inicio_date_fields" aria-expanded="false" aria-controls="inicio_date_fields" {% if inicio_start_date or inicio_end_date %}checked{% endif %}>
+                    <label class="form-check-label" for="toggle_inicio_date">
+                        Fecha Inicio
+                    </label>
+                </div>
             </div>
-            <div class="col-md-2">
-                <label for="fin_start_date" class="form-label">Fecha Finalización Desde:</label>
-                <input type="date" name="fin_start_date" id="fin_start_date" value="{{ fin_start_date }}" class="form-control">
-            </div>
-            <div class="col-md-2">
-                <label for="fin_end_date" class="form-label">Fecha Finalización Hasta:</label>
-                <input type="date" name="fin_end_date" id="fin_end_date" value="{{ fin_end_date }}" class="form-control">
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-info w-100">Filtrar</button>
+
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-info w-100 mt-4">Filtrar</button>
             </div>
         </div>
+        <hr class="my-3">
+
+        {# Campos para Fecha de Inicio #}
+        <div class="row g-3 align-items-end collapse {% if inicio_start_date or inicio_end_date %}show{% endif %}" id="inicio_date_fields">
+            <div class="col-md-3">
+                <h5>Fecha de Inicio</h5>
+            </div>
+            <div class="col-md-3">
+                <label for="inicio_start_date" class="form-label">Desde:</label>
+                <input type="date" name="inicio_start_date" id="inicio_start_date" value="{{ inicio_start_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3">
+                <label for="inicio_end_date" class="form-label">Hasta:</label>
+                <input type="date" name="inicio_end_date" id="inicio_end_date" value="{{ inicio_end_date }}" class="form-control form-control-sm">
+            </div>
+        </div>
+        {% if inicio_start_date or inicio_end_date %}<hr class="my-3">{% endif %}
     </form>
 
     <h5>

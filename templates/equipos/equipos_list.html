@@ -13,9 +13,9 @@
     </div>
 
     <form method="get" class="mb-4 p-3 border rounded bg-light">
-        <div class="row g-3 align-items-end">
-            <div class="col-md-4">
-                <label for="process_type" class="form-label">Filtrar por tipo de proceso:</label>
+        <div class="row g-3 align-items-center mb-3">
+            <div class="col-md-2">
+                <label for="process_type" class="form-label">Filtrar por tipo de proceso asociado:</label>
                 <select name="process_type" id="process_type" class="form-select">
                     {% for value, label in process_types %}
                     <option value="{{ value }}" {% if value == selected_process_type %}selected{% endif %}>
@@ -25,40 +25,115 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <label for="inicio_adq_date" class="form-label">Fecha Adquisición Desde:</label>
-                <input type="date" name="inicio_adq_date" id="inicio_adq_date" value="{{ inicio_adq_date }}" class="form-control">
+                <div class="form-check">
+                    <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_adq_date" data-bs-toggle="collapse" data-bs-target="#adq_date_fields" aria-expanded="false" aria-controls="adq_date_fields" {% if inicio_adq_date or end_adq_date %}checked{% endif %}>
+                    <label class="form-check-label" for="toggle_adq_date">
+                        Filtrar por Fecha de Adquisición
+                    </label>
+                </div>
             </div>
             <div class="col-md-2">
-                <label for="end_adq_date" class="form-label">Fecha Adquisición Hasta:</label>
-                <input type="date" name="end_adq_date" id="end_adq_date" value="{{ end_adq_date }}" class="form-control">
+                <div class="form-check">
+                    <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_vig_lic_date" data-bs-toggle="collapse" data-bs-target="#vig_lic_date_fields" aria-expanded="false" aria-controls="vig_lic_date_fields" {% if inicio_vig_lic_date or end_vig_lic_date %}checked{% endif %}>
+                    <label class="form-check-label" for="toggle_vig_lic_date">
+                        Filtrar por Fecha Vigencia de Licencia
+                    </label>
+                </div>
             </div>
             <div class="col-md-2">
-                <label for="inicio_vig_lic_date" class="form-label">Fecha Vigencia de la Licencia Desde:</label>
-                <input type="date" name="inicio_vig_lic_date" id="inicio_vig_lic_date" value="{{ inicio_vig_lic_date }}" class="form-control">
+                <div class="form-check">
+                    <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_last_cc_date" data-bs-toggle="collapse" data-bs-target="#last_cc_date_fields" aria-expanded="false" aria-controls="last_cc_date_fields" {% if inicio_last_cc_date or end_last_cc_date %}checked{% endif %}>
+                    <label class="form-check-label" for="toggle_last_cc_date">
+                        Filtrar por Fecha Último Control de Calidad
+                    </label>
+                </div>
             </div>
             <div class="col-md-2">
-                <label for="end_vig_lic_date" class="form-label">Fecha Vigencia de la Licencia Hasta:</label>
-                <input type="date" name="end_vig_lic_date" id="end_vig_lic_date" value="{{ end_vig_lic_date }}" class="form-control">
-            </div>
-            <div class="col-md-2">
-                <label for="inicio_last_cc_date" class="form-label">Fecha Ultimo Control de Calidad Desde:</label>
-                <input type="date" name="inicio_last_cc_date" id="inicio_last_cc_date" value="{{ inicio_last_cc_date }}" class="form-control">
-            </div>
-            <div class="col-md-2">
-                <label for="end_last_cc_date" class="form-label">Fecha Ultimo Control de Calidad Hasta:</label>
-                <input type="date" name="end_last_cc_date" id="end_last_cc_date" value="{{ end_last_cc_date }}" class="form-control">
-            </div>
-            <div class="col-md-3">
-                <label for="inicio_venc_cc_date" class="form-label">Fecha Vencimiento Control de Calidad Desde:</label>
-                <input type="date" name="inicio_venc_cc_date" id="inicio_venc_cc_date" value="{{ inicio_venc_cc_date }}" class="form-control">
-            </div>
-            <div class="col-md-3">
-                <label for="end_venc_cc_date" class="form-label">Fecha Vencimiento Control de Calidad Hasta:</label>
-                <input type="date" name="end_venc_cc_date" id="end_venc_cc_date" value="{{ end_venc_cc_date }}" class="form-control">
+                <div class="form-check">
+                    <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_venc_cc_date" data-bs-toggle="collapse" data-bs-target="#venc_cc_date_fields" aria-expanded="false" aria-controls="venc_cc_date_fields" {% if inicio_venc_cc_date or end_venc_cc_date %}checked{% endif %}>
+                    <label class="form-check-label" for="toggle_venc_cc_date">
+                        Filtrar por Fecha Vencimiento Control de Calidad
+                    </label>
+                </div>
             </div>
             <div class="col-md-2">
                 <button type="submit" class="btn btn-info w-100">Filtrar</button>
             </div>
+        </div>
+        <hr class="my-3">
+
+        {# Campos para Fecha de Adquisición #}
+        <div class="row g-3 align-items-end collapse {% if inicio_adq_date or end_adq_date %}show{% endif %}" id="adq_date_fields">
+            <div class="col-md-3">
+                <h5>
+                    Fecha de Adquisición
+                </h5>
+            </div>
+            <div class="col-md-3">
+                <label for="inicio_adq_date" class="form-label">Desde:</label>
+                <input type="date" name="inicio_adq_date" id="inicio_adq_date" value="{{ inicio_adq_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3">
+                <label for="end_adq_date" class="form-label">Hasta:</label>
+                <input type="date" name="end_adq_date" id="end_adq_date" value="{{ end_adq_date }}" class="form-control form-control-sm">
+            </div>
+            <hr class="my-3">
+        </div>
+
+
+        {# Campos para Fecha de Vigencia de Licencia #}
+        <div class="row g-3 align-items-end collapse {% if inicio_vig_lic_date or end_vig_lic_date %}show{% endif %}" id="vig_lic_date_fields">
+            <div class="col-md-3">
+                <h5>
+                    Fecha de Vigencia de Licencia
+                </h5>
+            </div>
+            <div class="col-md-3">
+                <label for="inicio_vig_lic_date" class="form-label">Desde:</label>
+                <input type="date" name="inicio_vig_lic_date" id="inicio_vig_lic_date" value="{{ inicio_vig_lic_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3">
+                <label for="end_vig_lic_date" class="form-label">Hasta:</label>
+                <input type="date" name="end_vig_lic_date" id="end_vig_lic_date" value="{{ end_vig_lic_date }}" class="form-control form-control-sm">
+            </div>
+            <hr class="my-3">
+        </div>
+
+        {# Campos para Fecha Último Control de Calidad #}
+        <div class="row g-3 align-items-end collapse {% if inicio_last_cc_date or end_last_cc_date %}show{% endif %}" id="last_cc_date_fields">
+            <div class="col-md-3">
+                <h5>
+                    Fecha de Último Control de Calidad
+                </h5>
+            </div>
+            <div class="col-md-3">
+                <label for="inicio_last_cc_date" class="form-label">Desde:</label>
+                <input type="date" name="inicio_last_cc_date" id="inicio_last_cc_date" value="{{ inicio_last_cc_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3">
+                <label for="end_last_cc_date" class="form-label">Hasta:</label>
+                <input type="date" name="end_last_cc_date" id="end_last_cc_date" value="{{ end_last_cc_date }}" class="form-control form-control-sm">
+            </div>
+            <hr class="my-3">
+        </div>
+
+        {# Campos para Fecha Vencimiento Control de Calidad #}
+        <div class="row g-3 align-items-end collapse {% if inicio_venc_cc_date or end_venc_cc_date %}show{% endif %}" id="venc_cc_date_fields">
+
+            <div class="col-md-3">
+                <h5>
+                    Fecha de Vencimiento del Control de Calidad
+                </h5>
+            </div>
+            <div class="col-md-3">
+                <label for="inicio_venc_cc_date" class="form-label">Desde:</label>
+                <input type="date" name="inicio_venc_cc_date" id="inicio_venc_cc_date" value="{{ inicio_venc_cc_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3">
+                <label for="end_venc_cc_date" class="form-label">Hasta:</label>
+                <input type="date" name="end_venc_cc_date" id="end_venc_cc_date" value="{{ end_venc_cc_date }}" class="form-control form-control-sm">
+            </div>
+            <hr class="my-3">
         </div>
     </form>
 

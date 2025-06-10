@@ -12,10 +12,11 @@
     </div>
 
     <form method="get" class="mb-4 p-3 border rounded bg-light">
-        <div class="row g-3 align-items-end">
-            <div class="col-md-4">
-                <label for="process_type" class="form-label">Filtrar por tipo de proceso:</label>
-                <select name="process_type" id="process_type" class="form-select">
+        <div class="row g-3 align-items-center mb-3">
+            {# Filtro por Tipo de Proceso #}
+            <div class="col-md-3">
+                <label for="process_type" class="form-label">Tipo de Proceso:</label>
+                <select name="process_type" id="process_type" class="form-select form-select-sm">
                     {% for value, label in process_types %}
                     <option value="{{ value }}" {% if value == selected_process_type %}selected{% endif %}>
                         {{ label }}
@@ -23,16 +24,48 @@
                     {% endfor %}
                 </select>
             </div>
+
+            {# Filtro por Equipo #}
             <div class="col-md-3">
-                <label for="start_date" class="form-label">Fecha Desde:</label>
-                <input type="date" name="start_date" id="start_date" value="{{ start_date }}" class="form-control">
+                <label for="equipment_id" class="form-label">Equipo:</label>
+                <select name="equipment_id" id="equipment_id" class="form-select form-select-sm">
+                    <option value="">Todos los Equipos</option>
+                    {% for equipo in all_equipment %} {# Necesitarás pasar 'all_equipment' desde la vista #}
+                    <option value="{{ equipo.id }}" {% if equipo.id|stringformat:"s" == selected_equipment_id %}selected{% endif %}>
+                        {{ equipo.nombre }} ({{ equipo.serial }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {# Checkbox para Filtro por Fecha de Creación #}
+            <div class="col-md-3">
+                <div class="form-check mt-4"> {# mt-4 para alinear con labels si es necesario, ajustar según preferencia #}
+                    <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_creation_date" data-bs-toggle="collapse" data-bs-target="#creation_date_fields" aria-expanded="false" aria-controls="creation_date_fields" {% if start_date or end_date %}checked{% endif %}>
+                    <label class="form-check-label" for="toggle_creation_date">
+                        Filtrar por Fecha de Creación
+                    </label>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-info w-100 mt-4">Filtrar</button> {# mt-4 para alinear con checkboxes #}
+            </div>
+        </div>
+        <hr class="my-3">
+
+        {# Campos para Fecha de Creación #}
+        <div class="row g-3 align-items-end collapse {% if start_date or end_date %}show{% endif %}" id="creation_date_fields">
+            <div class="col-md-3">
+                <h5>Fecha de Creación</h5>
             </div>
             <div class="col-md-3">
-                <label for="end_date" class="form-label">Fecha Hasta:</label>
-                <input type="date" name="end_date" id="end_date" value="{{ end_date }}" class="form-control">
+                <label for="start_date" class="form-label">Desde:</label>
+                <input type="date" name="start_date" id="start_date" value="{{ start_date }}" class="form-control form-control-sm">
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-info w-100">Filtrar</button>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label">Hasta:</label>
+                <input type="date" name="end_date" id="end_date" value="{{ end_date }}" class="form-control form-control-sm">
             </div>
         </div>
     </form>

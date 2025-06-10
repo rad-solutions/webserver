@@ -89,7 +89,7 @@
                         {% endif %}
                     {% endwith %}
 
-                    <a href="{% url 'report_list' %}?equipment_id={{ equipo.id }}" class="btn btn-outline-secondary ms-2">Historial de Informes de Calidad</a>
+                    <a href="{% url 'report_list' %}?equipment_id={{ equipo.id }}&process_type=control_calidad" class="btn btn-outline-secondary ms-2">Historial de Informes de Calidad</a>
 
                 {% elif equipo.process and equipo.process.process_type == "calculo_blindajes" %}
                     <a href="{% url 'process_detail' equipo.process.id %}" class="btn btn-info">Ver Detalles del Cálculo de Blindajes</a>

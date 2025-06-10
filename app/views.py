@@ -337,20 +337,29 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         equipment_id_filter = self.request.GET.get("equipment_id")
 
         # Variable para saber si el filtro de equipo se aplicó y tuvo éxito
-        equipment_filter_applied_successfully = False
+        equipment_filter_cc_applied_successfully = False
 
-        if equipment_id_filter:
+        if equipment_id_filter and process_type_filter == "control_calidad":
             try:
                 equipment_id = int(equipment_id_filter)
                 equipo = Equipment.objects.get(id=equipment_id)
                 queryset = equipo.get_quality_control_history()
-                equipment_filter_applied_successfully = True
+                equipment_filter_cc_applied_successfully = True
+            except (ValueError, TypeError, Equipment.DoesNotExist):
+                # Si equipment_id no es un entero válido, no aplicar este filtro
+                pass
+        elif equipment_id_filter:
+            try:
+                queryset = queryset.filter(equipment__id=equipment_id_filter)
             except (ValueError, TypeError, Equipment.DoesNotExist):
                 # Si equipment_id no es un entero válido, no aplicar este filtro
                 pass
 
         # Filtrar por tipo de proceso
-        if not equipment_filter_applied_successfully and process_type_filter != "todos":
+        if (
+            not equipment_filter_cc_applied_successfully
+            and process_type_filter != "todos"
+        ):
             queryset = queryset.filter(process__process_type=process_type_filter)
 
         # Filtrar por fecha de inicio
@@ -378,11 +387,11 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         choices_list = [("todos", "Todos")] + list(ProcessTypeChoices.choices)
         context["process_types"] = choices_list
         context["selected_process_type"] = self.request.GET.get("process_type", "todos")
-
         # Para los filtros de fecha
         context["start_date"] = self.request.GET.get("start_date", "")
         context["end_date"] = self.request.GET.get("end_date", "")
         context["selected_equipment_id"] = self.request.GET.get("equipment_id")
+        context["all_equipment"] = Equipment.objects.filter(user=self.request.user)
 
         if context["selected_equipment_id"]:
             try:
@@ -718,6 +727,7 @@ class ProcessListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         # Obtener el tipo de proceso desde los parámetros GET
         process_type_filter = self.request.GET.get("process_type", "todos")
+        process_status_filter = self.request.GET.get("estado", "todos")
         inicio_start_date_str = self.request.GET.get("inicio_start_date")
         inicio_end_date_str = self.request.GET.get("inicio_end_date")
         fin_start_date_str = self.request.GET.get("fin_start_date")
@@ -730,6 +740,12 @@ class ProcessListView(LoginRequiredMixin, ListView):
         if process_type_filter != "todos":  # Si se especifica un tipo y no es "todos"
             queryset = queryset.filter(process__process_type=process_type_filter)
         # Si process_type_filter es "todos", no se aplica filtro adicional de tipo de proceso.
+
+        if (
+            process_status_filter != "todos"
+        ):  # Si se especifica un estado y no es "todos"
+            queryset = queryset.filter(process__estado=process_status_filter)
+        # Si process_status_filter es "todos", no se aplica filtro adicional de estado.
 
         # Filtrar por fecha de inicio
         if inicio_start_date_str:
@@ -782,6 +798,9 @@ class ProcessListView(LoginRequiredMixin, ListView):
         # Pasar todos los tipos de proceso al contexto para el dropdown
         choices_list = [("todos", "Todos")] + list(ProcessTypeChoices.choices)
         context["process_types"] = choices_list
+        status_choices_list = [("todos", "Todos")] + list(ProcessStatusChoices.choices)
+        context["process_statuses"] = status_choices_list
+        context["selected_estado"] = self.request.GET.get("estado", "todos")
         # Para los filtros de fecha
         context["inicio_start_date"] = self.request.GET.get("inicio_start_date", "")
         context["inicio_end_date"] = self.request.GET.get("inicio_end_date", "")
