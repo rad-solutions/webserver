@@ -8,6 +8,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.views import LoginView, redirect_to_login
 from django.core.exceptions import ValidationError
+from django.db.models import Q  # Importar Q para búsquedas OR
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
@@ -511,6 +512,9 @@ class EquiposListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         # Obtener el tipo de proceso desde los parámetros GET
         process_type_filter = self.request.GET.get("process_type", "todos")
+        text_search_term = self.request.GET.get(
+            "text_search_term", ""
+        ).strip()  # Nuevo filtro de texto
         inicio_adq_date_str = self.request.GET.get("inicio_adq_date")
         inicio_vig_lic_date_str = self.request.GET.get("inicio_vig_lic_date")
         inicio_last_cc_date_str = self.request.GET.get("inicio_last_cc_date")
@@ -527,6 +531,12 @@ class EquiposListView(LoginRequiredMixin, ListView):
         if process_type_filter != "todos":  # Si se especifica un tipo y no es "todos"
             queryset = queryset.filter(process__process_type=process_type_filter)
         # Si process_type_filter es "todos", no se aplica filtro adicional de tipo de proceso.
+
+        if text_search_term:
+            queryset = queryset.filter(
+                Q(modelo__icontains=text_search_term)
+                | Q(serial__icontains=text_search_term)
+            )
 
         # Filtrar por fecha de adquisición
         if inicio_adq_date_str:
@@ -623,6 +633,10 @@ class EquiposListView(LoginRequiredMixin, ListView):
         # Pasar todos los tipos de proceso al contexto para el dropdown
         choices_list = [("todos", "Todos")] + list(ProcessTypeChoices.choices)
         context["process_types"] = choices_list
+        # Pasar el término de búsqueda de texto al contexto
+        context["text_search_term"] = self.request.GET.get(
+            "text_search_term", ""
+        ).strip()
         # Para los filtros de fecha
         context["inicio_adq_date"] = self.request.GET.get("inicio_adq_date", "")
         context["inicio_vig_lic_date"] = self.request.GET.get("inicio_vig_lic_date", "")

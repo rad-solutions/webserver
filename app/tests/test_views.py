@@ -1682,6 +1682,9 @@ class EquipmentAPITest(TestCase):
         self.admin_user = User.objects.create_user(
             username="equipadmin", password="password", is_staff=True
         )
+        self.user_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        self.user_client.roles.add(self.user_cliente)
+
         # Assign a role with manage_equipment permission
         try:
             gerente_group = Group.objects.get(name=RoleChoices.GERENTE)
@@ -1709,6 +1712,8 @@ class EquipmentAPITest(TestCase):
             nombre="Equipo Alfa",
             user=self.user_client,
             process=self.process_calidad,
+            modelo="ModeloX100",
+            serial="SN-ALPHA-001",
             fecha_adquisicion=date(2023, 1, 15),
             fecha_vigencia_licencia=date(2025, 6, 30),
             fecha_ultimo_control_calidad=date(2024, 1, 10),
@@ -1718,6 +1723,8 @@ class EquipmentAPITest(TestCase):
             nombre="Equipo Beta",
             user=self.user_client,
             process=self.process_blindajes,
+            modelo="ModeloY200",
+            serial="SN-BETA-002",
             fecha_adquisicion=date(2023, 7, 20),
             fecha_vigencia_licencia=date(2026, 1, 15),
             fecha_ultimo_control_calidad=date(2024, 7, 5),
@@ -1726,6 +1733,8 @@ class EquipmentAPITest(TestCase):
         self.eq3 = Equipment.objects.create(
             nombre="Equipo Gamma (Admin)",
             user=self.admin_user,  # Para probar filtro de usuario
+            modelo="ModeloX100",
+            serial="SN-GAMMA-003",
             fecha_adquisicion=date(2024, 1, 1),
             fecha_vigencia_licencia=date(2025, 12, 1),
             fecha_ultimo_control_calidad=date(2024, 6, 1),
@@ -1735,6 +1744,8 @@ class EquipmentAPITest(TestCase):
             nombre="Equipo Delta Sin Fechas",
             user=self.user_client,
             process=self.process_calidad,
+            modelo="ModeloZ300",
+            serial="SN-DELTA-004",
         )
         self.client.login(username="equipadmin", password="password")
         self.url = reverse("equipos_list")
@@ -1942,3 +1953,115 @@ class EquipmentAPITest(TestCase):
         # La vista actual filtra por usuario si es cliente, sino muestra todos.
         self.assertEqual(len(response.context["equipos"]), 4)
         self.assertIn(self.eq3, response.context["equipos"])
+
+    def test_equipos_list_filter_by_text_search_modelo_exact(self):
+        """Testea el filtro de texto por modelo exacto."""
+        response = self.client.get(self.url, {"text_search_term": "ModeloX100"})
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        # eq1 y eq3_admin tienen "ModeloX100"
+        self.assertEqual(len(equipos_en_contexto), 2)
+        self.assertIn(self.eq1, equipos_en_contexto)
+        self.assertIn(self.eq3, equipos_en_contexto)
+        self.assertEqual(response.context["text_search_term"], "ModeloX100")
+
+    def test_equipos_list_filter_by_text_search_serial_exact(self):
+        """Testea el filtro de texto por serial exacto."""
+        response = self.client.get(self.url, {"text_search_term": "SN-BETA-002"})
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 1)
+        self.assertIn(self.eq2, equipos_en_contexto)
+        self.assertEqual(response.context["text_search_term"], "SN-BETA-002")
+
+    def test_equipos_list_filter_by_text_search_modelo_partial_icontains(self):
+        """Testea el filtro de texto por modelo parcial (insensible a mayúsculas)."""
+        response = self.client.get(
+            self.url, {"text_search_term": "modelox"}
+        )  # Minúsculas
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 2)  # eq1 y eq3
+        self.assertIn(self.eq1, equipos_en_contexto)
+        self.assertIn(self.eq3, equipos_en_contexto)
+        self.assertEqual(response.context["text_search_term"], "modelox")
+
+    def test_equipos_list_filter_by_text_search_serial_partial_icontains(self):
+        """Testea el filtro de texto por serial parcial (insensible a mayúsculas)."""
+        response = self.client.get(
+            self.url, {"text_search_term": "alpha"}
+        )  # Minúsculas
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 1)
+        self.assertIn(self.eq1, equipos_en_contexto)
+        self.assertEqual(response.context["text_search_term"], "alpha")
+
+    def test_equipos_list_filter_by_text_search_matches_modelo_or_serial(self):
+        """Testea el filtro de texto que coincide con modelo de un equipo y serial de otro."""
+        # "ModeloX100" está en eq1 y eq3_admin (modelo)
+        # "SN-BETA-002" está en eq2 (serial)
+        # Si buscamos "00" debería encontrar eq1, eq2, eq3_admin, eq4_no_dates
+        response = self.client.get(self.url, {"text_search_term": "00"})
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 4)
+        self.assertIn(self.eq1, equipos_en_contexto)  # SN-ALPHA-001
+        self.assertIn(self.eq2, equipos_en_contexto)  # SN-BETA-002
+        self.assertIn(self.eq3, equipos_en_contexto)  # SN-GAMMA-003
+        self.assertIn(self.eq4_no_dates, equipos_en_contexto)
+        # SN-DELTA-004 ModeloX100, ModeloY200, ModeloZ300 Todos los modelos tienen "00"
+
+    def test_equipos_list_filter_by_text_search_no_results(self):
+        """Testea el filtro de texto que no devuelve resultados."""
+        response = self.client.get(
+            self.url, {"text_search_term": "TerminoInexistente123"}
+        )
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 0)
+        self.assertEqual(response.context["text_search_term"], "TerminoInexistente123")
+
+    def test_equipos_list_filter_by_text_search_with_other_filters(self):
+        """Testea el filtro de texto combinado con otro filtro (ej. tipo de proceso)."""
+        # eq1: process_calidad, modelo="ModeloX100"
+        # eq4_no_dates: process_calidad, modelo="ModeloZ300"
+        # eq3_admin: (sin proceso asignado en este setUp), modelo="ModeloX100"
+        # eq2: process_blindajes, modelo="ModeloY200"
+
+        # Buscar "ModeloX100" (eq1, eq3_admin) Y process_type=CONTROL_CALIDAD (eq1, eq4_no_dates)
+        # Resultado esperado: eq1
+        response = self.client.get(
+            self.url,
+            {
+                "text_search_term": "ModeloX100",
+                "process_type": ProcessTypeChoices.CONTROL_CALIDAD,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 1)
+        self.assertIn(self.eq1, equipos_en_contexto)
+        self.assertNotIn(self.eq3, equipos_en_contexto)  # No coincide con process_type
+        self.assertNotIn(
+            self.eq4_no_dates, equipos_en_contexto
+        )  # No coincide con text_search_term
+        self.assertEqual(response.context["text_search_term"], "ModeloX100")
+        self.assertEqual(
+            response.context["selected_process_type"],
+            ProcessTypeChoices.CONTROL_CALIDAD,
+        )
+
+    def test_equipos_list_filter_by_text_search_client_user(self):
+        """Testea el filtro de texto para un usuario cliente (solo ve sus equipos)."""
+        self.client.logout()
+        self.client.login(username="equipclient", password="password")
+        # eq1 (user_client): modelo="ModeloX100"
+        # eq3 (admin_user): modelo="ModeloX100"
+        response = self.client.get(self.url, {"text_search_term": "ModeloX100"})
+        self.assertEqual(response.status_code, 200)
+        equipos_en_contexto = response.context["equipos"]
+        self.assertEqual(len(equipos_en_contexto), 1)  # Solo eq1
+        self.assertIn(self.eq1, equipos_en_contexto)
+        self.assertNotIn(self.eq3, equipos_en_contexto)  # Pertenece a admin_user
+        self.assertEqual(response.context["text_search_term"], "ModeloX100")

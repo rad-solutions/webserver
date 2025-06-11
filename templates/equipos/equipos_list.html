@@ -24,6 +24,14 @@
                     {% endfor %}
                 </select>
             </div>
+            <div class="col-md-1">
+                <div class="form-check">
+                    <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_text_search" data-bs-toggle="collapse" data-bs-target="#text_search_fields" aria-expanded="false" aria-controls="text_search_fields" {% if text_search_term %}checked{% endif %}>
+                    <label class="form-check-label" for="toggle_text_search">
+                        Filtrar por Modelo/Serial
+                    </label>
+                </div>
+            </div>
             <div class="col-md-2">
                 <div class="form-check">
                     <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_adq_date" data-bs-toggle="collapse" data-bs-target="#adq_date_fields" aria-expanded="false" aria-controls="adq_date_fields" {% if inicio_adq_date or end_adq_date %}checked{% endif %}>
@@ -56,12 +64,23 @@
                     </label>
                 </div>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-1">
                 <button type="submit" class="btn btn-info w-100">Filtrar</button>
             </div>
         </div>
         <hr class="my-3">
 
+        {# Campo para Búsqueda por Texto (Modelo/Serial) #}
+        <div class="row g-3 align-items-end collapse {% if text_search_term %}show{% endif %}" id="text_search_fields">
+            <div class="col-md-3">
+                <h5>Búsqueda por Modelo/Serial</h5>
+            </div>
+            <div class="col-md-6">
+                <label for="text_search_term" class="form-label">Término:</label>
+                <input type="text" name="text_search_term" id="text_search_term" value="{{ text_search_term }}" class="form-control form-control-sm" placeholder="Escriba modelo o serial...">
+            </div>
+            <hr class="my-3">
+        </div>
         {# Campos para Fecha de Adquisición #}
         <div class="row g-3 align-items-end collapse {% if inicio_adq_date or end_adq_date %}show{% endif %}" id="adq_date_fields">
             <div class="col-md-3">
