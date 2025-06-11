@@ -37,7 +37,7 @@
             <div class="col-md-3">
                 <label for="estado" class="form-label">Estado:</label>
                 <select name="estado" id="estado" class="form-select form-select-sm">
-                    {% for value, label in process_statuses %} {# Necesitarás pasar 'process_statuses' desde la vista #}
+                    {% for value, label in process_statuses %}
                     <option value="{{ value }}" {% if value == selected_estado %}selected{% endif %}>
                         {{ label }}
                     </option>

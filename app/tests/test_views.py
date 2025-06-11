@@ -629,8 +629,9 @@ class ReportAPITest(TestCase):
     def test_report_list_view_filter_by_equipment_id_wrong_process_type(self):
         """Test ReportListView con ID de equipo y un tipo de proceso que no coincide.
 
-        Si equipment_id es válido, el process_type de la URL es ignorado
-        y se usa equipo.get_quality_control_history().
+        Según la vista actual:
+        1. Se filtra por equipment_id.
+        2. Luego, si el primer bloque de CC no se aplicó, se filtra por process_type.
         """
         self.client.login(username="testuser", password="testpassword")
         # Filtrar por equipment1_calidad pero pedir 'asesoria'
@@ -642,10 +643,10 @@ class ReportAPITest(TestCase):
         self.assertEqual(response.status_code, 200)
         reports_in_context = response.context["reports"]
 
-        # Debería devolver solo los reportes de CC de equipment1_calidad,
-        # ignorando el process_type='asesoria' de la URL.
-        self.assertEqual(len(reports_in_context), 1)
-        self.assertIn(self.report2_calidad_feb, reports_in_context)
+        # El reporte asociado a equipment1_calidad es report2_calidad_feb (tipo CC).
+        # El filtro process_type='asesoria' se aplica después, por lo que no debería haber resultados.
+        self.assertEqual(len(reports_in_context), 0)
+        self.assertNotIn(self.report2_calidad_feb, reports_in_context)
 
         self.assertEqual(
             str(response.context["selected_equipment_id"]),
@@ -658,11 +659,13 @@ class ReportAPITest(TestCase):
     def test_report_list_view_filter_by_non_existent_equipment_id(self):
         """Test ReportListView con un ID de equipo que no existe.
 
-        En este caso, el filtro de equipo falla, y se aplican los filtros generales.
+        Según la vista actual:
+        1. El filtro por equipment__id (inexistente) vaciará el queryset.
+        2. El filtro posterior por process_type se aplicará a un queryset vacío.
         """
         self.client.login(username="testuser", password="testpassword")
         non_existent_equipment_id = 99999
-        # Probar con un process_type general para ver si se aplica cuando equipment_id falla
+        # Probar con un process_type general
         url = (
             reverse("report_list")
             + f"?equipment_id={non_existent_equipment_id}&process_type={self.process_type_asesoria}"
@@ -671,20 +674,19 @@ class ReportAPITest(TestCase):
         self.assertEqual(response.status_code, 200)
         reports_in_context = response.context["reports"]
 
-        # Como equipment_id no existe, se deberían aplicar los otros filtros.
-        # En este caso, process_type=asesoria.
-        self.assertEqual(
-            len(reports_in_context), 2
-        )  # report1_asesoria_jan, report3_asesoria_mar
-        self.assertIn(self.report1_asesoria_jan, reports_in_context)
-        self.assertIn(self.report3_asesoria_mar, reports_in_context)
+        # Como equipment_id no existe, el queryset.filter(equipment__id=...) lo vacía.
+        self.assertEqual(len(reports_in_context), 0)
+        self.assertNotIn(self.report1_asesoria_jan, reports_in_context)
+        self.assertNotIn(self.report3_asesoria_mar, reports_in_context)
         self.assertNotIn(self.report2_calidad_feb, reports_in_context)
 
         self.assertEqual(
             str(response.context["selected_equipment_id"]),
             str(non_existent_equipment_id),
         )
-        self.assertNotIn("filtered_equipment", response.context)
+        self.assertNotIn(
+            "filtered_equipment", response.context
+        )  # Porque el equipo no se encontró
         self.assertEqual(
             response.context["selected_process_type"], self.process_type_asesoria
         )
@@ -1252,6 +1254,70 @@ class ProcessAPITest(TestCase):
             nombre="Equipo P4", user=self.user, process=self.proc4_no_final
         )
 
+        # Tipos de Proceso
+        self.pt_asesoria = ProcessTypeChoices.ASESORIA
+        self.pt_calidad = ProcessTypeChoices.CONTROL_CALIDAD
+        self.pt_blindajes = ProcessTypeChoices.CALCULO_BLINDAJES
+
+        # Estados de Proceso
+        self.estado_progreso = ProcessStatusChoices.EN_PROGRESO
+        self.estado_finalizado = ProcessStatusChoices.FINALIZADO
+
+        # Procesos
+        self.proceso1_asesoria_progreso = Process.objects.create(
+            user=self.user,
+            process_type=self.pt_asesoria,
+            estado=self.estado_progreso,
+            fecha_inicio=datetime(2023, 1, 10, tzinfo=timezone.utc),
+        )
+        self.proceso1_asesoria_progreso.fecha_inicio = datetime(
+            2023, 1, 10, tzinfo=timezone.utc
+        )
+        self.proceso1_asesoria_progreso.save()
+
+        self.proceso2_calidad_finalizado = Process.objects.create(
+            user=self.user,
+            process_type=self.pt_calidad,
+            estado=self.estado_finalizado,
+            fecha_inicio=datetime(2023, 2, 10, tzinfo=timezone.utc),
+            fecha_final=datetime(2023, 2, 20, tzinfo=timezone.utc),
+        )
+        self.proceso2_calidad_finalizado.fecha_inicio = datetime(
+            2023, 2, 10, tzinfo=timezone.utc
+        )
+        self.proceso2_calidad_finalizado.save()
+
+        self.proceso4_blindajes_progreso = Process.objects.create(
+            user=self.user,
+            process_type=self.pt_blindajes,
+            estado=self.estado_progreso,
+            fecha_inicio=datetime(2023, 4, 10, tzinfo=timezone.utc),
+        )
+        self.proceso4_blindajes_progreso.fecha_inicio = datetime(
+            2023, 4, 10, tzinfo=timezone.utc
+        )
+        self.proceso4_blindajes_progreso.save()
+
+        # Equipos (asociados a los procesos)
+        self.equipo1_proc1 = Equipment.objects.create(
+            nombre="Equipo P1 Asesoria",
+            user=self.user,
+            process=self.proceso1_asesoria_progreso,
+            serial="EQP1",
+        )
+        self.equipo2_proc2 = Equipment.objects.create(
+            nombre="Equipo P2 Calidad",
+            user=self.user,
+            process=self.proceso2_calidad_finalizado,
+            serial="EQP2",
+        )
+        self.equipo4_proc4 = Equipment.objects.create(
+            nombre="Equipo P4 Blindajes",
+            user=self.user,
+            process=self.proceso4_blindajes_progreso,
+            serial="EQP4",
+        )
+
         self.client.login(username="procuser", password="password")
         self.url = reverse("process_list")
 
@@ -1552,6 +1618,57 @@ class ProcessAPITest(TestCase):
 
         response_post = self.client.post(url, {"contenido": "Intento fallido"})
         self.assertEqual(response_post.status_code, 403)
+
+    def test_process_list_filter_by_estado(self):
+        """Test ProcessListView filtrando por estado del proceso del equipo."""
+        url = reverse("process_list") + f"?estado={self.estado_progreso}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        equipos_in_context = response.context.get("equipos", [])
+        self.assertEqual(
+            len(equipos_in_context), 3
+        )  # eq_p1 equipo1_proc1 y equipo4_proc4
+        self.assertIn(self.equipo1_proc1, equipos_in_context)
+        self.assertIn(self.equipo4_proc4, equipos_in_context)
+        self.assertIn(self.eq_p1, equipos_in_context)
+        self.assertNotIn(self.equipo2_proc2, equipos_in_context)  # Es finalizado
+        self.assertEqual(response.context.get("selected_estado"), self.estado_progreso)
+
+    def test_process_list_filter_by_process_type_and_estado(self):
+        """Test ProcessListView filtrando por tipo de proceso y estado."""
+        url = (
+            reverse("process_list")
+            + f"?process_type={self.pt_asesoria}&estado={self.estado_progreso}"
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        equipos_in_context = response.context.get("equipos", [])
+        self.assertEqual(len(equipos_in_context), 2)  # eq_p1 y equipo1_proc1
+        self.assertIn(self.equipo1_proc1, equipos_in_context)
+        self.assertIn(self.eq_p1, equipos_in_context)
+        self.assertEqual(
+            response.context.get("selected_process_type"), self.pt_asesoria
+        )
+        self.assertEqual(response.context.get("selected_estado"), self.estado_progreso)
+
+    def test_process_list_filter_by_estado_and_fecha_inicio(self):
+        """Test ProcessListView combinando filtro de estado y fecha_inicio."""
+        start_date = "2023-01-01"
+        end_date = "2023-01-31"  # Solo Enero
+        url = (
+            reverse("process_list")
+            + f"?estado={self.estado_progreso}&inicio_start_date={start_date}&inicio_end_date={end_date}"
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        equipos_in_context = response.context.get("equipos", [])
+        self.assertEqual(len(equipos_in_context), 1)
+        self.assertIn(
+            self.equipo1_proc1, equipos_in_context
+        )  # Proceso 1 es EN_PROGRESO y fecha_inicio 2023-01-10
+        self.assertEqual(response.context.get("selected_estado"), self.estado_progreso)
+        self.assertEqual(response.context.get("inicio_start_date"), start_date)
+        self.assertEqual(response.context.get("inicio_end_date"), end_date)
 
 
 class EquipmentAPITest(TestCase):
