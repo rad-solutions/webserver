@@ -23,4 +23,71 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const userSelect = document.getElementById('id_user'); // Asume que el ID del campo User es 'id_user'
+    const processSelect = document.getElementById('id_process');
+
+    if (!userSelect) {
+        console.error("El campo de selección de usuario (id_user) no fue encontrado.");
+        return;
+    }
+    if (!processSelect) {
+        console.error("El campo de selección de proceso (id_process) no fue encontrado.");
+        return;
+    }
+
+    function updateSelectWithOptions(selectElement, options, placeholderText = "---------") {
+        if (!selectElement) return;
+        const currentSelectedValue = selectElement.value;
+        selectElement.innerHTML = '';
+
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = placeholderText;
+        selectElement.appendChild(placeholder);
+
+        options.forEach(function(option) {
+            const opt = document.createElement('option');
+            opt.value = option.id;
+            opt.textContent = option.name;
+            selectElement.appendChild(opt);
+        });
+        if (options.some(opt => opt.id.toString() === currentSelectedValue)) {
+            selectElement.value = currentSelectedValue;
+        } else {
+            selectElement.value = '';
+        }
+    }
+
+    function loadProcesses(userId) {
+        if (userId) {
+            fetch(`{% url 'ajax_load_user_processes' %}?user_id=${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateSelectWithOptions(processSelect, data, "Seleccione un proceso");
+                })
+                .catch(error => console.error('Error cargando procesos:', error));
+        } else {
+            updateSelectWithOptions(processSelect, [], "Seleccione un usuario primero");
+        }
+    }
+
+    userSelect.addEventListener('change', function() {
+        const userId = this.value;
+        loadProcesses(userId);
+    });
+
+    // Carga inicial (similar al de report_form.html)
+    if (userSelect.value) {
+        // Si el __init__ del form ya pobló el queryset de process para el usuario existente,
+        // no es estrictamente necesario llamar a loadProcesses aquí.
+        // Si el __init__ siempre usa Process.objects.none(), entonces sí:
+        // loadProcesses(userSelect.value);
+    } else {
+        updateSelectWithOptions(processSelect, [], "Seleccione un usuario primero");
+    }
+});
+</script>
 {% endblock %}

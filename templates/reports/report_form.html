@@ -23,4 +23,98 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const userSelect = document.getElementById('id_user'); // Asume que el ID del campo User es 'id_user'
+    const processSelect = document.getElementById('id_process');
+    const equipmentSelect = document.getElementById('id_equipment');
+
+    if (!userSelect) {
+        console.error("El campo de selección de usuario (id_user) no fue encontrado.");
+        return;
+    }
+    if (!processSelect) {
+        console.error("El campo de selección de proceso (id_process) no fue encontrado.");
+        // No retornar, ya que el formulario de equipo podría no tenerlo.
+    }
+     if (!equipmentSelect) {
+        console.error("El campo de selección de equipo (id_equipment) no fue encontrado.");
+    }
+
+    function updateSelectWithOptions(selectElement, options, placeholderText = "---------") {
+        if (!selectElement) return;
+        // Guardar el valor seleccionado actualmente, si existe
+        const currentSelectedValue = selectElement.value;
+        selectElement.innerHTML = ''; // Limpiar opciones existentes
+
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = placeholderText;
+        selectElement.appendChild(placeholder);
+
+        options.forEach(function(option) {
+            const opt = document.createElement('option');
+            opt.value = option.id;
+            opt.textContent = option.name;
+            selectElement.appendChild(opt);
+        });
+        // Restaurar el valor seleccionado si todavía es una opción válida
+        if (options.some(opt => opt.id.toString() === currentSelectedValue)) {
+            selectElement.value = currentSelectedValue;
+        } else {
+            selectElement.value = ''; // Resetear si la opción anterior ya no es válida
+        }
+    }
+
+    function loadProcesses(userId) {
+        if (!processSelect) return;
+        if (userId) {
+            fetch(`{% url 'ajax_load_user_processes' %}?user_id=${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateSelectWithOptions(processSelect, data, "Seleccione un proceso");
+                })
+                .catch(error => console.error('Error cargando procesos:', error));
+        } else {
+            updateSelectWithOptions(processSelect, [], "Seleccione un usuario primero");
+        }
+    }
+
+    function loadEquipment(userId) {
+        if (!equipmentSelect) return;
+        if (userId) {
+            fetch(`{% url 'ajax_load_user_equipment' %}?user_id=${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateSelectWithOptions(equipmentSelect, data, "Seleccione un equipo");
+                })
+                .catch(error => console.error('Error cargando equipos:', error));
+        } else {
+            updateSelectWithOptions(equipmentSelect, [], "Seleccione un usuario primero");
+        }
+    }
+
+    userSelect.addEventListener('change', function() {
+        const userId = this.value;
+        loadProcesses(userId);
+        loadEquipment(userId); // En ReportForm, el equipo también depende directamente del usuario
+    });
+
+    // Cargar inicial si ya hay un usuario seleccionado (modo edición)
+    if (userSelect.value) {
+        // No llamamos a loadProcesses/loadEquipment aquí si el __init__ del form ya los pobló.
+        // Si el __init__ los deja vacíos (Process.objects.none()), entonces sí hay que llamarlos.
+        // La implementación actual del __init__ los pobla, así que el JS solo maneja cambios.
+        // Si prefieres que el JS siempre los cargue, ajusta el __init__ para que siempre sean .none()
+        // y descomenta las siguientes líneas:
+        // loadProcesses(userSelect.value);
+        // loadEquipment(userSelect.value);
+    } else {
+        // Si no hay usuario seleccionado al inicio, asegurar que los dependientes estén vacíos/con placeholder
+        if (processSelect) updateSelectWithOptions(processSelect, [], "Seleccione un usuario primero");
+        if (equipmentSelect) updateSelectWithOptions(equipmentSelect, [], "Seleccione un usuario primero");
+    }
+});
+</script>
 {% endblock %}

@@ -9,6 +9,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.contrib.auth.views import LoginView, redirect_to_login
 from django.core.exceptions import ValidationError
 from django.db.models import Q  # Importar Q para búsquedas OR
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
@@ -41,6 +42,48 @@ class UserForm(UserCreationForm):
 
 
 class ReportForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        user_id_for_filtering = None
+        if (
+            self.instance
+            and self.instance.pk
+            and hasattr(self.instance, "user_id")
+            and self.instance.user_id
+        ):
+            user_id_for_filtering = self.instance.user_id
+        # Check self.data for 'user' when form is bound (e.g., POST request)
+        elif "user" in self.data:
+            try:
+                user_id_for_filtering = int(self.data.get("user"))
+            except (ValueError, TypeError):
+                pass  # user_id_for_filtering remains None
+
+        if "process" in self.fields:
+            if user_id_for_filtering:
+                self.fields["process"].queryset = Process.objects.filter(
+                    user_id=user_id_for_filtering
+                ).order_by("process_type")
+            else:
+                # If no user_id, and it's a new form, queryset should be empty.
+                # If it's bound but user_id couldn't be determined, also empty to prevent validation errors with wrong choices.
+                if not (
+                    self.instance and self.instance.pk
+                ):  # Only for new forms or if user_id is missing
+                    self.fields["process"].queryset = Process.objects.none()
+                # If editing an existing instance without a user_id (should not happen if user is required for process),
+                # then self.fields['process'].queryset would retain its default (all processes) or what was set by super()
+
+        if "equipment" in self.fields:
+            if user_id_for_filtering:
+                self.fields["equipment"].queryset = Equipment.objects.filter(
+                    user_id=user_id_for_filtering
+                ).order_by("nombre")
+            else:
+                if not (self.instance and self.instance.pk):
+                    self.fields["equipment"].queryset = Equipment.objects.none()
+
     class Meta:
         model = Report
         fields = [
@@ -98,6 +141,41 @@ class AnotacionForm(forms.ModelForm):
 
 
 class EquipmentForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        user_id_for_filtering = None
+        if (
+            self.instance
+            and self.instance.pk
+            and hasattr(self.instance, "user_id")
+            and self.instance.user_id
+        ):
+            user_id_for_filtering = self.instance.user_id
+        elif "user" in self.data:  # Check self.data for 'user' when form is bound
+            try:
+                user_id_for_filtering = int(self.data.get("user"))
+            except (ValueError, TypeError):
+                pass
+
+        if "process" in self.fields:
+            if user_id_for_filtering:
+                self.fields["process"].queryset = Process.objects.filter(
+                    user_id=user_id_for_filtering
+                ).order_by("process_type")
+            else:
+                # For new forms or if user_id is missing, set to none.
+                # This ensures that if 'user' is selected via JS, the process list is initially empty
+                # and then populated. If 'user' is pre-selected (e.g. editing), this logic is fine.
+                # If 'user' is submitted in POST, user_id_for_filtering should be set.
+                if (
+                    not (self.instance and self.instance.pk)
+                    or not user_id_for_filtering
+                ):
+                    self.fields["process"].queryset = Process.objects.none()
+                # If self.instance.pk exists but no user_id_for_filtering, it implies an issue or
+                # that the process field should show all. For dependent filtering, it's safer to default to none.
+
     class Meta:
         model = Equipment
         fields = [
@@ -124,6 +202,24 @@ class EquipmentForm(forms.ModelForm):
                 attrs={"type": "date"}
             ),
         }
+
+
+def load_user_processes(request):
+    user_id = request.GET.get("user_id")
+    processes_data = []
+    if user_id:
+        processes = Process.objects.filter(user_id=user_id).order_by("process_type")
+        processes_data = [{"id": p.id, "name": str(p)} for p in processes]
+    return JsonResponse(processes_data, safe=False)
+
+
+def load_user_equipment(request):
+    user_id = request.GET.get("user_id")
+    equipment_data = []
+    if user_id:
+        equipments = Equipment.objects.filter(user_id=user_id).order_by("nombre")
+        equipment_data = [{"id": e.id, "name": str(e)} for e in equipments]
+    return JsonResponse(equipment_data, safe=False)
 
 
 # Login view

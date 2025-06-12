@@ -23,6 +23,8 @@ from app.views import (
     UserDetailView,
     UserListView,
     UserUpdateView,
+    load_user_equipment,
+    load_user_processes,
     logout_view,
     main,
 )
@@ -68,5 +70,15 @@ urlpatterns = [
     ),
     path(
         "equipos/<int:pk>/delete/", EquiposDeleteView.as_view(), name="equipos_delete"
+    ),
+    path(
+        "ajax/load-user-processes/",
+        load_user_processes,
+        name="ajax_load_user_processes",
+    ),
+    path(
+        "ajax/load-user-equipment/",
+        load_user_equipment,
+        name="ajax_load_user_equipment",
     ),
 ]
