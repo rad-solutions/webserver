@@ -8,7 +8,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.views import LoginView, redirect_to_login
 from django.core.exceptions import ValidationError
-from django.db.models import Q  # Importar Q para búsquedas OR
+from django.db.models import Max, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -265,12 +265,82 @@ def main(request):
             .order_by("-fecha_inicio")
         )
 
-        if proceso_activo:
-            # Filtrar equipos por tipo de proceso
-            equipos_asociados = Equipment.objects.filter(
-                user=request.user,
-                process__process_type=proceso_activo,
-            ).order_by("-process__fecha_inicio")[:5]
+        # 1. Obtener la fecha de inicio más reciente de un proceso relevante (activo y del tipo filtrado)
+        #    asociado a cada equipo a través de los REPORTES DEL USUARIO.
+
+        # Construir el filtro para los procesos dentro de los reportes
+        filtro_proceso_en_reporte = ~Q(process__estado=ProcessStatusChoices.FINALIZADO)
+        if proceso_activo and proceso_activo != "todos":
+            filtro_proceso_en_reporte &= Q(process__process_type=proceso_activo)
+
+        # Obtener {equipment_id: max_fecha_relevante_via_reporte}
+        map_equipo_a_fecha_max_proceso_reporte = {
+            item["equipment_id"]: item["max_fecha_relevante"]
+            for item in Report.objects.filter(
+                user=request.user,  # Reportes del usuario actual
+                equipment__isnull=False,  # Reporte asociado a un equipo
+                process__isnull=False,  # Reporte asociado a un proceso
+            )
+            .filter(filtro_proceso_en_reporte)
+            .values("equipment_id")  # Agrupar por equipo
+            .annotate(
+                max_fecha_relevante=Max(
+                    "process__fecha_inicio"
+                )  # Fecha más reciente del proceso del reporte
+            )
+            .order_by()  # Limpiar cualquier ordenación por defecto
+            if item["equipment_id"] is not None
+        }
+
+        # 2. Iterar sobre todos los equipos del usuario para determinar si califican y cuál es su fecha de ordenación.
+        equipos_candidatos_con_fecha_ordenacion = []
+        # Usar select_related para optimizar el acceso a equipo.process y equipo.user
+        todos_los_equipos_del_usuario = Equipment.objects.filter(
+            user=request.user
+        ).select_related("process", "user")
+
+        for equipo in todos_los_equipos_del_usuario:
+            fechas_relevantes_para_este_equipo = []
+
+            # a. Considerar el proceso directamente asociado al equipo
+            if equipo.process:
+                proceso_directo_cumple_tipo = (
+                    proceso_activo
+                    and proceso_activo != "todos"
+                    and equipo.process.process_type == proceso_activo
+                ) or (
+                    not proceso_activo or proceso_activo == "todos"
+                )  # No hay filtro de tipo o es "todos"
+                if (
+                    equipo.process.estado != ProcessStatusChoices.FINALIZADO
+                    and proceso_directo_cumple_tipo
+                ):
+                    fechas_relevantes_para_este_equipo.append(
+                        equipo.process.fecha_inicio
+                    )
+
+            # b. Considerar procesos vía reportes (usando el mapa precalculado)
+            if equipo.id in map_equipo_a_fecha_max_proceso_reporte:
+                fechas_relevantes_para_este_equipo.append(
+                    map_equipo_a_fecha_max_proceso_reporte[equipo.id]
+                )
+
+            # Si el equipo tiene al menos una fecha relevante (es decir, un proceso activo asociado que cumple el filtro)
+            if fechas_relevantes_para_este_equipo:
+                # La fecha de ordenación para este equipo será la más reciente de todas sus fechas relevantes
+                fecha_ordenacion_para_equipo = max(fechas_relevantes_para_este_equipo)
+                equipos_candidatos_con_fecha_ordenacion.append(
+                    (equipo, fecha_ordenacion_para_equipo)
+                )
+
+        # 3. Ordenar los equipos candidatos por su fecha de ordenación (más reciente primero)
+        equipos_candidatos_con_fecha_ordenacion.sort(key=lambda x: x[1], reverse=True)
+
+        # 4. Tomar los primeros 5 equipos
+        equipos_asociados = [
+            ec_con_fecha[0]
+            for ec_con_fecha in equipos_candidatos_con_fecha_ordenacion[:5]
+        ]
 
         context = {
             "titulo": "RadSolutions",
