@@ -79,34 +79,56 @@
                 <a href="{% url 'equipos_update' equipo.id %}" class="btn btn-warning">Editar Equipo</a>
                 <a href="{% url 'equipos_delete' equipo.id %}" class="btn btn-danger">Eliminar Equipo</a>
             {% else %}
-                {% if equipo.process and equipo.process.process_type == "control_calidad" %}
-                    {% with ultimo_informe_calidad=equipo.get_last_quality_control_report %}
-                        <a href="{% url 'process_detail' equipo.process.id %}" class="btn btn-info">Ver Detalles del Control de Calidad</a>
-                        {% if ultimo_informe_calidad %}
-                            <a href="{% url 'report_detail' ultimo_informe_calidad.id %}" class="btn btn-primary">Ver Último Informe de Calidad</a>
-                        {% elif equipo.process and equipo.process.process_type == ProcessTypeChoices.CONTROL_CALIDAD %}
-                            <span class="ms-2 fst-italic text-muted">No hay informes para este proceso de calidad.</span>
+                {% if numero_procesos_activos == 1%}
+                    {% for proceso in procesos_activos_del_equipo%}
+                        {% if proceso.process_type == "control_calidad" %}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso de Control de Calidad</a>
+                            {% with ultimo_informe_calidad=equipo.get_last_quality_control_report %}
+                                {% if ultimo_informe_calidad %}
+                                    <a href="{% url 'report_detail' ultimo_informe_calidad.id %}" class="btn btn-primary">Ver Último Informe de Calidad</a>
+                                {% else %}
+                                    <span class="ms-2 fst-italic text-muted">No hay informes para este proceso de calidad.</span>
+                                {% endif %}
+                            {% endwith %}
+                            <a href="{% url 'report_list' %}?equipment_id={{ equipo.id }}&process_type=control_calidad" class="btn btn-outline-secondary ms-2">Historial de Informes de Calidad</a>
+                        {% elif proceso.process_type == "calculo_blindajes" %}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso de Cálculo de Blindajes</a>
+                            {% if procesos.reports.all %}
+                                <a href="{% url 'report_detail' procesos.reports.last.id %}" class="btn btn-primary">Ver Informe del Proceso de Cálculo de Blindajes</a>
+                            {% else %}
+                                <span class="ms-2 fst-italic text-muted">Aún no hay informe para este proceso.</span>
+                            {% endif %}
+                        {% elif proceso.process_type == "asesoria" %}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso de Asesoría</a>
+                            {% if procesos.reports.all %}
+                                <a href="{% url 'report_detail' procesos.reports.last.id %}" class="btn btn-primary">Ver Informe del Proceso de Asesoría</a>
+                            {% else %}
+                                <span class="ms-2 fst-italic text-muted">Aún no hay informe para este proceso.</span>
+                            {% endif %}
+                            <a href="{% url 'report_list' %}?equipment_id={{ equipo.id }}&process_type=asesoria" class="btn btn-outline-secondary ms-2">Ver todos los reportes de asesoria</a>
+                        {% elif proceso.process_type == "otro" %}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso</a>
+                            {% if procesos.reports.all %}
+                                <a href="{% url 'report_detail' procesos.reports.last.id %}" class="btn btn-primary">Ver Informe del Proceso</a>
+                            {% else %}
+                                <span class="ms-2 fst-italic text-muted">Aún no hay informe para este proceso.</span>
+                            {% endif %}
                         {% endif %}
-                    {% endwith %}
+                    {% endfor %}
+                {% elif numero_procesos_activos > 1 %}
+                    {% for proceso in procesos_activos_del_equipo%}
+                        {% if proceso.process_type == "control_calidad"%}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso de Control de Calidad</a>
+                        {% elif proceso.process_type == "calculo_blindajes"%}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso de Calculo de Blindajes</a>
+                        {% elif proceso.process_type == "asesoria"%}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso de Asesoría</a>
+                        {% elif proceso.process_type == "otro"%}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso</a>
+                        {% endif %}
+                    {% endfor %}
 
-                    <a href="{% url 'report_list' %}?equipment_id={{ equipo.id }}&process_type=control_calidad" class="btn btn-outline-secondary ms-2">Historial de Informes de Calidad</a>
-
-                {% elif equipo.process and equipo.process.process_type == "calculo_blindajes" %}
-                    <a href="{% url 'process_detail' equipo.process.id %}" class="btn btn-info">Ver Detalles del Cálculo de Blindajes</a>
-                    {% if equipo.process.reports.all %}
-                        <a href="{% url 'report_detail' equipo.process.reports.last.id %}" class="btn btn-primary">Ver Informe del Proceso</a>
-                    {% else %}
-                        <span class="ms-2 fst-italic text-muted">Aún no hay informe para este proceso.</span>
-                    {% endif %}
-                {% else %}
-                    {% if equipo.process %}
-                        <a href="{% url 'process_detail' equipo.process.id %}" class="btn btn-info">Ver Detalles del Proceso</a>
-                    {% endif %}
-                    {% if equipo.process.reports.all %}
-                        <a href="{% url 'report_detail' equipo.process.reports.last.id %}" class="btn btn-primary">Ver Último Informe</a>
-                    {% else %}
-                        <span class="ms-2 fst-italic text-muted">No hay informes para este proceso.</span>
-                    {% endif %}
+                    <a href="{% url 'report_list' %}?equipment_id={{ equipo.id }}" class="btn btn-outline-secondary ms-2">Ver todos los reportes del equipo</a>
                 {% endif %}
             {% endif %}
         </div>

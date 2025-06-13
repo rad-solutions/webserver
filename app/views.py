@@ -751,6 +751,30 @@ class EquiposDetailView(LoginRequiredMixin, DetailView):
     context_object_name = "equipo"
     login_url = "/login/"
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        equipo = self.get_object()
+
+        procesos_activos_asociados = set()
+
+        # 1. Proceso directamente asociado al equipo
+        if equipo.process and equipo.process.estado != ProcessStatusChoices.FINALIZADO:
+            procesos_activos_asociados.add(equipo.process)
+
+        # 2. Procesos asociados a través de reportes vinculados al equipo
+        reportes_del_equipo = Report.objects.filter(equipment=equipo)
+        for reporte in reportes_del_equipo:
+            if (
+                reporte.process
+                and reporte.process.estado != ProcessStatusChoices.FINALIZADO
+            ):
+                procesos_activos_asociados.add(reporte.process)
+
+        context["procesos_activos_del_equipo"] = list(procesos_activos_asociados)
+        context["numero_procesos_activos"] = len(procesos_activos_asociados)
+
+        return context
+
 
 class EquiposCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = Equipment
