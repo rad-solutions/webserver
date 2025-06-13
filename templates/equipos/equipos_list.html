@@ -14,7 +14,7 @@
 
     <form method="get" class="mb-4 p-3 border rounded bg-light">
         <div class="row g-3 align-items-center mb-3">
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label for="process_type" class="form-label">Filtrar por tipo de proceso asociado:</label>
                 <select name="process_type" id="process_type" class="form-select">
                     {% for value, label in process_types %}
@@ -24,13 +24,34 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-1">
+            <div class="col-md-3">
                 <div class="form-check">
                     <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_text_search" data-bs-toggle="collapse" data-bs-target="#text_search_fields" aria-expanded="false" aria-controls="text_search_fields" {% if text_search_term %}checked{% endif %}>
                     <label class="form-check-label" for="toggle_text_search">
                         Filtrar por Modelo/Serial
                     </label>
                 </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check">
+                    <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_date_filters" data-bs-toggle="collapse" data-bs-target="#date_filter_checkboxes" aria-expanded="false" aria-controls="date_filter_checkboxes" {% if inicio_adq_date or end_adq_date or inicio_vig_lic_date or end_vig_lic_date or inicio_last_cc_date or end_last_cc_date or inicio_venc_cc_date or end_venc_cc_date %}checked{% endif %}>
+                    <label class="form-check-label" for="toggle_date_filters">
+                        Filtrar por Fecha
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-info w-100">Filtrar</button>
+            </div>
+        </div>
+        <hr class="my-3">
+
+        {# Selector de tipo de fecha #}
+        <div class="row g-3 align-items-end collapse {% if date_filter or inicio_adq_date or end_adq_date or inicio_vig_lic_date or end_vig_lic_date or inicio_last_cc_date or end_last_cc_date or inicio_venc_cc_date or end_venc_cc_date %}show{% endif %}" id="date_filter_checkboxes">
+            <div class="col-md-4">
+                <h5>
+                    Seleccione el tipo de fecha para filtrar:
+                </h5>
             </div>
             <div class="col-md-2">
                 <div class="form-check">
@@ -64,12 +85,8 @@
                     </label>
                 </div>
             </div>
-            <div class="col-md-1">
-                <button type="submit" class="btn btn-info w-100">Filtrar</button>
-            </div>
+            <hr class="my-3">
         </div>
-        <hr class="my-3">
-
         {# Campo para Búsqueda por Texto (Modelo/Serial) #}
         <div class="row g-3 align-items-end collapse {% if text_search_term %}show{% endif %}" id="text_search_fields">
             <div class="col-md-3">
