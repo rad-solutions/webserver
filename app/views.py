@@ -259,6 +259,12 @@ def main(request):
             fecha_vigencia_licencia__lte=seis_meses_despues,
         ).order_by("fecha_vigencia_licencia")
 
+        equipos_cc_por_vencer = Equipment.objects.filter(
+            user=request.user,
+            fecha_vencimiento_control_calidad__isnull=False,
+            fecha_vencimiento_control_calidad__lte=seis_meses_despues,
+        ).order_by("fecha_vencimiento_control_calidad")
+
         procesos_activos_cliente = (
             Process.objects.filter(user=request.user)
             .exclude(estado=ProcessStatusChoices.FINALIZADO)
@@ -348,6 +354,7 @@ def main(request):
             "reportes_para_tabla": reportes_para_tabla,
             "equipos_asociados": equipos_asociados,
             "equipos_licencia_por_vencer": equipos_licencia_por_vencer,
+            "equipos_cc_por_vencer": equipos_cc_por_vencer,
             "procesos_activos_cliente": procesos_activos_cliente,
             "proceso_activo": proceso_activo,
             "process_types_choices": ProcessTypeChoices.choices,
