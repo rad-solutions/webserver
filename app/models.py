@@ -55,6 +55,13 @@ class ClientProfile(models.Model):
         return f"{self.razon_social} ({self.nit})"
 
 
+class PracticeCategoryChoices(models.TextChoices):
+    VETERINARIA = "veterinaria", _("Veterinaria")
+    INDUSTRIAL = "industrial", _("Industrial")
+    MEDICA_CAT1 = "medica_cat1", _("Médica Categoría 1")
+    MEDICA_CAT2 = "medica_cat2", _("Médica Categoría 2")
+
+
 class ProcessTypeChoices(models.TextChoices):
     CALCULO_BLINDAJES = "calculo_blindajes", _("Cálculo de Blindajes")
     CONTROL_CALIDAD = "control_calidad", _("Control de Calidad")
@@ -67,14 +74,21 @@ class ProcessStatusChoices(models.TextChoices):
     EN_REVISION = "en_revision", _("En Revisión")
     RADICADO = "radicado", _("Radicado")
     FINALIZADO = "finalizado", _("Finalizado")
+    EN_MODIFICACION = "en_modificacion", _("En Modificación")
 
 
 class Process(models.Model):
-
     process_type = models.CharField(
         max_length=20,
         choices=ProcessTypeChoices.choices,
         default=ProcessTypeChoices.OTRO,
+    )
+    practice_category = models.CharField(
+        max_length=30,
+        choices=PracticeCategoryChoices.choices,
+        null=True,
+        blank=True,
+        verbose_name=_("Categoría de Práctica"),
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="processes")
     estado = models.CharField(
@@ -88,40 +102,68 @@ class Process(models.Model):
     def save(self, *args, **kwargs):
         user_who_modified = kwargs.pop("user_who_modified", None)
         is_new = self._state.adding
+        old_estado = None
+
+        if not is_new:
+            try:
+                old_instance = Process.objects.get(pk=self.pk)
+                old_estado = old_instance.estado
+            except Process.DoesNotExist:
+                old_estado = None
+
+        super().save(*args, **kwargs)  # Save the process instance
 
         if is_new:
-            # For new instances, save first to get a PK, then log.
-            super().save(*args, **kwargs)
-            # Ensure ProcessStatusLog is accessible here.
-            # If it's defined later in the file, this is fine.
             ProcessStatusLog.objects.create(
                 proceso=self,
                 estado_anterior=None,
                 estado_nuevo=self.estado,
                 usuario_modifico=user_who_modified,
             )
-        else:
-            # For existing instances, get old state.
-            try:
-                old_instance = Process.objects.get(pk=self.pk)
-                old_estado = old_instance.estado
-            except Process.DoesNotExist:
-                # This case should ideally not happen for an existing instance
-                # if self.pk is valid. Fallback to prevent error.
-                old_estado = (
-                    None  # Or self.estado if no log entry is desired on failed fetch
-                )
+            self._create_checklist_items()
+        elif old_estado != self.estado:  # Existing instance and 'estado' has changed
+            ProcessStatusLog.objects.create(
+                proceso=self,
+                estado_anterior=old_estado,
+                estado_nuevo=self.estado,
+                usuario_modifico=user_who_modified,
+            )
+            if self.estado == ProcessStatusChoices.EN_MODIFICACION.value:
+                self._reset_checklist_items()
+            # If checklist items don't exist (e.g. for older processes) and not entering modification, create them.
+            elif not self.checklist_items.exists():
+                self._create_checklist_items()
 
-            # Log if 'estado' has changed.
-            if self.estado != old_estado:
-                ProcessStatusLog.objects.create(
-                    proceso=self,  # self contains the new state in memory
-                    estado_anterior=old_estado,
-                    estado_nuevo=self.estado,  # The new state about to be saved
-                    usuario_modifico=user_who_modified,
-                )
+    def _create_checklist_items(self):
+        """Create checklist items for this process based on its type and practice category if they don't already exist."""
+        if not self.checklist_items.exists():
+            filter_kwargs = {"process_type": self.process_type}
+            # Only filter by practice_category if process_type is ASESORIA
+            if self.process_type == ProcessTypeChoices.ASESORIA:
+                filter_kwargs["practice_category"] = self.practice_category
+            definitions = ChecklistItemDefinition.objects.filter(**filter_kwargs)
+            for definition in definitions:
+                ProcessChecklistItem.objects.create(process=self, definition=definition)
 
-            super().save(*args, **kwargs)  # Now save the changes to Process
+    def _reset_checklist_items(self):
+        """Reset all checklist items for this process to not completed."""
+        self.checklist_items.update(
+            is_completed=False, completed_at=None
+        )  # Add completed_by=None if you add that field
+
+    def get_progress_percentage(self):
+        """Calculate the total progress percentage based on completed checklist items."""
+        if not self.checklist_items.exists():
+            return 0
+
+        completed_percentage = (
+            self.checklist_items.filter(is_completed=True).aggregate(
+                total_percentage=models.Sum("definition__percentage")
+            )["total_percentage"]
+            or 0
+        )
+
+        return completed_percentage
 
     def __str__(self):
         return f"{self.get_process_type_display()} for {self.user.username} - Status: {self.get_estado_display()}"
@@ -291,6 +333,66 @@ class Anotacion(models.Model):
         ordering = ["-fecha_creacion"]
         verbose_name = _("Anotación")
         verbose_name_plural = _("Anotaciones")
+
+
+class ChecklistItemDefinition(models.Model):
+    process_type = models.CharField(
+        max_length=20,
+        choices=ProcessTypeChoices.choices,
+        verbose_name=_("Tipo de Proceso"),
+    )
+    practice_category = models.CharField(
+        max_length=30,
+        choices=PracticeCategoryChoices.choices,
+        null=True,
+        blank=True,
+        verbose_name=_("Categoría de Práctica"),
+    )
+    name = models.CharField(max_length=255, verbose_name=_("Nombre del Ítem"))
+    order = models.PositiveIntegerField(verbose_name=_("Orden"))
+    percentage = models.PositiveIntegerField(verbose_name=_("Porcentaje"))
+
+    class Meta:
+        verbose_name = _("Definición de Ítem de Checklist")
+        verbose_name_plural = _("Definiciones de Ítems de Checklist")
+        ordering = ["process_type", "practice_category", "order"]
+        unique_together = [
+            ("process_type", "practice_category", "name"),
+            ("process_type", "practice_category", "order"),
+        ]
+
+    def __str__(self):
+        return f"{self.get_process_type_display()} - {self.name} ({self.percentage}%)"
+
+
+class ProcessChecklistItem(models.Model):
+    process = models.ForeignKey(
+        Process, on_delete=models.CASCADE, related_name="checklist_items"
+    )
+    definition = models.ForeignKey(ChecklistItemDefinition, on_delete=models.CASCADE)
+    is_completed = models.BooleanField(default=False, verbose_name=_("Completado"))
+    completed_at = models.DateTimeField(
+        null=True, blank=True, verbose_name=_("Fecha de Completado")
+    )
+    # Optional: track who completed it
+    # completed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='completed_checklist_items')
+
+    class Meta:
+        verbose_name = _("Ítem de Checklist de Proceso")
+        verbose_name_plural = _("Ítems de Checklist de Proceso")
+        ordering = ["process", "definition__order"]
+        unique_together = [("process", "definition")]
+
+    def __str__(self):
+        return f"{self.process} - {self.definition.name} ({'Completado' if self.is_completed else 'Pendiente'})"
+
+    @property
+    def name(self):
+        return self.definition.name
+
+    @property
+    def percentage(self):
+        return self.definition.percentage
 
 
 class ProcessStatusLog(models.Model):
