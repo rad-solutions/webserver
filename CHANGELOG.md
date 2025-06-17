@@ -1,3 +1,42 @@
+# [1.4.0](https://github.com/rad-solutions/webserver/compare/v1.3.0...v1.4.0) (2025-06-17)
+
+
+### Features
+
+* Added Anotacion view in process_detail and anotacion_create view. Implemented permissions to anotacion_create. ([3d29618](https://github.com/rad-solutions/webserver/commit/3d2961802f98b3a80e2e5c3dcb089f420dcac2ca))
+* Added Asesorias items for follow up ([ef36650](https://github.com/rad-solutions/webserver/commit/ef366508bdbdc4eca2164c23d2378d2d50528ab0))
+* Added filters by date on equipos_list and process_list pages. Added corresponding tests for the new filters. ([49627d0](https://github.com/rad-solutions/webserver/commit/49627d00bc366a2a9bd3dd05676ff06e3ac7b4b6))
+* Added message in process_list and fixed colours of the sidebar. ([19f7e46](https://github.com/rad-solutions/webserver/commit/19f7e4644ebb20c74ba45c3a9d5d15a04ba8c5c9))
+* Added notification section for quality control expiration. Respective tests added. Re-organization of the test_views.py into smaller python files by component. ([34bfe26](https://github.com/rad-solutions/webserver/commit/34bfe26c95d11c4180f9bbe20065044504caa502))
+* Added pdf extension validation and corresponding test. ([517120a](https://github.com/rad-solutions/webserver/commit/517120af3c5ad44c62c5e35d5838f7bb56adfeb7))
+* added populate-db make command ([5cff862](https://github.com/rad-solutions/webserver/commit/5cff8621364f7e97001cfcb95b61420958b74422))
+* agregar nuevos permisos requeridos y tests asociados ([717be14](https://github.com/rad-solutions/webserver/commit/717be1449d14dfd65ca756990c42b483d8c3c3d1))
+* Anotacion Model and Tests ([ddc5ceb](https://github.com/rad-solutions/webserver/commit/ddc5ceb8668d7c7f861dfef0c3df426062a88b8e))
+* Changes to client's dashboard. Fixed discrepancies in the equipos_detail page. Fixed responsiveness. Updated tests to match the current status of the webserver. ([cc5019d](https://github.com/rad-solutions/webserver/commit/cc5019ddfdf313cd0e1e70510fe8b916e1e721a7))
+* Client's main dashboard ([b68642c](https://github.com/rad-solutions/webserver/commit/b68642c4bd6245f95cfcc539e7a8108978dba0ec))
+* Dashboard now loads equipment by asociated processes via reports or directly using the asociated process of the equipment. ([3693d2e](https://github.com/rad-solutions/webserver/commit/3693d2e3e52f8399a2c7699636f43fc60c8d200b))
+* Dashboard Redesign, added filters to Report List and updated test to match the new Dashboard logic and reports filters. ([1c1e877](https://github.com/rad-solutions/webserver/commit/1c1e8778cf1cabe1b66df21cf5c84bc9990c2439))
+* Equipos now showing last cc report and history of cc reports using model's methods. Updated respective tests. ([45b3568](https://github.com/rad-solutions/webserver/commit/45b35689b4229763129c4e9bf40ba6fff971f72a))
+* Fixed buttons "Volver" and "Cancelar" so that it takes the user to the previous visited page correctly. ([a3175cb](https://github.com/rad-solutions/webserver/commit/a3175cb41c29b267469dfe5ec4fafd5ff235cc90))
+* Fixed permissions error on a test. ([b129814](https://github.com/rad-solutions/webserver/commit/b129814c92055062eeee8276b66355256920a76f))
+* Handler functions for equipment class ([aa493f8](https://github.com/rad-solutions/webserver/commit/aa493f89d46c84f10a4a2f0b4b3a37784c433762))
+* Implement custom roles and permissions system ([c14760d](https://github.com/rad-solutions/webserver/commit/c14760d50f64264810211ed075cbca1589082714))
+* Implemented dynamic buttons in equipos_detail page depending on the active processes associated to the equipment (via reports and directly). No need to update tests. ([1a9f360](https://github.com/rad-solutions/webserver/commit/1a9f360b668b24e93eab2371497d2dad6e0866c8))
+* Improved forms to create and update Reports and Equipment filtering processes and equipment (if applicable) by selected user updating dynamically. ([a1d25d0](https://github.com/rad-solutions/webserver/commit/a1d25d0c04ae56208fed64827091ecd4d0692097))
+* Improved the visualization of the filters in the _list pages. Added process_status filter on process_list, now showing equipment filter on reports_list and fixed cc+equipment filter redirected from equipos_detail to reports_list. ([ad1590d](https://github.com/rad-solutions/webserver/commit/ad1590d3a8f6d645f1811cbc82ca08ffb7b78766))
+* Improved visualization of filters in equipos_list. ([06bb068](https://github.com/rad-solutions/webserver/commit/06bb0687e01883eca5bd4f88f5931227a3040137))
+* New filter by model or serial number in equipos_list page. Corresponding tests added. ([d8e4ee7](https://github.com/rad-solutions/webserver/commit/d8e4ee7573334afed4137d90c4af46de702b5639))
+* New navbar colours. Fixed visibility of buttons in reports list depending on permissions. ([03be798](https://github.com/rad-solutions/webserver/commit/03be798d5f7fcbaa26288d6feccc159a96b1f03d))
+* Permissions implemented in views, and templates. Corresponding tests updated. ([678f966](https://github.com/rad-solutions/webserver/commit/678f966ae2b12698bc8799cccad9b2fc2e3fe908))
+* Process model checklist handlers ([602f0ca](https://github.com/rad-solutions/webserver/commit/602f0ca5374f25567d4cf51d471d19db5e21d1e5))
+* Responsive check ([c4ef6f8](https://github.com/rad-solutions/webserver/commit/c4ef6f8c8a7dd411ea98a5e080c2916ac570c379))
+* Simplified the anotacion_create view and implemented tests for the anotacion view. ([165a9cf](https://github.com/rad-solutions/webserver/commit/165a9cf3e7ca045f36b46129e5944ba71e64b2f2))
+* Testing client's dashboard ([dabf666](https://github.com/rad-solutions/webserver/commit/dabf666d33514307fe96251e4cae1b8eda5dbacf))
+* Tests for new filters (Process Status in process_list) and fixed inconsistencies. ([ee59bba](https://github.com/rad-solutions/webserver/commit/ee59bba7fe57822a523439c3140f25a3ab10bf01))
+* Tests for process, equipment and reports UI. Refactor to match with updated models ([69ca356](https://github.com/rad-solutions/webserver/commit/69ca356238edaec0cebe133759b3883cf0101954))
+* UI for creation, update, delete, and view procesos, equipos and update pages for reports. Also, minor fixes in the dashboard. ([daba60d](https://github.com/rad-solutions/webserver/commit/daba60d5be99be78944885f72a56e0f187ab6d91))
+* Updated dates on test to mantain correctness in the future. ([304a1c0](https://github.com/rad-solutions/webserver/commit/304a1c038d975e4eb0d18e575b01c042ae790e5f))
+
 # [1.3.0](https://github.com/rad-solutions/webserver/compare/v1.2.0...v1.3.0) (2025-05-15)
 
 
