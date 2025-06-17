@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+{% load static %} {# Necesario para íconos si los usas localmente, o usa CDN de FontAwesome #}
+
+{% block title %}Dashboard del Cliente{% endblock %}
+
+{% block main_classes %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: #f8f9fa; /* Un fondo claro para la página */
+    }
+    .dashboard-container {
+        height: 100%;
+        display: flex;
+    }
+    .sidebar {
+        background-color: transparent; /* Color oscuro para la barra lateral */
+        color: #002B5A;
+        padding: 20px;
+        width: 250px; /* Ancho de la barra lateral */
+        flex-shrink: 0; /* Evita que la sidebar se encoja */
+    }
+    .sidebar a {
+        color: rgba(255, 255, 255, 0.8);
+        display: block;
+        padding: 10px 15px;
+        text-decoration: none;
+        border-radius: 0.25rem;
+    }
+    .sidebar a:hover, .sidebar a.active {
+        background-color: #495057;
+        color: white;
+    }
+    .content-wrapper {
+        flex-grow: 1; /* Ocupa el espacio restante */
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto; /* Permite scroll si el contenido es muy largo */
+    }
+    .main-content {
+        padding: 20px;
+        background-color: #ffffff; /* Fondo blanco para el contenido principal */
+        flex-grow: 1;
+    }
+    .content-header {
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .card-custom {
+        border: none;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+    }
+    .welcome-section, .notifications-section {
+        padding: 20px;
+        background-color: #e9ecef;
+        border-radius: 0.5rem;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex dashboard-container">
+    <!-- Barra Lateral de Navegación de Procesos -->
+    <nav class="sidebar d-none d-md-block">
+        <h5 class="mb-3">Tipos de Proceso</h5>
+        <ul class="nav flex-column">
+            <li class="nav-item mt-3">
+                <a class="nav-link {% if not proceso_activo %}active{% endif %}" href="{% url 'home' %}">
+                    <i class="fas fa-home me-2"></i> Inicio / Notificaciones
+                </a>
+            </li>
+            {% for value, label in process_types_choices %}
+            <li class="nav-item">
+                <a class="nav-link {% if proceso_activo == value %}active{% endif %}" href="{% url 'home' %}?proceso_activo={{ value }}">
+                    {{ label }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </nav>
+
+    <!-- Contenedor para la navbar móvil y el contenido principal -->
+    <div class="content-wrapper">
+        <!-- Navbar para pantallas pequeñas (inferior a md) -->
+        <nav class="navbar navbar-expand-md navbar-light bg-light d-md-none mobile-navbar sticky-top">
+            <div class="container-fluid">
+                <span class="navbar-brand">Tipo de Proceso</span>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNav" aria-controls="mobileNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="mobileNav">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link {% if not proceso_activo %}active{% endif %}" href="{% url 'home' %}">
+                                <i class="fas fa-home me-2"></i> Inicio / Notificaciones
+                            </a>
+                        </li>
+                        {% for value, label in process_types_choices %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if proceso_activo == value %}active{% endif %}" href="{% url 'home' %}?proceso_activo={{ value }}">
+                                {{ label }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Contenido Principal -->
+        <div class="main-content">
+            <div class="container-fluid">
+                {% if not proceso_activo %}
+                    <!-- Estado Inicial: Bienvenida y Notificaciones -->
+                    <div class="welcome-section text-center">
+                        <h1 class="display-5">{{ titulo }}</h1>
+                        <p class="lead">{{ mensaje_bienvenida }}</p>
+                    </div>
+
+                    {% if equipos_licencia_por_vencer %}
+                    <div class="notifications-section mt-4">
+                        <h4 class="mb-3"><i class="fas fa-bell me-2"></i>Notificaciones: Licencias Próximas a Vencer</h4>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Marca</th>
+                                        <th>Modelo</th>
+                                        <th>Serial</th>
+                                        <th>Fecha Vencimiento</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for equipo in equipos_licencia_por_vencer %}
+                                    <tr>
+                                        <td>{{ equipo.nombre }}</td>
+                                        <td>{{ equipo.marca }}</td>
+                                        <td>{{ equipo.modelo }}</td>
+                                        <td>{{ equipo.serial }}</td>
+                                        <td>{{ equipo.fecha_vigencia_licencia|date:"d/m/Y" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="notifications-section mt-4 text-center">
+                         <h4 class="mb-3"><i class="fas fa-bell me-2"></i>Notificaciones</h4>
+                        <p>¡Felicidades, no hay equipos con licencias próximas a vencer!</p>
+                    </div>
+                    {% endif %}
+
+                    {% if equipos_cc_por_vencer %}
+                    <div class="notifications-section mt-4">
+                        <h4 class="mb-3"><i class="fas fa-bell me-2"></i>Notificaciones: Controles de Calidad Próximos a Vencer</h4>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Marca</th>
+                                        <th>Modelo</th>
+                                        <th>Serial</th>
+                                        <th>Fecha Vencimiento</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for equipo in equipos_cc_por_vencer %}
+                                    <tr>
+                                        <td>{{ equipo.nombre }}</td>
+                                        <td>{{ equipo.marca }}</td>
+                                        <td>{{ equipo.modelo }}</td>
+                                        <td>{{ equipo.serial }}</td>
+                                        <td>{{ equipo.fecha_vencimiento_control_calidad|date:"d/m/Y" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="notifications-section mt-4 text-center">
+                         <h4 class="mb-3"><i class="fas fa-bell me-2"></i>Notificaciones</h4>
+                        <p>¡Felicidades, no hay equipos con controles de calidad próximos a vencer!</p>
+                    </div>
+                    {% endif %}
+
+                    {% if procesos_activos_cliente %}
+                    <div class="notifications-section mt-4">
+                        <h4 class="mb-3"><i class="fas fa-tasks me-2"></i>Mis Procesos Activos</h4>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead class="table-light"><tr><th>Tipo de Proceso</th><th>Estado</th><th>Fecha Inicio</th><th>Acciones</th></tr></thead>
+                                <tbody>
+                                    {% for proceso_item in procesos_activos_cliente %}
+                                    <tr>
+                                        <td>{{ proceso_item.get_process_type_display }}</td>
+                                        <td><span class="badge bg-info text-dark">{{ proceso_item.get_estado_display }}</span></td>
+                                        <td>{{ proceso_item.fecha_inicio|date:"d/m/Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'process_detail' proceso_item.id %}" class="btn btn-xs btn-outline-primary">Ver Detalle</a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="notifications-section mt-4 text-center">
+                        <h4 class="mb-3"><i class="fas fa-tasks me-2"></i>Mis Procesos Activos</h4>
+                        <p>No tienes procesos activos en este momento.</p>
+                    </div>
+                    {% endif %}
+
+                {% else %}
+                    <!-- Estado con Proceso Seleccionado -->
+                    <div class="content-header">
+                        <h2>
+                            {% for value, label in process_types_choices %}
+                                {% if proceso_activo == value %}{{ label }}{% endif %}
+                            {% endfor %}
+                        </h2>
+                    </div>
+
+                    <div class="row">
+                        <!-- Columna de Equipos Asociados (siempre visible si hay proceso activo) -->
+                        <div class="{% if proceso_activo == ProcessTypeChoices.CALCULO_BLINDAJES.value or proceso_activo == ProcessTypeChoices.CONTROL_CALIDAD.value %}col-md-12{% else %}col-md-6{% endif %}">
+                            <div class="card card-custom mb-4">
+                                <div class="card-header bg-light"><h5 class="mb-0"><i class="fas fa-tools me-2"></i>Equipos Asociados</h5></div>
+                                <div class="card-body">
+                                    {% if equipos_asociados %}
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-sm">
+                                            <thead><tr>
+                                                <th>Nombre</th>
+                                                <th>Marca</th>
+                                                <th>Modelo</th>
+                                                <th>Serial</th>
+                                            {% if proceso_activo == ProcessTypeChoices.CALCULO_BLINDAJES.value or proceso_activo == ProcessTypeChoices.CONTROL_CALIDAD.value %}
+                                                <th>Informes del Equipo</th>
+                                            {% endif %}
+                                            </tr></thead>
+                                            <tbody>
+                                                {% for equipo_item in equipos_asociados %}
+                                                <tr>
+                                                    <td><a href="{% url 'equipos_detail' equipo_item.id %}">{{ equipo_item.nombre }}</a></td>
+                                                    <td>{{ equipo_item.marca }}</td>
+                                                    <td>{{ equipo_item.modelo }}</td>
+                                                    <td>{{ equipo_item.serial|default:"N/A" }}</td>
+                                                    {% if proceso_activo == ProcessTypeChoices.CALCULO_BLINDAJES.value or proceso_activo == ProcessTypeChoices.CONTROL_CALIDAD.value %}
+                                                    <td>
+                                                        <a href="{% url 'report_list' %}?equipment_id={{ equipo_item.id }}&process_type={{ proceso_activo }}" class="btn btn-sm btn-outline-info">
+                                                            Ver Informes <i class="fas fa-angle-right"></i>
+                                                        </a>
+                                                    </td>
+                                                    {% endif %}
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="text-center mt-3">
+                                         <a href="{% url 'equipos_list' %}?process_type={{ proceso_activo }}" class="btn btn-sm btn-outline-primary">Ver todos los equipos de este tipo</a>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted">No hay equipos asociados a este tipo de proceso.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        {# Lógica para la segunda columna: Asesorías u Otros #}
+                        {% if proceso_activo == ProcessTypeChoices.ASESORIA.value %}
+                        <div class="col-md-6">
+                            <div class="card card-custom mb-4">
+                                <div class="card-header bg-light"><h5 class="mb-0"><i class="fas fa-folder-open me-2"></i>Documentación de Asesoría</h5></div>
+                                <div class="card-body text-center">
+                                    <p>Accede a todos los documentos y reportes relacionados con esta asesoría.</p>
+                                    <a href="{% url 'report_list' %}?process_type={{ ProcessTypeChoices.ASESORIA.value }}" class="btn btn-lg btn-success">
+                                        <i class="fas fa-file-alt me-2"></i> Ver Documentos Asociados
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% elif proceso_activo != ProcessTypeChoices.CALCULO_BLINDAJES.value and proceso_activo != ProcessTypeChoices.CONTROL_CALIDAD.value %}
+                        <!-- Espacio para otros tipos de proceso si se implementan con dos columnas -->
+                        <!-- Por ahora, si no es Blindajes, Calidad o Asesoría, esta columna podría estar vacía o mostrar algo genérico -->
+                        <div class="col-md-6">
+                            <div class="card card-custom mb-4">
+                                 <div class="card-header bg-light"><h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Información Adicional</h5></div>
+                                 <div class="card-body">
+                                    <p class="text-muted">Información relevante para '{{ proceso_activo|capfirst }}s' procesos aparecerán aquí.</p>
+                                 </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

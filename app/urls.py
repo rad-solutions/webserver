@@ -1,7 +1,18 @@
 from django.urls import path
 
 from app.views import (
+    AnotacionCreateView,
     CustomLoginView,
+    EquiposCreateView,
+    EquiposDeleteView,
+    EquiposDetailView,
+    EquiposListView,
+    EquiposUpdateView,
+    ProcessCreateView,
+    ProcessDeleteView,
+    ProcessDetailView,
+    ProcessListView,
+    ProcessUpdateView,
     ReportCreateView,
     ReportDeleteView,
     ReportDetailView,
@@ -12,6 +23,8 @@ from app.views import (
     UserDetailView,
     UserListView,
     UserUpdateView,
+    load_user_equipment,
+    load_user_processes,
     logout_view,
     main,
 )
@@ -33,4 +46,39 @@ urlpatterns = [
     path("reports/create/", ReportCreateView.as_view(), name="report_create"),
     path("reports/<int:pk>/update/", ReportUpdateView.as_view(), name="report_update"),
     path("reports/<int:pk>/delete/", ReportDeleteView.as_view(), name="report_delete"),
+    # Process URLs
+    path("processes/", ProcessListView.as_view(), name="process_list"),
+    path("processes/<int:pk>/", ProcessDetailView.as_view(), name="process_detail"),
+    path("processes/create/", ProcessCreateView.as_view(), name="process_create"),
+    path(
+        "processes/<int:pk>/update/", ProcessUpdateView.as_view(), name="process_update"
+    ),
+    path(
+        "processes/<int:pk>/delete/", ProcessDeleteView.as_view(), name="process_delete"
+    ),
+    path(
+        "processes/<int:process_id>/anotacion/create/",
+        AnotacionCreateView.as_view(),
+        name="anotacion_create",
+    ),
+    # Equipment URLs
+    path("equipos/", EquiposListView.as_view(), name="equipos_list"),
+    path("equipos/<int:pk>/", EquiposDetailView.as_view(), name="equipos_detail"),
+    path("equipos/create/", EquiposCreateView.as_view(), name="equipos_create"),
+    path(
+        "equipos/<int:pk>/update/", EquiposUpdateView.as_view(), name="equipos_update"
+    ),
+    path(
+        "equipos/<int:pk>/delete/", EquiposDeleteView.as_view(), name="equipos_delete"
+    ),
+    path(
+        "ajax/load-user-processes/",
+        load_user_processes,
+        name="ajax_load_user_processes",
+    ),
+    path(
+        "ajax/load-user-equipment/",
+        load_user_equipment,
+        name="ajax_load_user_equipment",
+    ),
 ]

@@ -2,17 +2,17 @@
 {% load crispy_forms_tags %}
 
 {% block title %}
-    {% if form.instance.pk %}Editar Usuario{% else %}Crear Usuario{% endif %}
+    {% if form.instance.pk %}Editar Proces{% else %}Crear Proceso{% endif %}
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="card">
         <div class="card-header">
-            <h2>{% if form.instance.pk %}Editar Usuario{% else %}Crear Usuario{% endif %}</h2>
+            <h2>{% if form.instance.pk %}Editar Proceso{% else %}Crear Proceso{% endif %}</h2>
         </div>
         <div class="card-body">
-            <form method="post">
+            <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 {{ form|crispy }}
                 <div class="mt-3">

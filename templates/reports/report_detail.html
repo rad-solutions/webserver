@@ -33,10 +33,13 @@
                 </div>
             </div>
         </div>
+
         <div class="card-footer">
-            <a href="{% url 'report_list' %}" class="btn btn-secondary">Volver</a>
+            <a href="javascript:window.history.back();" class="btn btn-secondary">Volver</a>
+            {% if perms.app.change_report %}
             <a href="{% url 'report_update' report.id %}" class="btn btn-warning">Editar</a>
             <a href="{% url 'report_delete' report.id %}" class="btn btn-danger">Eliminar</a>
+            {% endif %}
         </div>
     </div>
 </div>

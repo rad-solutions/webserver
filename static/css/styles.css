@@ -1,7 +1,7 @@
 /* Estilos principales para RadSolutions Reports */
 
 html, body {
-    height: 90%;
+    height: 100%;
     margin: 0;
 }
 
@@ -25,15 +25,54 @@ h1, h2, h3, h4, h5, h6 {
 
 .navbar-brand {
     font-weight: 700;
+    color: #002B5A;
+}
+
+.navbar-brand:hover {
+    color: #0056b3; /* Azul más claro al pasar el mouse */
+}
+
+.navbar-logo {
+    height: 35px;
+    margin-right: 8px;
+    vertical-align: middle; /* Ayuda a alinear mejor con el texto adyacente */
+}
+
+.navbar {
+    border-bottom-color: #002B5A !important; /* Azul oscuro para la barra de navegación */
+    border-bottom-width: 1px !important; /* Grosor de la línea inferior */
+    border-bottom-style: solid !important; /* Estilo de línea sólida */
 }
 
 /* Personalización de colores */
 .bg-primary {
-    background-color: #0d3b66 !important; /* Azul oscuro */
+    background-color: #002B5A !important; /* Azul oscuro */
+}
+
+.navbar-color {
+    background-color: white !important; /* Color de fondo blanco para la barra de navegación */
+}
+
+.nav-link {
+    color: #002B5A !important; /* Azul oscuro para los enlaces */
+    border-radius: 10px; /* Bordes redondeados para los enlaces */
+    padding-left: 10px;
+}
+
+.nav-link:hover {
+    background-color: #e9ecef !important; /* Azul más claro al pasar el mouse */
+}
+
+.nav-link.active {
+    background-color: #002B5A4F !important; /* Azul oscuro para el enlace activo */
 }
 
 .bg-dark {
-    background-color: #1a252f !important;
+    background-color: #0d1a30 !important;
+}
+
+.nav-link.greeting-text:hover {
+    background-color: transparent !important; /* Anula el hover, manteniendo el fondo transparente o el de la navbar */
 }
 
 footer {
@@ -51,16 +90,16 @@ footer {
 
 /* Botones personalizados */
 .btn-primary {
-    background-color: #0d3b66;
-    border-color: #0d3b66;
+    background-color: #009dd1;
+    border-color: #009dd1;
 }
 
 .btn-primary:hover {
-    background-color: #082b4d;
-    border-color: #082b4d;
+    background-color: #007FAA;
+    border-color: #007FAA;
 }
 
-/* Para mantener consistencia con el azul en links activos */
-.nav-link.active {
-    background-color: rgba(255, 255, 255, 0.1);
+/* Cambiar color del icono de hamburguesa del navbar */
+.navbar-color .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23002B5A' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }

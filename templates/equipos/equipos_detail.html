@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Equipo{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>{{ equipo.nombre }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Usuario:</strong></div>
+                <div class="col-md-8">
+                    <a href="{% url 'user_detail' equipo.user.id %}">{{ equipo.user.username }}</a>
+                    ({{ equipo.user.first_name }} {{ equipo.user.last_name }})
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Marca:</strong></div>
+                <div class="col-md-8">{{ equipo.marca }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Modelo:</strong></div>
+                <div class="col-md-8">{{ equipo.modelo }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Serial:</strong></div>
+                <div class="col-md-8">{{ equipo.serial }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Practica Asociada:</strong></div>
+                <div class="col-md-8">{{ equipo.practica_asociada }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Adquisición:</strong></div>
+                <div class="col-md-8">{{ equipo.fecha_adquisicion|date:"d/m/Y" }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Vigencia de Licencia:</strong></div>
+                <div class="col-md-8">{{ equipo.fecha_vigencia_licencia|date:"d/m/Y"|default_if_none:"No Aplica" }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Último Control de Calidad:</strong></div>
+                <div class="col-md-8">{{ equipo.fecha_ultimo_control_calidad|date:"d/m/Y"|default_if_none:"No Aplica" }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Vencimiento del Control de Calidad:</strong></div>
+                <div class="col-md-8">{{ equipo.fecha_vencimiento_control_calidad|date:"d/m/Y"|default_if_none:"No Aplica"}}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>¿Tiene proceso de Asesoría?</strong></div>
+                <div class="col-md-8">{{ equipo.tiene_proceso_de_asesoria }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Proceso Asociado:</strong></div>
+                <div class="col-md-8">
+                    {% if equipo.process %}
+                        <a href="{% url 'process_detail' equipo.process.id %}">
+                            {{ equipo.process.get_process_type_display }}
+                        </a>
+                    {% else %}
+                        No Aplica
+                    {% endif %}
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Estado Actual:</strong></div>
+                <div class="col-md-8">{{ equipo.estado_actual }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Sede:</strong></div>
+                <div class="col-md-8">{{ equipo.sede }}</div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a href="javascript:window.history.back();" class="btn btn-secondary">Volver</a>
+            {% if perms.app.manage_equipment %}
+                <a href="{% url 'equipos_update' equipo.id %}" class="btn btn-warning">Editar Equipo</a>
+                <a href="{% url 'equipos_delete' equipo.id %}" class="btn btn-danger">Eliminar Equipo</a>
+            {% else %}
+                {% if numero_procesos_activos == 1%}
+                    {% for proceso in procesos_activos_del_equipo%}
+                        {% if proceso.process_type == "control_calidad" %}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso de Control de Calidad</a>
+                            {% with ultimo_informe_calidad=equipo.get_last_quality_control_report %}
+                                {% if ultimo_informe_calidad %}
+                                    <a href="{% url 'report_detail' ultimo_informe_calidad.id %}" class="btn btn-primary">Ver Último Informe de Calidad</a>
+                                {% else %}
+                                    <span class="ms-2 fst-italic text-muted">No hay informes para este proceso de calidad.</span>
+                                {% endif %}
+                            {% endwith %}
+                            <a href="{% url 'report_list' %}?equipment_id={{ equipo.id }}&process_type=control_calidad" class="btn btn-outline-secondary ms-2">Historial de Informes de Calidad</a>
+                        {% elif proceso.process_type == "calculo_blindajes" %}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso de Cálculo de Blindajes</a>
+                            {% if procesos.reports.all %}
+                                <a href="{% url 'report_detail' procesos.reports.last.id %}" class="btn btn-primary">Ver Informe del Proceso de Cálculo de Blindajes</a>
+                            {% else %}
+                                <span class="ms-2 fst-italic text-muted">Aún no hay informe para este proceso.</span>
+                            {% endif %}
+                        {% elif proceso.process_type == "asesoria" %}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso de Asesoría</a>
+                            {% if procesos.reports.all %}
+                                <a href="{% url 'report_detail' procesos.reports.last.id %}" class="btn btn-primary">Ver Informe del Proceso de Asesoría</a>
+                            {% else %}
+                                <span class="ms-2 fst-italic text-muted">Aún no hay informe para este proceso.</span>
+                            {% endif %}
+                            <a href="{% url 'report_list' %}?equipment_id={{ equipo.id }}&process_type=asesoria" class="btn btn-outline-secondary ms-2">Ver todos los reportes de asesoria</a>
+                        {% elif proceso.process_type == "otro" %}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso</a>
+                            {% if procesos.reports.all %}
+                                <a href="{% url 'report_detail' procesos.reports.last.id %}" class="btn btn-primary">Ver Informe del Proceso</a>
+                            {% else %}
+                                <span class="ms-2 fst-italic text-muted">Aún no hay informe para este proceso.</span>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                {% elif numero_procesos_activos > 1 %}
+                    {% for proceso in procesos_activos_del_equipo%}
+                        {% if proceso.process_type == "control_calidad"%}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso de Control de Calidad</a>
+                        {% elif proceso.process_type == "calculo_blindajes"%}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso de Calculo de Blindajes</a>
+                        {% elif proceso.process_type == "asesoria"%}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso de Asesoría</a>
+                        {% elif proceso.process_type == "otro"%}
+                            <a href="{% url 'process_detail' proceso.id %}" class="btn btn-info">Ver Detalles del Proceso</a>
+                        {% endif %}
+                    {% endfor %}
+
+                    <a href="{% url 'report_list' %}?equipment_id={{ equipo.id }}" class="btn btn-outline-secondary ms-2">Ver todos los reportes del equipo</a>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

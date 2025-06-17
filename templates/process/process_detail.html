@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Proceso{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>{{ process.process_type }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Usuario:</strong></div>
+                <div class="col-md-8">
+                    <a href="{% url 'user_detail' process.user.id %}">{{ process.user.username }}</a>
+                    ({{ process.user.first_name }} {{ process.user.last_name }})
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Estado:</strong></div>
+                <div class="col-md-8">{{ process.estado }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Inicio:</strong></div>
+                <div class="col-md-8">{{ process.fecha_inicio|date:"d/m/Y H:i" }}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Fecha de Finalización:</strong></div>
+                <div class="col-md-8">{{ process.fecha_final|date:"d/m/Y H:i" }}</div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a href="javascript:window.history.back();" class="btn btn-secondary">Volver</a>
+            {% if perms.app.manage_equipment %}
+            <a href="{% url 'process_update' process.id %}" class="btn btn-warning">Editar</a>
+            <a href="{% url 'process_delete' process.id %}" class="btn btn-danger">Eliminar</a>
+            {% endif %}
+        </div>
+    </div>
+    <br>
+    <div class="card">
+        <div class="card-header">
+            <h3>Anotaciones</h3>
+        </div>
+        <div class="card-body">
+            {% if process.anotaciones %}
+            <ul class="list-group">
+                {% for anotacion in process.anotaciones.all %}
+                <li class="list-group-item">
+                    <strong>{{ anotacion.usuario.username }}:</strong> {{ anotacion.contenido }} <br>
+                    <small class="text-muted">{{ anotacion.fecha_creacion|date:"d/m/Y H:i" }}</small>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        <div class="card-footer">
+            {% if perms.app.add_anotacion %}
+                <a href="{% url 'anotacion_create' process_id=process.id %}" class="btn btn-primary">Agregar Anotación</a>
+            {% endif %}
+    </div>
+</div>
+{% endblock %}
