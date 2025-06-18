@@ -23,4 +23,24 @@
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const processTypeField = document.getElementById('id_process_type');
+    const practiceCategoryRow = document.getElementById('div_id_practice_category');
+    function togglePracticeCategory() {
+        if (processTypeField.value === "{{ ProcessTypeChoices.ASESORIA }}") {
+            practiceCategoryRow.style.display = '';
+            document.getElementById('id_practice_category').required = true;
+        } else {
+            practiceCategoryRow.style.display = 'none';
+            document.getElementById('id_practice_category').required = false;
+            document.getElementById('id_practice_category').value = '';
+        }
+    }
+    if (processTypeField && practiceCategoryRow) {
+        togglePracticeCategory();
+        processTypeField.addEventListener('change', togglePracticeCategory);
+    }
+});
+</script>
 {% endblock %}
