@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Actualizar Progreso del Proceso{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Actualizar Progreso del Proceso</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <h4>Checklist</h4>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Ítem</th>
+                    <th>Completado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ checklist_formset.management_form }}
+                {% for item_form in checklist_formset %}
+                <tr>
+                    <td>{{ item_form.instance.name }} {{ item_form.id }}</td>
+                    <td>{{ item_form.is_completed }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="submit" class="btn btn-success">Actualizar</button>
+        <a href="javascript:window.history.back();" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}
