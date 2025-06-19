@@ -1,3 +1,12 @@
+# [1.5.0](https://github.com/rad-solutions/webserver/compare/v1.4.0...v1.5.0) (2025-06-19)
+
+
+### Features
+
+* Added new form to update the progress of a process and/or the status of the process. Added corresponding test in test_process.py ([c408a70](https://github.com/rad-solutions/webserver/commit/c408a70fcdcf77f448b3843b5cea7a92792357ee))
+* Added progress bar to client's dashboard and process_detail. ([c4a2598](https://github.com/rad-solutions/webserver/commit/c4a25986c39cc7338aead56246c9b20f5db07e6c))
+* When creating an "Asesoria" process, the user is now asked to complete the ProcessCategory field. This field is hidden by default and for other process types. This ensures proper checklist_items creation. ([a21bb6c](https://github.com/rad-solutions/webserver/commit/a21bb6c5b021e245e32d031ca6b2373e0ab2cc7e))
+
 # [1.4.0](https://github.com/rad-solutions/webserver/compare/v1.3.0...v1.4.0) (2025-06-17)
 
 
