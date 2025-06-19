@@ -5,8 +5,10 @@ from django.urls import reverse
 
 from ..models import (
     Anotacion,
+    ChecklistItemDefinition,
     Equipment,
     Process,
+    ProcessChecklistItem,
     ProcessStatusChoices,
     ProcessTypeChoices,
     Role,
@@ -170,6 +172,36 @@ class ProcessAPITest(TestCase):
             user=self.user,
             process=self.proceso4_blindajes_progreso,
             serial="EQP4",
+        )
+        self.process = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+            fecha_inicio=datetime.now(timezone.utc),
+        )
+
+        # Crear definiciones de checklist y asociar items al proceso
+        self.def1 = ChecklistItemDefinition.objects.create(
+            process_type=ProcessTypeChoices.ASESORIA,
+            name="Primer ítem",
+            order=1,
+            percentage=50,
+        )
+        self.def2 = ChecklistItemDefinition.objects.create(
+            process_type=ProcessTypeChoices.ASESORIA,
+            name="Segundo ítem",
+            order=2,
+            percentage=50,
+        )
+        self.item1 = ProcessChecklistItem.objects.create(
+            process=self.process,
+            definition=self.def1,
+            is_completed=False,
+        )
+        self.item2 = ProcessChecklistItem.objects.create(
+            process=self.process,
+            definition=self.def2,
+            is_completed=True,
         )
 
         self.client.login(username="procuser", password="password")
@@ -523,3 +555,64 @@ class ProcessAPITest(TestCase):
         self.assertEqual(response.context.get("selected_estado"), self.estado_progreso)
         self.assertEqual(response.context.get("inicio_start_date"), start_date)
         self.assertEqual(response.context.get("inicio_end_date"), end_date)
+
+    def test_progress_form_shows_checklist_items(self):
+        self.url = reverse("process_progress", args=[self.process.id])
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        # Los nombres de los ítems deben aparecer
+        self.assertContains(response, self.def1.name)
+        self.assertContains(response, self.def2.name)
+        # Los checkboxes deben estar presentes
+        self.assertContains(response, 'type="checkbox"')
+
+    def test_progress_form_update_checklist_and_status(self):
+        # Simula marcar el primer ítem como completado y cambiar el estado del proceso
+        self.url = reverse("process_progress", args=[self.process.id])
+        data = {
+            "estado": ProcessStatusChoices.FINALIZADO,
+            "checklist_items-TOTAL_FORMS": "2",
+            "checklist_items-INITIAL_FORMS": "2",
+            "checklist_items-MIN_NUM_FORMS": "0",
+            "checklist_items-MAX_NUM_FORMS": "1000",
+            "checklist_items-0-id": str(self.item1.id),
+            "checklist_items-0-is_completed": "on",  # Marcar como completado
+            "checklist_items-1-id": str(self.item2.id),
+            # No enviar is_completed para el segundo ítem (lo desmarca)
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, 302)  # Redirige al detalle del proceso
+
+        # Refrescar de la base de datos
+        self.item1.refresh_from_db()
+        self.item2.refresh_from_db()
+        self.process.refresh_from_db()
+        self.assertTrue(self.item1.is_completed)
+        self.assertFalse(self.item2.is_completed)
+        self.assertEqual(self.process.estado, ProcessStatusChoices.FINALIZADO)
+
+    def test_progress_form_no_checklist_items(self):
+        # Crear un proceso sin checklist items
+        process_no_items = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.OTRO,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+            fecha_inicio=datetime.now(timezone.utc),
+        )
+        url = reverse("process_progress", args=[process_no_items.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        # No debe haber checkboxes
+        self.assertNotContains(response, 'type="checkbox"')
+        # El formulario debe permitir actualizar el estado
+        data = {
+            "estado": ProcessStatusChoices.FINALIZADO,
+            "checklist_items-TOTAL_FORMS": "0",
+            "checklist_items-INITIAL_FORMS": "0",
+            "checklist_items-MIN_NUM_FORMS": "0",
+            "checklist_items-MAX_NUM_FORMS": "1000",
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 302)
+        process_no_items.refresh_from_db()
+        self.assertEqual(process_no_items.estado, ProcessStatusChoices.FINALIZADO)

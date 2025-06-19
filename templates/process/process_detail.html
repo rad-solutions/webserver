@@ -10,6 +10,22 @@
         </div>
         <div class="card-body">
             <div class="row mb-3">
+                <div class="col-md-4"><strong>Progreso:</strong></div>
+                <div class="col-md-8">
+                    {% with porcentaje=process.get_progress_percentage %}
+                        {% if porcentaje %}
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ porcentaje }}%;" aria-valuenow="{{ porcentaje }}" aria-valuemin="0" aria-valuemax="100">
+                                    {{ porcentaje }}%
+                                </div>
+                            </div>
+                        {% else %}
+                            <span class="text-muted ">No disponible</span>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            <div class="row mb-3">
                 <div class="col-md-4"><strong>Usuario:</strong></div>
                 <div class="col-md-8">
                     <a href="{% url 'user_detail' process.user.id %}">{{ process.user.username }}</a>
@@ -33,6 +49,7 @@
             <a href="javascript:window.history.back();" class="btn btn-secondary">Volver</a>
             {% if perms.app.manage_equipment %}
             <a href="{% url 'process_update' process.id %}" class="btn btn-warning">Editar</a>
+            <a href="{% url 'process_progress' process.id %}" class="btn btn-primary">Actualizar</a>
             <a href="{% url 'process_delete' process.id %}" class="btn btn-danger">Eliminar</a>
             {% endif %}
         </div>

@@ -9,6 +9,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.contrib.auth.views import LoginView, redirect_to_login
 from django.core.exceptions import ValidationError
 from django.db.models import Max, Q
+from django.forms import inlineformset_factory
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -24,6 +25,7 @@ from .models import (
     Anotacion,
     Equipment,
     Process,
+    ProcessChecklistItem,
     ProcessStatusChoices,
     ProcessTypeChoices,
     Report,
@@ -121,12 +123,53 @@ class ReportForm(forms.ModelForm):
 class ProcessForm(forms.ModelForm):
     class Meta:
         model = Process
-        fields = ["process_type", "estado", "user", "fecha_final"]
+        fields = ["process_type", "practice_category", "estado", "user", "fecha_final"]
         widgets = {
             "fecha_final": forms.DateTimeInput(
                 attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # El campo siempre se renderiza, pero solo es requerido si es asesoría
+        self.fields["practice_category"].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        process_type = cleaned_data.get("process_type")
+        practice_category = cleaned_data.get("practice_category")
+        if process_type == ProcessTypeChoices.ASESORIA and not practice_category:
+            self.add_error(
+                "practice_category",
+                "Este campo es obligatorio para procesos de Asesoría.",
+            )
+        return cleaned_data
+
+
+class ProcessProgressForm(forms.ModelForm):
+    class Meta:
+        model = Process
+        fields = ["estado"]
+        widgets = {"estado": forms.Select(choices=ProcessStatusChoices.choices)}
+
+
+class ProcessChecklistItemForm(forms.ModelForm):
+    class Meta:
+        model = ProcessChecklistItem
+        fields = ["is_completed"]
+        widgets = {
+            "is_completed": forms.CheckboxInput(attrs={"class": "form-check-input"})
+        }
+
+
+ProcessChecklistItemFormSet = inlineformset_factory(
+    Process,
+    ProcessChecklistItem,
+    form=ProcessChecklistItemForm,
+    extra=0,
+    can_delete=False,
+)
 
 
 class AnotacionForm(forms.ModelForm):
@@ -1048,12 +1091,22 @@ class ProcessCreateView(LoginRequiredMixin, CreateView):
             form.add_error(None, f"Error al guardar el reporte: {str(e)}")
             return self.form_invalid(form)
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["ProcessTypeChoices"] = ProcessTypeChoices
+        return context
+
 
 class ProcessDeleteView(LoginRequiredMixin, DeleteView):
     model = Process
     template_name = "process/process_confirm_delete.html"
     success_url = reverse_lazy("process_list")
     login_url = "/login/"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["ProcessTypeChoices"] = ProcessTypeChoices
+        return context
 
 
 class ProcessUpdateView(LoginRequiredMixin, UpdateView):
@@ -1062,6 +1115,59 @@ class ProcessUpdateView(LoginRequiredMixin, UpdateView):
     template_name = "process/process_form.html"
     success_url = reverse_lazy("process_list")
     login_url = "/login/"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["ProcessTypeChoices"] = ProcessTypeChoices
+        return context
+
+
+class ProcessProgressUpdateView(LoginRequiredMixin, UpdateView):
+    model = Process
+    form_class = ProcessProgressForm
+    template_name = "process/process_progress_form.html"
+    login_url = "/login/"
+
+    def get_success_url(self):
+        return reverse_lazy("process_detail", kwargs={"pk": self.object.pk})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        process = self.object
+        if self.request.method == "POST":
+            context["checklist_formset"] = ProcessChecklistItemFormSet(
+                self.request.POST, instance=process
+            )
+        else:
+            context["checklist_formset"] = ProcessChecklistItemFormSet(instance=process)
+        context["ProcessTypeChoices"] = ProcessTypeChoices
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        checklist_formset = ProcessChecklistItemFormSet(
+            request.POST, instance=self.object
+        )
+        # Permitir formset vacío si no hay items
+        if not self.object.checklist_items.exists():
+            checklist_formset.empty_permitted = True
+
+        # Agrega esto para depurar
+        if not checklist_formset.is_valid():
+            logger.info("Checklist formset errors:", checklist_formset.errors)
+
+        if form.is_valid() and (
+            not self.object.checklist_items.exists() or checklist_formset.is_valid()
+        ):
+            form.save()
+            if self.object.checklist_items.exists():
+                checklist_formset.save()
+            return redirect(self.get_success_url())
+        else:
+            return self.render_to_response(
+                self.get_context_data(form=form, checklist_formset=checklist_formset)
+            )
 
 
 class AnotacionCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
