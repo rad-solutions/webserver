@@ -1,3 +1,11 @@
+# [1.6.0](https://github.com/rad-solutions/webserver/compare/v1.5.0...v1.6.0) (2025-06-20)
+
+
+### Features
+
+* Added user permissions and edition view implemented. Corresponding test added. ([9d06b36](https://github.com/rad-solutions/webserver/commit/9d06b362b5341007d96ee7966e10ad6c029ff16e))
+* User creation dynamically showing fields for Client Profile if they apply. Corresponding test added. ([9edb9f1](https://github.com/rad-solutions/webserver/commit/9edb9f1ffc9d588c95b19613b3d3d053db757f62))
+
 # [1.5.0](https://github.com/rad-solutions/webserver/compare/v1.4.0...v1.5.0) (2025-06-19)
 
 
