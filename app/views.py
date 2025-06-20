@@ -89,6 +89,70 @@ class UserForm(UserCreationForm):
         fields = ["username", "first_name", "last_name", "email"]
 
 
+class UserEditWithProfileForm(UserCreationForm):
+    role = forms.ModelChoiceField(
+        queryset=Role.objects.none(),
+        label="Rol",
+        required=True,
+    )
+    # Campos de ClientProfile (solo para cliente)
+    razon_social = forms.CharField(required=False)
+    nit = forms.CharField(required=False)
+    representante_legal = forms.CharField(required=False)
+    direccion_instalacion = forms.CharField(required=False)
+    departamento = forms.CharField(required=False)
+    municipio = forms.CharField(required=False)
+    persona_contacto = forms.CharField(required=False)
+
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = [
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "role",
+            "password1",
+            "password2",
+        ]
+
+    def clean_username(self):
+        username = self.cleaned_data["username"]
+        qs = User.objects.filter(username=username)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(
+                "Ya existe un usuario con ese nombre de usuario."
+            )
+        return username
+
+    def clean(self):
+        cleaned_data = super().clean()
+        role = cleaned_data.get("role")
+        if role and role.name == RoleChoices.CLIENTE:
+            for field in [
+                "razon_social",
+                "nit",
+                "direccion_instalacion",
+                "departamento",
+                "municipio",
+            ]:
+                if not cleaned_data.get(field):
+                    self.add_error(field, "Este campo es obligatorio para clientes.")
+        # Validar username único excepto para el propio usuario
+        username = cleaned_data.get("username")
+        if username:
+            qs = User.objects.filter(username=username)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                self.add_error(
+                    "username", "Ya existe un usuario con ese nombre de usuario."
+                )
+        return cleaned_data
+
+
 class ReportForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -467,7 +531,7 @@ class UserListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         "users"  # es el nombre que usamos en el template para referirse a la vista
     )
     login_url = "/login/"
-    permission_required = "app.add_user"
+    permission_required = "app.view_user"
     raise_exception = True
 
     def handle_no_permission(self):
@@ -487,7 +551,7 @@ class UserDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     template_name = "users/user_detail.html"
     context_object_name = "user"
     login_url = "/login/"
-    permission_required = "app.add_user"
+    permission_required = "app.view_user"
     raise_exception = True
 
     def handle_no_permission(self):
@@ -573,12 +637,76 @@ class UserCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
 
 class UserUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = User
-    form_class = UserForm
+    form_class = UserEditWithProfileForm
     template_name = "users/user_form.html"
     success_url = reverse_lazy("user_list")
     login_url = "/login/"
-    permission_required = "app.change_user"
     raise_exception = True
+
+    def get_permission_required(self):
+        # Permitir acceso si tiene alguno de los permisos de edición/creación
+        return ("app.change_user", "app.add_user", "app.add_external_user")
+
+    def has_permission(self):
+        perms = self.get_permission_required()
+        return any(self.request.user.has_perm(perm) for perm in perms)
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limitar roles según permisos (igual que en UserCreateView)
+        if self.request.user.has_perm(
+            "app.add_user"
+        ) and not self.request.user.has_perm("app.add_external_user"):
+            form.fields["role"].queryset = Role.objects.exclude(
+                name=RoleChoices.CLIENTE
+            )
+        elif self.request.user.has_perm(
+            "app.add_external_user"
+        ) and not self.request.user.has_perm("app.add_user"):
+            form.fields["role"].queryset = Role.objects.filter(name=RoleChoices.CLIENTE)
+        elif self.request.user.has_perm("app.add_user") and self.request.user.has_perm(
+            "app.add_external_user"
+        ):
+            form.fields["role"].queryset = Role.objects.all()
+        else:
+            form.fields["role"].queryset = Role.objects.none()
+
+        # Si el usuario editado ya es cliente, precargar los campos de ClientProfile
+        instance = self.object
+        if hasattr(instance, "client_profile"):
+            profile = instance.client_profile
+            form.initial["razon_social"] = profile.razon_social
+            form.initial["nit"] = profile.nit
+            form.initial["representante_legal"] = profile.representante_legal
+            form.initial["direccion_instalacion"] = profile.direccion_instalacion
+            form.initial["departamento"] = profile.departamento
+            form.initial["municipio"] = profile.municipio
+            form.initial["persona_contacto"] = profile.persona_contacto
+        return form
+
+    def form_valid(self, form):
+        user = form.save(commit=False)
+        # Siempre actualizar la contraseña
+        password = form.cleaned_data.get("password1")
+        if password:
+            user.set_password(password)
+        user.save()
+        role = form.cleaned_data["role"]
+        user.roles.set([role])
+        # Si es cliente, crear o actualizar el perfil
+        if role.name == RoleChoices.CLIENTE:
+            profile, created = ClientProfile.objects.get_or_create(user=user)
+            profile.razon_social = form.cleaned_data["razon_social"]
+            profile.nit = form.cleaned_data["nit"]
+            profile.representante_legal = form.cleaned_data.get("representante_legal")
+            profile.direccion_instalacion = form.cleaned_data["direccion_instalacion"]
+            profile.departamento = form.cleaned_data["departamento"]
+            profile.municipio = form.cleaned_data["municipio"]
+            profile.persona_contacto = form.cleaned_data.get("persona_contacto")
+            profile.save()
+        else:
+            ClientProfile.objects.filter(user=user).delete()
+        return redirect(self.get_success_url())
 
     def handle_no_permission(self):
         if not self.request.user.is_authenticated:

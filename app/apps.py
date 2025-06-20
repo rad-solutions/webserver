@@ -12,6 +12,8 @@ ROLES_PERMISSIONS = {
     ],
     "gerente": [
         ("add_user", "user", "app"),
+        ("view_user", "user", "app"),
+        ("delete_user", "user", "app"),
         ("add_external_user", "user", "app"),
         ("manage_equipment", "equipment", "app"),
         ("view_report", "report", "app"),
@@ -25,6 +27,7 @@ ROLES_PERMISSIONS = {
         ("change_report", "report", "app"),
         ("approve_report", "report", "app"),
         ("add_anotacion", "anotacion", "app"),
+        ("view_user", "user", "app"),
     ],
     "personal_tecnico_apoyo": [
         ("manage_equipment", "equipment", "app"),
@@ -32,9 +35,11 @@ ROLES_PERMISSIONS = {
         ("view_report", "report", "app"),
         ("change_report", "report", "app"),
         ("add_anotacion", "anotacion", "app"),
+        ("view_user", "user", "app"),
     ],
     "personal_administrativo": [
         ("add_external_user", "user", "app"),
+        ("view_user", "user", "app"),
         ("view_report", "report", "app"),
         ("change_report", "report", "app"),
         ("add_anotacion", "anotacion", "app"),
