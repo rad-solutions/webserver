@@ -1,4 +1,3 @@
-from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
@@ -8,9 +7,10 @@ from app.models import (
     Process,
     ProcessStatusChoices,
     ProcessTypeChoices,
+    Role,
+    RoleChoices,
+    User,
 )
-
-User = get_user_model()
 
 
 class AsesoriaChecklistCreationTests(TestCase):
@@ -315,7 +315,6 @@ class AsesoriaChecklistCreationTests(TestCase):
 
 
 class ProcessChecklistModelTests(TestCase):
-
     @classmethod
     def setUpTestData(cls):
         cls.test_user = User.objects.create_user(
@@ -323,6 +322,13 @@ class ProcessChecklistModelTests(TestCase):
             password="password123",
             email="test_pc@example.com",
         )
+        cls.technical_role, _ = Role.objects.get_or_create(
+            name=RoleChoices.DIRECTOR_TECNICO
+        )
+        cls.technical_user = User.objects.create_user(
+            username="technical_user", password="password123"
+        )
+        cls.technical_user.roles.add(cls.technical_role)
 
         # Definitions for Cálculo de Blindajes - aligned with migration 0012
         cls.def1_calc, _ = ChecklistItemDefinition.objects.get_or_create(
@@ -545,6 +551,37 @@ class ProcessChecklistModelTests(TestCase):
         self.assertEqual(
             process.get_progress_percentage(), 30, "Progress should be preserved"
         )
+
+    def test_process_assignment_and_checklist_tracking_fields(self):
+        """Test process assignment and checklist item tracking fields."""
+        # 1. Test process assignment
+        process = Process.objects.create(
+            process_type=ProcessTypeChoices.CONTROL_CALIDAD,
+            user=self.test_user,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+            assigned_to=self.technical_user,
+        )
+        process.refresh_from_db()
+        self.assertEqual(process.assigned_to, self.technical_user)
+
+        # 2. Test checklist item tracking fields
+        item = process.checklist_items.first()
+        self.assertIsNotNone(item)
+
+        start_time = timezone.now()
+        completion_time = start_time + timezone.timedelta(hours=1)
+
+        item.is_completed = True
+        item.started_at = start_time
+        item.completed_at = completion_time
+        item.completed_by = self.technical_user
+        item.save()
+
+        item.refresh_from_db()
+        self.assertTrue(item.is_completed)
+        self.assertEqual(item.started_at, start_time)
+        self.assertEqual(item.completed_at, completion_time)
+        self.assertEqual(item.completed_by, self.technical_user)
 
     def test_process_save_with_user_who_modified_in_log(self):
         """Test that user_who_modified is correctly logged in ProcessStatusLog."""

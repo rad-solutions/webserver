@@ -91,6 +91,21 @@ class Process(models.Model):
         verbose_name=_("Categoría de Práctica"),
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="processes")
+    assigned_to = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_processes",
+        verbose_name=_("Asignado a"),
+        limit_choices_to={
+            "roles__name__in": [
+                "gerente",
+                "director_tecnico",
+                "personal_tecnico_apoyo",
+            ]
+        },
+    )
     estado = models.CharField(
         max_length=15,
         choices=ProcessStatusChoices.choices,
@@ -203,6 +218,10 @@ class Equipment(models.Model):
     )
     sede = models.CharField(max_length=150, blank=True, null=True)
 
+    def get_current_xray_tube(self):
+        """Return the current X-ray tube from the history."""
+        return self.historial_tubos_rayos_x.order_by("-fecha_cambio").first()
+
     def get_last_quality_control_report(self):
         """Return the last quality control report for this equipment.
 
@@ -245,6 +264,29 @@ class Equipment(models.Model):
         permissions = [
             ("manage_equipment", "Can create and edit equipment"),
         ]
+
+
+class HistorialTuboRayosX(models.Model):
+    equipment = models.ForeignKey(
+        Equipment,
+        on_delete=models.CASCADE,
+        related_name="historial_tubos_rayos_x",
+        verbose_name=_("Equipo"),
+    )
+    marca = models.CharField(_("Marca"), max_length=100)
+    modelo = models.CharField(_("Modelo"), max_length=100)
+    serial = models.CharField(_("Serial"), max_length=100)
+    fecha_cambio = models.DateField(_("Fecha de Cambio"))
+
+    class Meta:
+        verbose_name = _("Historial de Tubo de Rayos X")
+        verbose_name_plural = _("Historiales de Tubos de Rayos X")
+        ordering = ["-fecha_cambio"]
+
+    def __str__(self):
+        return (
+            f"Tubo para {self.equipment.nombre} - {self.serial} ({self.fecha_cambio})"
+        )
 
 
 class EstadoReporteChoices(models.TextChoices):
@@ -371,11 +413,20 @@ class ProcessChecklistItem(models.Model):
     )
     definition = models.ForeignKey(ChecklistItemDefinition, on_delete=models.CASCADE)
     is_completed = models.BooleanField(default=False, verbose_name=_("Completado"))
+    started_at = models.DateTimeField(
+        null=True, blank=True, verbose_name=_("Fecha de Inicio")
+    )
     completed_at = models.DateTimeField(
         null=True, blank=True, verbose_name=_("Fecha de Completado")
     )
     # Optional: track who completed it
-    # completed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='completed_checklist_items')
+    completed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="completed_checklist_items",
+    )
 
     class Meta:
         verbose_name = _("Ítem de Checklist de Proceso")
