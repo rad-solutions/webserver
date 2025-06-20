@@ -91,6 +91,21 @@ class Process(models.Model):
         verbose_name=_("Categoría de Práctica"),
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="processes")
+    assigned_to = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_processes",
+        verbose_name=_("Asignado a"),
+        limit_choices_to={
+            "roles__name__in": [
+                "gerente",
+                "director_tecnico",
+                "personal_tecnico_apoyo",
+            ]
+        },
+    )
     estado = models.CharField(
         max_length=15,
         choices=ProcessStatusChoices.choices,
@@ -371,11 +386,20 @@ class ProcessChecklistItem(models.Model):
     )
     definition = models.ForeignKey(ChecklistItemDefinition, on_delete=models.CASCADE)
     is_completed = models.BooleanField(default=False, verbose_name=_("Completado"))
+    started_at = models.DateTimeField(
+        null=True, blank=True, verbose_name=_("Fecha de Inicio")
+    )
     completed_at = models.DateTimeField(
         null=True, blank=True, verbose_name=_("Fecha de Completado")
     )
     # Optional: track who completed it
-    # completed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='completed_checklist_items')
+    completed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="completed_checklist_items",
+    )
 
     class Meta:
         verbose_name = _("Ítem de Checklist de Proceso")
