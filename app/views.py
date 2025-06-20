@@ -23,12 +23,14 @@ from django.views.generic import (
 
 from .models import (
     Anotacion,
+    ClientProfile,
     Equipment,
     Process,
     ProcessChecklistItem,
     ProcessStatusChoices,
     ProcessTypeChoices,
     Report,
+    Role,
     RoleChoices,
     User,
 )
@@ -37,6 +39,50 @@ logger = logging.getLogger(__name__)
 
 
 # Forms
+class UserWithProfileForm(UserCreationForm):
+    role = forms.ModelChoiceField(
+        queryset=Role.objects.none(),  # Se setea dinámicamente en la vista
+        label="Rol",
+        required=True,
+    )
+    # Campos de ClientProfile (solo para cliente)
+    razon_social = forms.CharField(required=False)
+    nit = forms.CharField(required=False)
+    representante_legal = forms.CharField(required=False)
+    direccion_instalacion = forms.CharField(required=False)
+    departamento = forms.CharField(required=False)
+    municipio = forms.CharField(required=False)
+    persona_contacto = forms.CharField(required=False)
+
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = [
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "role",
+            "password1",
+            "password2",
+        ]
+
+    def clean(self):
+        cleaned_data = super().clean()
+        role = cleaned_data.get("role")
+        if role and role.name == RoleChoices.CLIENTE:
+            # Validar campos obligatorios de ClientProfile
+            for field in [
+                "razon_social",
+                "nit",
+                "direccion_instalacion",
+                "departamento",
+                "municipio",
+            ]:
+                if not cleaned_data.get(field):
+                    self.add_error(field, "Este campo es obligatorio para clientes.")
+        return cleaned_data
+
+
 class UserForm(UserCreationForm):
     class Meta:
         model = User
@@ -421,7 +467,7 @@ class UserListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         "users"  # es el nombre que usamos en el template para referirse a la vista
     )
     login_url = "/login/"
-    permission_required = "app.view_user"
+    permission_required = "app.add_user"
     raise_exception = True
 
     def handle_no_permission(self):
@@ -441,7 +487,7 @@ class UserDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     template_name = "users/user_detail.html"
     context_object_name = "user"
     login_url = "/login/"
-    permission_required = "app.view_user"
+    permission_required = "app.add_user"
     raise_exception = True
 
     def handle_no_permission(self):
@@ -458,12 +504,60 @@ class UserDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
 
 class UserCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = User
-    form_class = UserForm
+    form_class = UserWithProfileForm
     template_name = "users/user_form.html"
-    success_url = reverse_lazy("user_list")  # cuando se crea lo redirije aquí.
     login_url = "/login/"
-    permission_required = "app.add_user"
+    success_url = reverse_lazy("user_list")
     raise_exception = True
+
+    def get_permission_required(self):
+        # Permitir acceso si tiene alguno de los dos permisos
+        return ("app.add_user", "app.add_external_user")
+
+    def has_permission(self):
+        perms = self.get_permission_required()
+        return any(self.request.user.has_perm(perm) for perm in perms)
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limitar roles según permisos
+        if self.request.user.has_perm(
+            "app.add_user"
+        ) and not self.request.user.has_perm("app.add_external_user"):
+            # Solo usuarios internos (todos menos cliente)
+            form.fields["role"].queryset = Role.objects.exclude(
+                name=RoleChoices.CLIENTE
+            )
+        elif self.request.user.has_perm(
+            "app.add_external_user"
+        ) and not self.request.user.has_perm("app.add_user"):
+            # Solo cliente
+            form.fields["role"].queryset = Role.objects.filter(name=RoleChoices.CLIENTE)
+        elif self.request.user.has_perm("app.add_user") and self.request.user.has_perm(
+            "app.add_external_user"
+        ):
+            # Puede elegir cualquier rol
+            form.fields["role"].queryset = Role.objects.all()
+        else:
+            form.fields["role"].queryset = Role.objects.none()
+        return form
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        role = form.cleaned_data["role"]
+        self.object.roles.set([role])
+        if role.name == RoleChoices.CLIENTE:
+            ClientProfile.objects.create(
+                user=self.object,
+                razon_social=form.cleaned_data["razon_social"],
+                nit=form.cleaned_data["nit"],
+                representante_legal=form.cleaned_data.get("representante_legal"),
+                direccion_instalacion=form.cleaned_data["direccion_instalacion"],
+                departamento=form.cleaned_data["departamento"],
+                municipio=form.cleaned_data["municipio"],
+                persona_contacto=form.cleaned_data.get("persona_contacto"),
+            )
+        return response
 
     def handle_no_permission(self):
         if not self.request.user.is_authenticated:
