@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/rad-solutions/webserver/compare/v1.6.0...v1.7.0) (2025-06-24)
+
+
+### Features
+
+* Add process assignment and time tracking ([2005a75](https://github.com/rad-solutions/webserver/commit/2005a755b68f55a3c49efc77752f4dd833abb41b))
+
 # [1.6.0](https://github.com/rad-solutions/webserver/compare/v1.5.0...v1.6.0) (2025-06-20)
 
 
