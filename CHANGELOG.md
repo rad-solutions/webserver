@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/rad-solutions/webserver/compare/v1.7.0...v1.8.0) (2025-06-24)
+
+
+### Features
+
+* Add x-ray fields and changes history ([0b5b400](https://github.com/rad-solutions/webserver/commit/0b5b400854cdea7d5f3308afc085a046fe56f0fb))
+
 # [1.7.0](https://github.com/rad-solutions/webserver/compare/v1.6.0...v1.7.0) (2025-06-24)
 
 
