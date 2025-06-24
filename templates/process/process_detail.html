@@ -32,6 +32,15 @@
                     ({{ process.user.first_name }} {{ process.user.last_name }})
                 </div>
             </div>
+            {% if process.assigned_to %}
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>Asociado a:</strong></div>
+                    <div class="col-md-8">
+                        <a href="{% url 'user_detail' process.assigned_to.id %}">{{ process.assigned_to.username }}</a>
+                        ({{ process.assigned_to.first_name }} {{ process.assigned_to.last_name }})
+                    </div>
+                </div>
+            {% endif %}
             <div class="row mb-3">
                 <div class="col-md-4"><strong>Estado:</strong></div>
                 <div class="col-md-8">{{ process.estado }}</div>
@@ -50,6 +59,7 @@
             {% if perms.app.manage_equipment %}
             <a href="{% url 'process_update' process.id %}" class="btn btn-warning">Editar</a>
             <a href="{% url 'process_progress' process.id %}" class="btn btn-primary">Actualizar</a>
+            <a href="{% url 'process_update_assignment' process.id %}" class="btn btn-primary">Re-Asignar Proceso</a>
             <a href="{% url 'process_delete' process.id %}" class="btn btn-danger">Eliminar</a>
             {% endif %}
         </div>

@@ -267,9 +267,11 @@ class ProcessProgressForm(forms.ModelForm):
 class ProcessChecklistItemForm(forms.ModelForm):
     class Meta:
         model = ProcessChecklistItem
-        fields = ["is_completed"]
+        fields = ["is_completed", "started_at", "completed_at"]
         widgets = {
-            "is_completed": forms.CheckboxInput(attrs={"class": "form-check-input"})
+            "is_completed": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "started_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
+            "completed_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
         }
 
 
@@ -280,6 +282,22 @@ ProcessChecklistItemFormSet = inlineformset_factory(
     extra=0,
     can_delete=False,
 )
+
+
+class ProcessAssignmentForm(forms.ModelForm):
+    class Meta:
+        model = Process
+        fields = ["assigned_to"]
+        widgets = {
+            "assigned_to": forms.Select(attrs={"class": "form-select"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Solo mostrar usuarios con rol de cliente
+        self.fields["assigned_to"].queryset = User.objects.exclude(
+            roles__name=RoleChoices.CLIENTE
+        ).order_by("username")
 
 
 class AnotacionForm(forms.ModelForm):
@@ -1344,6 +1362,28 @@ class ProcessUpdateView(LoginRequiredMixin, UpdateView):
         return context
 
 
+class ProcessUpdateAssignmentView(
+    LoginRequiredMixin, PermissionRequiredMixin, UpdateView
+):
+    model = Process
+    form_class = ProcessAssignmentForm
+    template_name = "process/process_update_assignment.html"
+    success_url = reverse_lazy("process_list")
+    login_url = "/login/"
+    permission_required = "app.manage_equipment"
+
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return redirect_to_login(
+                self.request.get_full_path(),
+                self.get_login_url(),
+                self.get_redirect_field_name(),
+            )
+        # User is authenticated, but lacks permission.
+        # Delegate to PermissionRequiredMixin's original behavior.
+        return PermissionRequiredMixin.handle_no_permission(self)
+
+
 class ProcessProgressUpdateView(LoginRequiredMixin, UpdateView):
     model = Process
     form_class = ProcessProgressForm
@@ -1375,16 +1415,17 @@ class ProcessProgressUpdateView(LoginRequiredMixin, UpdateView):
         if not self.object.checklist_items.exists():
             checklist_formset.empty_permitted = True
 
-        # Agrega esto para depurar
-        if not checklist_formset.is_valid():
-            logger.info("Checklist formset errors:", checklist_formset.errors)
-
         if form.is_valid() and (
             not self.object.checklist_items.exists() or checklist_formset.is_valid()
         ):
             form.save()
             if self.object.checklist_items.exists():
-                checklist_formset.save()
+                checklist_items = checklist_formset.save(commit=False)
+                for item in checklist_items:
+                    if item.is_completed:
+                        item.completed_by = request.user
+                    item.save()
+                checklist_formset.save_m2m()
             return redirect(self.get_success_url())
         else:
             return self.render_to_response(
