@@ -13,6 +13,7 @@ from app.views import (
     ProcessDetailView,
     ProcessListView,
     ProcessProgressUpdateView,
+    ProcessUpdateAssignmentView,
     ProcessUpdateView,
     ReportCreateView,
     ReportDeleteView,
@@ -56,6 +57,11 @@ urlpatterns = [
     ),
     path(
         "processes/<int:pk>/delete/", ProcessDeleteView.as_view(), name="process_delete"
+    ),
+    path(
+        "processes/<int:pk>/assignment/",
+        ProcessUpdateAssignmentView.as_view(),
+        name="process_update_assignment",
     ),
     path(
         "processes/<int:pk>/progress/",

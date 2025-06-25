@@ -1,3 +1,17 @@
+# [1.10.0](https://github.com/rad-solutions/webserver/compare/v1.9.0...v1.10.0) (2025-06-25)
+
+
+### Features
+
+* Implement dynamic report titles for equipment ([de256aa](https://github.com/rad-solutions/webserver/commit/de256aa54550fd261a3c8140034270e27f9b6bc7))
+
+# [1.9.0](https://github.com/rad-solutions/webserver/compare/v1.8.0...v1.9.0) (2025-06-25)
+
+
+### Features
+
+* Added UI for Process Assignment and control of time spent by internal users. Corresponding tests added. ([1e30e24](https://github.com/rad-solutions/webserver/commit/1e30e24ad45a7441f9db42853d84b3b3b6db46c4))
+
 # [1.8.0](https://github.com/rad-solutions/webserver/compare/v1.7.0...v1.8.0) (2025-06-24)
 
 
