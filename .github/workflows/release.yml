@@ -1,48 +1,61 @@
-release:
-  name: Semantic Release
-  needs: test-and-lint
-  runs-on: ubuntu-latest
-  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-  permissions:
-    contents: write
-    issues: write
-    pull-requests: write
+name: Semantic Release
 
-  steps:
-    - name: Create GitHub App installation token
-      id: app-token
-      uses: actions/create-github-app-token@v1
-      with:
-        app-id: ${{ vars.APP_ID }}
-        private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+# 1) Definimos los eventos que disparan el workflow
+on:
+  push:
+    branches:
+      - main
+  # opcionalmente podrías añadir también:
+  # workflow_dispatch:   # para lanzarlo manualmente desde la UI
 
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        persist-credentials: false
-        token: ${{ steps.app-token.outputs.token }}
+jobs:
+  release:
+    name: Semantic Release
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+    # 2) Esta condición es redundante al usar 'on: push.branches: [main]',
+    #    pero no hace daño dejarla como doble check:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
 
-    - name: Configure Git user
-      run: |
-        git config user.name  "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
+    steps:
+      - name: Create GitHub App installation token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: "lts/*"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          token: ${{ steps.app-token.outputs.token }}
 
-    - name: Install semantic-release and plugins
-      run: |
-        npm install -g semantic-release \
-          @semantic-release/commit-analyzer \
-          @semantic-release/release-notes-generator \
-          @semantic-release/changelog \
-          @semantic-release/git \
-          @semantic-release/github
+      - name: Configure Git user
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: Run semantic-release
-      env:
-        GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-      run: npx semantic-release
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "lts/*"
+
+      - name: Install semantic-release and plugins
+        run: |
+          npm install -g semantic-release \
+            @semantic-release/commit-analyzer \
+            @semantic-release/release-notes-generator \
+            @semantic-release/changelog \
+            @semantic-release/git \
+            @semantic-release/github
+
+      - name: Run semantic-release
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: npx semantic-release
