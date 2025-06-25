@@ -1,25 +1,24 @@
+# .github/workflows/release.yml
 name: Semantic Release
 
-# 1) Definimos los eventos que disparan el workflow
 on:
-  push:
-    branches:
-      - main
-  # opcionalmente podrías añadir también:
-  # workflow_dispatch:   # para lanzarlo manualmente desde la UI
+  workflow_run:
+    workflows:
+      - "Django CI and Release"
+    types:
+      - completed
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   release:
     name: Semantic Release
-    needs: test-and-lint
     runs-on: ubuntu-latest
-    # 2) Esta condición es redundante al usar 'on: push.branches: [main]',
-    #    pero no hace daño dejarla como doble check:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
+    # sólo corre si el test-and-lint terminó OK y en la rama main
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
 
     steps:
       - name: Create GitHub App installation token
