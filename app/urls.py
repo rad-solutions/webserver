@@ -8,6 +8,7 @@ from app.views import (
     EquiposDetailView,
     EquiposListView,
     EquiposUpdateView,
+    EquipoTuboUpdateView,
     ProcessCreateView,
     ProcessDeleteView,
     ProcessDetailView,
@@ -82,6 +83,11 @@ urlpatterns = [
     ),
     path(
         "equipos/<int:pk>/delete/", EquiposDeleteView.as_view(), name="equipos_delete"
+    ),
+    path(
+        "equipos/<int:pk>/tubo/update/",
+        EquipoTuboUpdateView.as_view(),
+        name="tubo_update",
     ),
     path(
         "ajax/load-user-processes/",

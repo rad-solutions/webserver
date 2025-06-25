@@ -13,6 +13,7 @@ from django.forms import inlineformset_factory
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views.generic import (
     CreateView,
     DeleteView,
@@ -25,6 +26,7 @@ from .models import (
     Anotacion,
     ClientProfile,
     Equipment,
+    HistorialTuboRayosX,
     Process,
     ProcessChecklistItem,
     ProcessStatusChoices,
@@ -373,6 +375,12 @@ class EquipmentForm(forms.ModelForm):
                 attrs={"type": "date"}
             ),
         }
+
+
+class HistorialTuboRayosXForm(forms.ModelForm):
+    class Meta:
+        model = HistorialTuboRayosX
+        fields = ["marca", "modelo", "serial"]
 
 
 def load_user_processes(request):
@@ -1140,7 +1148,6 @@ class EquiposCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
     model = Equipment
     form_class = EquipmentForm
     template_name = "equipos/equipos_form.html"
-    success_url = reverse_lazy("equipos_list")
     login_url = "/login/"
     permission_required = "app.manage_equipment"
     raise_exception = True
@@ -1156,6 +1163,10 @@ class EquiposCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
         # Delegate to PermissionRequiredMixin's original behavior.
         return PermissionRequiredMixin.handle_no_permission(self)
 
+    def get_success_url(self):
+        # Redirigir al formulario de actualización del tubo de rayos X
+        return reverse_lazy("tubo_update", kwargs={"pk": self.object.id})
+
     def form_valid(self, form):
         try:
             response = super().form_valid(form)
@@ -1168,6 +1179,44 @@ class EquiposCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
             logger.error(f"Error al guardar el equipo: {str(e)}")
             form.add_error(None, f"Error al guardar el equipo: {str(e)}")
             return self.form_invalid(form)
+
+
+class EquipoTuboUpdateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    model = HistorialTuboRayosX
+    form_class = HistorialTuboRayosXForm
+    template_name = "equipos/tubo_xray_form.html"
+    login_url = "/login/"
+    permission_required = "app.manage_equipment"
+    raise_exception = True
+
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return redirect_to_login(
+                self.request.get_full_path(),
+                self.get_login_url(),
+                self.get_redirect_field_name(),
+            )
+        # User is authenticated, but lacks permission.
+        # Delegate to PermissionRequiredMixin's original behavior.
+        return PermissionRequiredMixin.handle_no_permission(self)
+
+    def get_success_url(self):
+        # Redirigir de vuelta a la página de detalle del equipo
+        return reverse_lazy("equipos_detail", kwargs={"pk": self.kwargs.get("pk")})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        equipo_id = self.kwargs.get("pk")
+        context["equipo"] = get_object_or_404(Equipment, id=equipo_id)
+        return context
+
+    def form_valid(self, form):
+        equipo_id = self.kwargs.get("pk")
+        equipo_obj = get_object_or_404(Equipment, id=equipo_id)
+
+        form.instance.equipment = equipo_obj
+        form.instance.fecha_cambio = timezone.now()
+        return super().form_valid(form)
 
 
 class EquiposDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
