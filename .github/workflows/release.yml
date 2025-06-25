@@ -1,29 +1,3 @@
-<<<<<<< HEAD
-on:
-  push:
-    branches:
-      - main
-
-permissions:
-  contents: write    # for version-bump commits & tags
-  issues: write      # if you’re using @semantic-release/github comments
-jobs:
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - run: npm install
-
-      - name: Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
-=======
 release:
   name: Semantic Release
   needs: test-and-lint
@@ -72,4 +46,3 @@ release:
       env:
         GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
       run: npx semantic-release
->>>>>>> 6bbcf97 (feat: add semantic release workflow test)
