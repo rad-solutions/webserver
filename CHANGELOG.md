@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/rad-solutions/webserver/compare/v1.9.0...v1.10.0) (2025-06-25)
+
+
+### Features
+
+* Implement dynamic report titles for equipment ([de256aa](https://github.com/rad-solutions/webserver/commit/de256aa54550fd261a3c8140034270e27f9b6bc7))
+
 # [1.9.0](https://github.com/rad-solutions/webserver/compare/v1.8.0...v1.9.0) (2025-06-25)
 
 
