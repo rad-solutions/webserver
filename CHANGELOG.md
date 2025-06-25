@@ -1,3 +1,16 @@
+# [1.11.0](https://github.com/rad-solutions/webserver/compare/v1.10.0...v1.11.0) (2025-06-25)
+
+
+### Features
+
+* add semantic release workflow test ([a367a2b](https://github.com/rad-solutions/webserver/commit/a367a2b38f64e98bfeb40f51353bbac961c89072))
+* add semantic release workflow test ([2614103](https://github.com/rad-solutions/webserver/commit/2614103b6fd9f64e4ad531f67d24105c93d35db1))
+* add semantic release workflow test ([6a981c2](https://github.com/rad-solutions/webserver/commit/6a981c2e73a039e95356412190cb65f565e61e90))
+* add semantic release workflow test ([d2e3103](https://github.com/rad-solutions/webserver/commit/d2e3103258ce56b403bd1c7df30d0de521b04a5b))
+* add semantic release workflow test 4 ([6aef11c](https://github.com/rad-solutions/webserver/commit/6aef11cb5349db034f46abcdd9ecc8470d4d04d0))
+* add semantic release workflow test 5 ([9a75d98](https://github.com/rad-solutions/webserver/commit/9a75d988d96ee81bf704335116de0758612e5dc1))
+* add semantic release workflow test 6 ([50b8f1a](https://github.com/rad-solutions/webserver/commit/50b8f1a3a5450e646bc6de6f2a5e70bad0363904))
+
 # [1.10.0](https://github.com/rad-solutions/webserver/compare/v1.9.0...v1.10.0) (2025-06-25)
 
 
