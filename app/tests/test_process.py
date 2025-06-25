@@ -569,6 +569,8 @@ class ProcessAPITest(TestCase):
     def test_progress_form_update_checklist_and_status(self):
         # Simula marcar el primer ítem como completado y cambiar el estado del proceso
         self.url = reverse("process_progress", args=[self.process.id])
+        started_at = datetime(2025, 6, 20, 10, 0, tzinfo=timezone.utc)
+        completed_at = datetime(2025, 6, 21, 12, 0, tzinfo=timezone.utc)
         data = {
             "estado": ProcessStatusChoices.FINALIZADO,
             "checklist_items-TOTAL_FORMS": "2",
@@ -577,8 +579,12 @@ class ProcessAPITest(TestCase):
             "checklist_items-MAX_NUM_FORMS": "1000",
             "checklist_items-0-id": str(self.item1.id),
             "checklist_items-0-is_completed": "on",  # Marcar como completado
+            "checklist_items-0-started_at": started_at.strftime("%Y-%m-%dT%H:%M"),
+            "checklist_items-0-completed_at": completed_at.strftime("%Y-%m-%dT%H:%M"),
             "checklist_items-1-id": str(self.item2.id),
             # No enviar is_completed para el segundo ítem (lo desmarca)
+            "checklist_items-1-started_at": "",
+            "checklist_items-1-completed_at": "",
         }
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, 302)  # Redirige al detalle del proceso
@@ -590,6 +596,11 @@ class ProcessAPITest(TestCase):
         self.assertTrue(self.item1.is_completed)
         self.assertFalse(self.item2.is_completed)
         self.assertEqual(self.process.estado, ProcessStatusChoices.FINALIZADO)
+        # Verifica fechas y completed_by
+        self.assertEqual(self.item1.started_at, started_at)
+        self.assertEqual(self.item1.completed_at, completed_at)
+        self.assertEqual(self.item1.completed_by, self.user)
+        self.assertIsNone(self.item2.completed_by)
 
     def test_progress_form_no_checklist_items(self):
         # Crear un proceso sin checklist items
@@ -616,3 +627,90 @@ class ProcessAPITest(TestCase):
         self.assertEqual(response.status_code, 302)
         process_no_items.refresh_from_db()
         self.assertEqual(process_no_items.estado, ProcessStatusChoices.FINALIZADO)
+
+    def test_progress_form_update_dates_without_completion(self):
+        self.url = reverse("process_progress", args=[self.process.id])
+        started_at = datetime(2025, 6, 20, 10, 0, tzinfo=timezone.utc)
+        completed_at = datetime(2025, 6, 21, 12, 0, tzinfo=timezone.utc)
+        data = {
+            "estado": ProcessStatusChoices.EN_PROGRESO,
+            "checklist_items-TOTAL_FORMS": "2",
+            "checklist_items-INITIAL_FORMS": "2",
+            "checklist_items-MIN_NUM_FORMS": "0",
+            "checklist_items-MAX_NUM_FORMS": "1000",
+            "checklist_items-0-id": str(self.item1.id),
+            # No is_completed
+            "checklist_items-0-started_at": started_at.strftime("%Y-%m-%dT%H:%M"),
+            "checklist_items-0-completed_at": completed_at.strftime("%Y-%m-%dT%H:%M"),
+            "checklist_items-1-id": str(self.item2.id),
+            "checklist_items-1-started_at": "",
+            "checklist_items-1-completed_at": "",
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, 302)
+
+        self.item1.refresh_from_db()
+        self.assertFalse(self.item1.is_completed)
+        self.assertEqual(self.item1.started_at, started_at)
+        self.assertEqual(self.item1.completed_at, completed_at)
+        self.assertIsNone(self.item1.completed_by)
+
+
+class ProcessAssignmentTest(TestCase):
+    def setUp(self):
+        # Crea usuarios y roles
+        self.rol_gerente, _ = Role.objects.get_or_create(name=RoleChoices.GERENTE)
+        self.rol_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        self.user = User.objects.create_user(username="cliente1", password="pass")
+        self.user.roles.add(self.rol_cliente)
+        self.gerente = User.objects.create_user(username="gerente1", password="pass")
+        self.gerente.roles.add(self.rol_gerente)
+        self.process = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        self.url = reverse("process_update_assignment", args=[self.process.id])
+
+    def test_assignment_view_requires_login(self):
+        self.client.logout()
+        response = self.client.get(self.url)
+        self.assertIn(response.status_code, [302, 403])
+
+    def test_assignment_view_requires_permission(self):
+        self.client.login(username="cliente1", password="pass")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_assignment_view_get(self):
+        self.client.login(username="gerente1", password="pass")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "process/process_update_assignment.html")
+        self.assertIn("form", response.context)
+        self.assertEqual(response.context["form"].instance, self.process)
+
+    def test_assignment_view_post_valid(self):
+        self.client.login(username="gerente1", password="pass")
+        data = {
+            "assigned_to": self.gerente.id,
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, 302)
+        self.process.refresh_from_db()
+        self.assertEqual(self.process.assigned_to, self.gerente)
+
+    def test_assignment_view_post_invalid(self):
+        self.client.login(username="gerente1", password="pass")
+        # Enviar un usuario inexistente
+        data = {
+            "assigned_to": 99999,
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        self.assertFormError(
+            form,
+            "assigned_to",
+            "Select a valid choice. That choice is not one of the available choices.",
+        )
