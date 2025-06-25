@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/rad-solutions/webserver/compare/v1.8.0...v1.9.0) (2025-06-25)
+
+
+### Features
+
+* Added UI for Process Assignment and control of time spent by internal users. Corresponding tests added. ([1e30e24](https://github.com/rad-solutions/webserver/commit/1e30e24ad45a7441f9db42853d84b3b3b6db46c4))
+
 # [1.8.0](https://github.com/rad-solutions/webserver/compare/v1.7.0...v1.8.0) (2025-06-24)
 
 
