@@ -58,6 +58,7 @@ class ClientProfile(models.Model):
 class PracticeCategoryChoices(models.TextChoices):
     VETERINARIA = "veterinaria", _("Veterinaria")
     INDUSTRIAL = "industrial", _("Industrial")
+    INVESTIGACION = "investigacion", _("Investigación")
     MEDICA_CAT1 = "medica_cat1", _("Médica Categoría 1")
     MEDICA_CAT2 = "medica_cat2", _("Médica Categoría 2")
 
@@ -217,6 +218,24 @@ class Equipment(models.Model):
         default=EstadoEquipoChoices.EN_USO,
     )
     sede = models.CharField(max_length=150, blank=True, null=True)
+
+    def get_report_title(self):
+        """Return the title for the reports section.
+
+        This is based on the practice category of the associated process.
+        """
+        environmental_study_categories = [
+            PracticeCategoryChoices.VETERINARIA,
+            PracticeCategoryChoices.INDUSTRIAL,
+            PracticeCategoryChoices.INVESTIGACION,
+        ]
+
+        if (
+            self.process
+            and self.process.practice_category in environmental_study_categories
+        ):
+            return _("Informes de Estudio Ambiental")
+        return _("Informes de Control de Calidad")
 
     def get_current_xray_tube(self):
         """Return the current X-ray tube from the history."""
