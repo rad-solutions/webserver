@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/rad-solutions/webserver/compare/v1.11.0...v1.12.0) (2025-06-26)
+
+
+### Features
+
+* Added UI for Creation and Updating the XRay Tube asociated to an Equipment as well as its history. Corresponding test added. ([10690c0](https://github.com/rad-solutions/webserver/commit/10690c0cf914f6148bd3d4eedc50f3a5fa345cdd))
+
 # [1.11.0](https://github.com/rad-solutions/webserver/compare/v1.10.0...v1.11.0) (2025-06-25)
 
 
