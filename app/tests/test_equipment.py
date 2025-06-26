@@ -7,6 +7,7 @@ from django.urls import reverse
 from ..models import (
     Equipment,
     EstadoEquipoChoices,
+    HistorialTuboRayosX,
     Process,
     ProcessStatusChoices,
     ProcessTypeChoices,
@@ -410,3 +411,81 @@ class EquipmentAPITest(TestCase):
         self.assertIn(self.eq1, equipos_en_contexto)
         self.assertNotIn(self.eq3, equipos_en_contexto)  # Pertenece a admin_user
         self.assertEqual(response.context["text_search_term"], "ModeloX100")
+
+
+class XRayTubeHistoryTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="tubouser",
+            password="password",
+            first_name="Tubo",
+            last_name="User",
+        )
+        self.rol_gerente, _ = Role.objects.get_or_create(name=RoleChoices.GERENTE)
+        self.user.roles.add(self.rol_gerente)
+        self.client.login(username="tubouser", password="password")
+        self.equipo = Equipment.objects.create(
+            nombre="Equipo Tubo",
+            user=self.user,
+            modelo="ModeloTubo",
+            serial="SN-TUBO-001",
+        )
+        self.tubo1 = HistorialTuboRayosX.objects.create(
+            equipment=self.equipo,
+            marca="MarcaA",
+            modelo="ModeloA",
+            serial="TUBO-001",
+            fecha_cambio=date(2024, 1, 1),
+        )
+        self.tubo2 = HistorialTuboRayosX.objects.create(
+            equipment=self.equipo,
+            marca="MarcaB",
+            modelo="ModeloB",
+            serial="TUBO-002",
+            fecha_cambio=date(2025, 1, 1),
+        )
+
+    def test_historial_tubos_visible_en_detalle_equipo(self):
+        url = reverse("equipos_detail", args=[self.equipo.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        # Ambos tubos deben estar en el contexto y en el HTML
+        self.assertContains(response, "MarcaA")
+        self.assertContains(response, "MarcaB")
+        self.assertContains(response, "TUBO-001")
+        self.assertContains(response, "TUBO-002")
+        # El historial debe estar ordenado por fecha_cambio descendente
+        tubos = list(response.context["equipo"].historial_tubos_rayos_x.all())
+        self.assertEqual(tubos[0], self.tubo2)
+        self.assertEqual(tubos[1], self.tubo1)
+
+    def test_registro_nuevo_tubo(self):
+        url = reverse("tubo_update", kwargs={"pk": self.equipo.id})
+        data = {
+            "marca": "MarcaC",
+            "modelo": "ModeloC",
+            "serial": "TUBO-003",
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 302)
+        self.equipo.refresh_from_db()
+        tubos = self.equipo.historial_tubos_rayos_x.order_by("-fecha_cambio")
+        self.assertEqual(tubos.count(), 3)
+        self.assertEqual(tubos.first().marca, "MarcaC")
+        self.assertEqual(tubos.first().serial, "TUBO-003")
+        # La fecha_cambio debe ser la de hoy
+        self.assertEqual(tubos.first().fecha_cambio, date.today())
+
+    def test_get_current_xray_tube(self):
+        # El método debe retornar el tubo más reciente
+        current_tube = self.equipo.get_current_xray_tube()
+        self.assertEqual(current_tube, self.tubo2)
+        # Si agregamos uno nuevo, debe ser el actual
+        nuevo = HistorialTuboRayosX.objects.create(
+            equipment=self.equipo,
+            marca="MarcaD",
+            modelo="ModeloD",
+            serial="TUBO-004",
+            fecha_cambio=date(2026, 1, 1),
+        )
+        self.assertEqual(self.equipo.get_current_xray_tube(), nuevo)

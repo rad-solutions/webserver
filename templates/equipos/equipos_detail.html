@@ -28,6 +28,20 @@
                 <div class="col-md-4"><strong>Serial:</strong></div>
                 <div class="col-md-8">{{ equipo.serial }}</div>
             </div>
+            {% with tubo=equipo.get_current_xray_tube %}
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>Marca Tubo:</strong></div>
+                    <div class="col-md-8">{{ tubo.marca }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>Modelo Tubo:</strong></div>
+                    <div class="col-md-8">{{ tubo.modelo }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>Serial Tubo:</strong></div>
+                    <div class="col-md-8">{{ tubo.serial }}</div>
+                </div>
+            {% endwith %}
             <div class="row mb-3">
                 <div class="col-md-4"><strong>Practica Asociada:</strong></div>
                 <div class="col-md-8">{{ equipo.practica_asociada }}</div>
@@ -132,6 +146,29 @@
                 {% endif %}
             {% endif %}
         </div>
+    </div>
+    <br>
+    <div class="card">
+        <div class="card-header">
+            <h3>Historial Tubo de Rayos X</h3>
+        </div>
+        <div class="card-body">
+            {% if equipo.historial_tubos_rayos_x %}
+            <ul class="list-group">
+                {% for tubo in equipo.historial_tubos_rayos_x.all %}
+                <li class="list-group-item">
+                    Marca del Tubo: {{ tubo.marca }} - Modelo del Tubo: {{ tubo.modelo }} <br> (Serial del tubo: {{ tubo.serial }})
+                    <br>
+                    <small class="text-muted">{{ tubo.fecha_cambio|date:"d/m/Y" }}</small>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        <div class="card-footer">
+            {% if perms.app.manage_equipment %}
+                <a href="{% url 'tubo_update' pk=equipo.id %}" class="btn btn-primary">Actualizar Tubo Rayos X</a>
+            {% endif %}
     </div>
 </div>
 {% endblock %}
