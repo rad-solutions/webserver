@@ -38,9 +38,39 @@
             <a href="javascript:window.history.back();" class="btn btn-secondary">Volver</a>
             {% if perms.app.change_report %}
             <a href="{% url 'report_update' report.id %}" class="btn btn-warning">Editar</a>
+            <a href="{% url 'report_status_and_note' report.id %}" class="btn btn-primary">Cambiar Estado / Agregar Anotación</a>
             <a href="{% url 'report_delete' report.id %}" class="btn btn-danger">Eliminar</a>
             {% endif %}
         </div>
+    </div>
+    <br>
+    <div class="card">
+        <div class="card-header">
+            <h3>Anotaciones del Proceso Asociado</h3>
+            <h5>Proceso Asociado: <a>
+                {% if report.process %}
+                    <a href="{% url 'process_detail' report.process.id %}">{{ report.process.get_process_type_display }}</a>
+                {% else %}
+                    No Aplica
+                {% endif %}
+            </a></h5>
+        </div>
+        <div class="card-body">
+            {% if report.process.anotaciones %}
+            <ul class="list-group">
+                {% for anotacion in report.process.anotaciones.all %}
+                <li class="list-group-item">
+                    <strong>{{ anotacion.usuario.username }}:</strong> {{ anotacion.contenido }} <br>
+                    <small class="text-muted">{{ anotacion.fecha_creacion|date:"d/m/Y H:i" }}</small>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        <div class="card-footer">
+            {% if perms.app.add_anotacion %}
+                <a href="{% url 'anotacion_create' process_id=report.process.id %}" class="btn btn-primary">Agregar Anotación al Proceso Asociado</a>
+            {% endif %}
     </div>
 </div>
 {% endblock %}

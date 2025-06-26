@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from ..models import (
+    Anotacion,
     Equipment,
     EstadoReporteChoices,
     Process,
@@ -725,3 +726,67 @@ class ReportAPITest(TestCase):
         )
         self.assertEqual(response.context["start_date"], start_date_filter)
         self.assertEqual(response.context["end_date"], end_date_filter)
+
+
+class ReportStatusAndNoteTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="testuser", password="testpass")
+        change_report_perm = Permission.objects.get(codename="change_report")
+        view_report_perm = Permission.objects.get(codename="view_report")
+        self.user.user_permissions.add(change_report_perm, view_report_perm)
+        self.process = Process.objects.create(
+            user=self.user, process_type=ProcessTypeChoices.ASESORIA
+        )
+        self.temp_file_content = b"contenido de prueba del PDF"
+        self.temp_file_name = "test.pdf"
+        self.report = Report.objects.create(
+            user=self.user,
+            process=self.process,
+            pdf_file=SimpleUploadedFile(self.temp_file_name, self.temp_file_content),
+            title="Reporte de prueba",
+            estado_reporte=EstadoReporteChoices.EN_GENERACION,
+        )
+        self.client.login(username="testuser", password="testpass")
+
+        self.url = reverse("report_status_and_note", args=[self.report.id])
+
+    def tearDown(self):
+        for report in Report.objects.all():
+            if report.pdf_file and hasattr(report.pdf_file, "path"):
+                if os.path.exists(report.pdf_file.path):
+                    try:
+                        os.remove(report.pdf_file.path)
+                    except OSError:
+                        pass
+
+    def test_change_status_and_add_note(self):
+        data = {
+            "estado_reporte": EstadoReporteChoices.APROBADO,
+            "anotacion": "Nueva anotación para el proceso.",
+        }
+        response = self.client.post(self.url, data)
+        self.assertRedirects(response, reverse("report_detail", args=[self.report.id]))
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.estado_reporte, EstadoReporteChoices.APROBADO)
+        anotaciones = Anotacion.objects.filter(proceso=self.process)
+        self.assertEqual(anotaciones.count(), 1)
+        self.assertEqual(
+            anotaciones.first().contenido, "Nueva anotación para el proceso."
+        )
+
+    def test_change_status_without_note(self):
+        data = {
+            "estado_reporte": EstadoReporteChoices.REVISADO,
+            "anotacion": "",
+        }
+        response = self.client.post(self.url, data)
+        self.assertRedirects(response, reverse("report_detail", args=[self.report.id]))
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.estado_reporte, EstadoReporteChoices.REVISADO)
+        self.assertFalse(Anotacion.objects.filter(proceso=self.process).exists())
+
+    def test_get_form(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Actualizar Estado del Reporte")
+        self.assertContains(response, "Anotación al proceso")

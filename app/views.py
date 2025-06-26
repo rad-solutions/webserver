@@ -232,6 +232,18 @@ class ReportForm(forms.ModelForm):
         return file
 
 
+class ReportStatusAndNoteForm(forms.ModelForm):
+    anotacion = forms.CharField(
+        label="Anotación al proceso (opcional)",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+
+    class Meta:
+        model = Report
+        fields = ["estado_reporte"]
+
+
 class ProcessForm(forms.ModelForm):
     class Meta:
         model = Process
@@ -964,6 +976,42 @@ class ReportDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
         # User is authenticated, but lacks permission.
         # Delegate to PermissionRequiredMixin's original behavior.
         return PermissionRequiredMixin.handle_no_permission(self)
+
+
+class ReportStatusAndNoteUpdateView(
+    LoginRequiredMixin, PermissionRequiredMixin, UpdateView
+):
+    model = Report
+    form_class = ReportStatusAndNoteForm
+    template_name = "reports/report_status_and_note_form.html"
+    permission_required = "app.change_report"
+    raise_exception = True
+
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return redirect_to_login(
+                self.request.get_full_path(),
+                self.get_login_url(),
+                self.get_redirect_field_name(),
+            )
+        # User is authenticated, but lacks permission.
+        # Delegate to PermissionRequiredMixin's original behavior.
+        return PermissionRequiredMixin.handle_no_permission(self)
+
+    def get_success_url(self):
+        return reverse_lazy("report_detail", args=[self.object.id])
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        anotacion_text = form.cleaned_data.get("anotacion", "").strip()
+        # Solo crear anotación si hay texto y el reporte tiene proceso asociado
+        if anotacion_text and self.object.process:
+            Anotacion.objects.create(
+                proceso=self.object.process,
+                usuario=self.request.user,
+                contenido=anotacion_text,
+            )
+        return response
 
 
 # Equipos Views
