@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/rad-solutions/webserver/compare/v1.12.0...v1.13.0) (2025-06-26)
+
+
+### Features
+
+* Added system for review and approval of a report and a way to add a Process' Anotacion in the same page as the review one. Now showing the Anotaciones asociated to the asociated process of the report. Corresponding test added ([f9e4642](https://github.com/rad-solutions/webserver/commit/f9e464246b7e23e4660dc585d7a54fc9c0e90440))
+
 # [1.12.0](https://github.com/rad-solutions/webserver/compare/v1.11.0...v1.12.0) (2025-06-26)
 
 
