@@ -19,6 +19,7 @@ from app.views import (
     ReportDeleteView,
     ReportDetailView,
     ReportListView,
+    ReportStatusAndNoteUpdateView,
     ReportUpdateView,
     UserCreateView,
     UserDeleteView,
@@ -48,6 +49,11 @@ urlpatterns = [
     path("reports/create/", ReportCreateView.as_view(), name="report_create"),
     path("reports/<int:pk>/update/", ReportUpdateView.as_view(), name="report_update"),
     path("reports/<int:pk>/delete/", ReportDeleteView.as_view(), name="report_delete"),
+    path(
+        "reports/<int:pk>/status-note/",
+        ReportStatusAndNoteUpdateView.as_view(),
+        name="report_status_and_note",
+    ),
     # Process URLs
     path("processes/", ProcessListView.as_view(), name="process_list"),
     path("processes/<int:pk>/", ProcessDetailView.as_view(), name="process_detail"),
