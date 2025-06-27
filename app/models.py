@@ -352,6 +352,38 @@ class Report(models.Model):
             ("approve_report", "Can approve reports"),
         ]
 
+    def save(self, *args, **kwargs):
+        user_who_modified = kwargs.pop("user_who_modified", None)
+        is_new = self._state.adding
+        old_instance = None
+
+        if not is_new:
+            try:
+                old_instance = Report.objects.get(pk=self.pk)
+            except Report.DoesNotExist:
+                pass  # Should not happen on an update
+
+        super().save(*args, **kwargs)
+
+        # After saving, compare old and new pdf_file
+        if old_instance and old_instance.pdf_file != self.pdf_file:
+            if self.process:
+                # Determine if the file was added, changed,or removed.
+                if old_instance.pdf_file and not self.pdf_file:
+                    change_description = (
+                        f"Se eliminó el archivo del informe '{self.title}'."
+                    )
+                elif not old_instance.pdf_file and self.pdf_file:
+                    change_description = f"Se agregó el archivo '{self.pdf_file.name.split('/')[-1]}' al informe '{self.title}'."
+                else:  # It was changed
+                    change_description = f"Se actualizó el archivo del informe '{self.title}'. Nuevo archivo: {self.pdf_file.name.split('/')[-1]}."
+
+                Anotacion.objects.create(
+                    proceso=self.process,
+                    usuario=user_who_modified,
+                    contenido=change_description,
+                )
+
     def delete(self, *args, **kwargs):
         if self.pdf_file:
             storage = self.pdf_file.storage
