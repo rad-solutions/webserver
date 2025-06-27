@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/rad-solutions/webserver/compare/v1.13.0...v1.14.0) (2025-06-27)
+
+
+### Features
+
+* Track report file changes in history ([832d128](https://github.com/rad-solutions/webserver/commit/832d1283c167d1f8e6a07cedc906ba5b1321ca26))
+
 # [1.13.0](https://github.com/rad-solutions/webserver/compare/v1.12.0...v1.13.0) (2025-06-26)
 
 
