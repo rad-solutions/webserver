@@ -655,6 +655,40 @@ class ProcessAPITest(TestCase):
         self.assertEqual(self.item1.completed_at, completed_at)
         self.assertIsNone(self.item1.completed_by)
 
+    def test_process_detail_view_shows_status_logs(self):
+        # Forzar algunos cambios de estado para generar logs
+        self.proc1.estado = ProcessStatusChoices.EN_REVISION
+        self.proc1.save(user_who_modified=self.admin_user)
+        self.proc1.estado = ProcessStatusChoices.FINALIZADO
+        self.proc1.save(user_who_modified=self.user)
+
+        url = reverse("process_detail", args=[self.proc1.id])
+        self.client.login(username="admin_proc", password="password")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        # Debe contener los logs en el HTML (usando __str__)
+        logs = self.proc1.status_logs.all()
+        content_str = response.content.decode("utf-8")
+        for log in logs:
+            expected = str(log).replace("->", "-&gt;")
+            self.assertIn(expected, content_str)
+
+        # El log más reciente debe aparecer primero (por ordenamiento)
+        content_str = response.content.decode("utf-8")
+        if logs.count() >= 2:
+            expected_newest = str(logs[0]).replace("->", "-&gt;")
+            expected_old = str(logs[1]).replace("->", "-&gt;")
+            pos_newest = content_str.find(expected_newest)
+            pos_old = content_str.find(expected_old)
+            self.assertTrue(
+                pos_newest != -1 and pos_old != -1,
+                "Ambos logs deben estar en el HTML",
+            )
+            self.assertTrue(
+                pos_newest < pos_old,
+                "El log más reciente debe aparecer primero en el historial.",
+            )
+
 
 class ProcessAssignmentTest(TestCase):
     def setUp(self):
