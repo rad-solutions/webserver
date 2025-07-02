@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/rad-solutions/webserver/compare/v1.14.0...v1.15.0) (2025-07-02)
+
+
+### Features
+
+* Now showing ProcessStatusLogs in the process detail page. Corresponding test added. ([443a1b2](https://github.com/rad-solutions/webserver/commit/443a1b22788c222405abef94d1414437df2ad00e))
+
 # [1.14.0](https://github.com/rad-solutions/webserver/compare/v1.13.0...v1.14.0) (2025-06-27)
 
 
