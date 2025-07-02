@@ -1,3 +1,5 @@
+import os
+
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -47,6 +49,15 @@ class ReportHistoryTests(TestCase):
         self.file2 = SimpleUploadedFile(
             "file2.pdf", b"file_content_2", content_type="application/pdf"
         )
+
+    def tearDown(self):
+        for report in Report.objects.all():
+            if report.pdf_file and hasattr(report.pdf_file, "path"):
+                if os.path.exists(report.pdf_file.path):
+                    try:
+                        os.remove(report.pdf_file.path)
+                    except OSError:
+                        pass
 
     def test_anotacion_created_on_file_addition(self):
         """Test that an anotacion is created when a file is first added."""
