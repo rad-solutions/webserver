@@ -19,6 +19,7 @@ from django.views.generic import (
     DeleteView,
     DetailView,
     ListView,
+    TemplateView,
     UpdateView,
 )
 
@@ -427,6 +428,59 @@ def logout_view(request):
     return redirect("login")
 
 
+class DashboardGerenteView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
+    template_name = "dashboard_gerente.html"
+    permission_required = "app.view_report"  # O un permiso más específico para gerentes
+    raise_exception = True
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        hoy = timezone.now().date()
+
+        # Define el umbral para "próximo a vencer"
+        dias_proximos_a_vencer = 30
+        fecha_limite_proximos = hoy + timedelta(days=dias_proximos_a_vencer)
+
+        # Obtener todos los procesos no finalizados, optimizando consultas
+        procesos_activos = Process.objects.exclude(
+            estado=ProcessStatusChoices.FINALIZADO
+        ).select_related("user__client_profile", "assigned_to")
+
+        procesos_vencidos = []
+        procesos_proximos = []
+        procesos_en_progreso = []
+
+        for p in procesos_activos:
+            if p.fecha_final:
+                fecha_final_date = p.fecha_final.date()
+                if fecha_final_date < hoy:
+                    p.dias_vencido = (hoy - fecha_final_date).days
+                    procesos_vencidos.append(p)
+                elif hoy <= fecha_final_date <= fecha_limite_proximos:
+                    procesos_proximos.append(p)
+                else:
+                    procesos_en_progreso.append(p)
+            else:
+                # Si no tiene fecha final, va a "en progreso"
+                procesos_en_progreso.append(p)
+
+        context["procesos_vencidos"] = procesos_vencidos
+        context["procesos_proximos"] = procesos_proximos
+        context["procesos_en_progreso"] = procesos_en_progreso
+
+        # Datos para la gráfica de torta
+        context["chart_data"] = {
+            "labels": ["Vencidos", "Próximos a Vencer", "En Progreso"],
+            "data": [
+                len(procesos_vencidos),
+                len(procesos_proximos),
+                len(procesos_en_progreso),
+            ],
+        }
+
+        return context
+
+
 def main(request):
     if not request.user.is_authenticated:
         # Si el usuario no está autenticado, mostrar una página de bienvenida sencilla
@@ -435,6 +489,10 @@ def main(request):
             "mensaje": "Inicia sesión para acceder al sistema",
         }
         return render(request, "welcome.html", context)
+
+    if request.user.roles.filter(name=RoleChoices.GERENTE).exists():
+        # Si es gerente, redirigir a su dashboard
+        return redirect("dashboard_gerente")
 
     # Si el usuario está autenticado, mostrar la página principal con acceso a todas las funcionalidades
     if request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
