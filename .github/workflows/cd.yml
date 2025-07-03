@@ -1,0 +1,59 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches:
+      - feat/deploy-to-AWS
+
+env:
+  ECR_REGISTRY: 978368259161.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REPOSITORY: webserver
+  IMAGE_TAG: ${{ github.ref_name }}
+
+jobs:
+  build_and_push:
+    name: Build and Push to ECR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY --all-tags
+
+  deploy:
+    name: Deploy to EC2
+    needs: build_and_push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2 instance
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/webserver
+            git pull
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
+            docker pull ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+            docker compose up -d
+            docker image prune -af

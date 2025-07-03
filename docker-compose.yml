@@ -1,14 +1,10 @@
-#version: '3.12'
-
 services:
   web:
-    build: .
+    image: 978368259161.dkr.ecr.us-east-1.amazonaws.com/webserver:latest
     container_name: radsolutions_web
     command: gunicorn --bind 0.0.0.0:8000 app_server.wsgi:application
-    volumes:
-      - .:/app
     ports:
-      - "8000:8000"
+      - "80:8000"
     depends_on:
       - db
     env_file:
@@ -24,3 +20,8 @@ services:
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
     ports:
       - "${DATABASE_PORT}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
