@@ -1,3 +1,11 @@
+# [1.16.0](https://github.com/rad-solutions/webserver/compare/v1.15.0...v1.16.0) (2025-07-04)
+
+
+### Features
+
+* Added dashboard for internal user "Gerente". Corresponding test added. ([b749e75](https://github.com/rad-solutions/webserver/commit/b749e753206e7225a69977c1b3addc68e0d1d2ec))
+* Added tearDown function to report_history tests to ensure correct test functionality across multiple consecutive runs. ([ae0f469](https://github.com/rad-solutions/webserver/commit/ae0f4694a66fad45a02436ae788075e883c786e1))
+
 # [1.15.0](https://github.com/rad-solutions/webserver/compare/v1.14.0...v1.15.0) (2025-07-02)
 
 
