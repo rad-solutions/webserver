@@ -3,6 +3,7 @@ from django.urls import path
 from app.views import (
     AnotacionCreateView,
     CustomLoginView,
+    DashboardGerenteView,
     EquiposCreateView,
     EquiposDeleteView,
     EquiposDetailView,
@@ -35,6 +36,9 @@ from app.views import (
 
 urlpatterns = [
     path("", main, name="home"),
+    path(
+        "dashboard/gerente/", DashboardGerenteView.as_view(), name="dashboard_gerente"
+    ),
     # Authentication URLs
     path("login/", CustomLoginView.as_view(), name="login"),
     path("logout/", logout_view, name="logout"),
