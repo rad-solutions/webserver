@@ -4,6 +4,7 @@ from app.views import (
     AnotacionCreateView,
     CustomLoginView,
     DashboardGerenteView,
+    DashboardInternoView,
     EquiposCreateView,
     EquiposDeleteView,
     EquiposDetailView,
@@ -38,6 +39,9 @@ urlpatterns = [
     path("", main, name="home"),
     path(
         "dashboard/gerente/", DashboardGerenteView.as_view(), name="dashboard_gerente"
+    ),
+    path(
+        "dashboard/interno/", DashboardInternoView.as_view(), name="dashboard_interno"
     ),
     # Authentication URLs
     path("login/", CustomLoginView.as_view(), name="login"),

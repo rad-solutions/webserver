@@ -481,6 +481,71 @@ class DashboardGerenteView(LoginRequiredMixin, PermissionRequiredMixin, Template
         return context
 
 
+class DashboardInternoView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
+    template_name = "dashboard_interno.html"
+    permission_required = (
+        "app.change_report"  # Un permiso básico que tengan los usuarios internos
+    )
+    raise_exception = True
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        usuario_actual = self.request.user
+        hoy = timezone.now().date()
+
+        # Define el umbral para "próximo a vencer" (ej. 30 días)
+        dias_proximos_a_vencer = 30
+        fecha_limite_proximos = hoy + timedelta(days=dias_proximos_a_vencer)
+
+        # Obtener procesos asignados al usuario actual que no estén finalizados
+        procesos_asignados = (
+            Process.objects.filter(assigned_to=usuario_actual)
+            .exclude(estado=ProcessStatusChoices.FINALIZADO)
+            .select_related("user__client_profile")
+        )  # Optimiza la consulta para obtener el perfil del cliente
+
+        procesos_vencidos = []
+        procesos_proximos = []
+        procesos_en_progreso = []
+
+        for p in procesos_asignados:
+            if p.fecha_final:
+                fecha_final_date = p.fecha_final.date()
+                if fecha_final_date < hoy:
+                    p.dias_vencido = (hoy - fecha_final_date).days
+                    procesos_vencidos.append(p)
+                elif hoy <= fecha_final_date <= fecha_limite_proximos:
+                    procesos_proximos.append(p)
+                else:
+                    procesos_en_progreso.append(p)
+            else:
+                # Si no tiene fecha final, se considera "en progreso"
+                procesos_en_progreso.append(p)
+
+        context["procesos_vencidos"] = procesos_vencidos
+        context["procesos_proximos"] = procesos_proximos
+        context["procesos_en_progreso"] = procesos_en_progreso
+
+        # Datos para la gráfica de torta
+        context["chart_data"] = {
+            "labels": [
+                "Mis Procesos Vencidos",
+                "Mis Procesos Próximos a Vencer",
+                "Mis Otros Procesos",
+            ],
+            "data": [
+                len(procesos_vencidos),
+                len(procesos_proximos),
+                len(procesos_en_progreso),
+            ],
+        }
+
+        context["titulo"] = (
+            f"Dashboard de {usuario_actual.first_name or usuario_actual.username}"
+        )
+        return context
+
+
 def main(request):
     if not request.user.is_authenticated:
         # Si el usuario no está autenticado, mostrar una página de bienvenida sencilla
@@ -493,6 +558,14 @@ def main(request):
     if request.user.roles.filter(name=RoleChoices.GERENTE).exists():
         # Si es gerente, redirigir a su dashboard
         return redirect("dashboard_gerente")
+
+    if (
+        request.user.roles.filter(name=RoleChoices.DIRECTOR_TECNICO).exists()
+        or request.user.roles.filter(name=RoleChoices.PERSONAL_TECNICO_APOYO).exists()
+        or request.user.roles.filter(name=RoleChoices.PERSONAL_ADMINISTRATIVO).exists()
+    ):
+        # Si es interno, redirigir a su dashboard
+        return redirect("dashboard_interno")
 
     # Si el usuario está autenticado, mostrar la página principal con acceso a todas las funcionalidades
     if request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
