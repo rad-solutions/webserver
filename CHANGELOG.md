@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/rad-solutions/webserver/compare/v1.16.0...v1.17.0) (2025-07-04)
+
+
+### Features
+
+* Added Dashboard for internal users (not gerente). Corresponding tests added. ([7d9a7ca](https://github.com/rad-solutions/webserver/commit/7d9a7caafc204663a4e98cbeab1889e8d0bd2608))
+
 # [1.16.0](https://github.com/rad-solutions/webserver/compare/v1.15.0...v1.16.0) (2025-07-04)
 
 
