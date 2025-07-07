@@ -16,7 +16,24 @@ class EquipmentModelTest(TestCase):
             username="testclient", password="password123"
         )
 
-    def test_get_report_title_default_quality_control(self):
+    def test_get_report_title_environmental_study(self):
+        """Test the report title for an ESTUDIO_AMBIENTAL process.
+
+        The title should be 'Informes de Estudio Ambiental'.
+        """
+        process = Process.objects.create(
+            user=self.user,
+            process_type=ProcessTypeChoices.ESTUDIO_AMBIENTAL,
+            practice_category=PracticeCategoryChoices.CAT1,  # Use a valid category
+        )
+        equipment = Equipment.objects.create(
+            nombre="Equipo de Estudio Ambiental", user=self.user, process=process
+        )
+        self.assertEqual(
+            str(equipment.get_report_title()), "Informes de Estudio Ambiental"
+        )
+
+    def test_get_report_title_control_de_calidad(self):
         """Test that the default report title is 'Informes de Control de Calidad'.
 
         This is for a standard process.
@@ -32,57 +49,6 @@ class EquipmentModelTest(TestCase):
         # We use str() to resolve the lazy translation proxy
         self.assertEqual(
             str(equipment.get_report_title()), "Informes de Control de Calidad"
-        )
-
-    def test_get_report_title_environmental_study_veterinaria(self):
-        """Test that the report title is 'Informes de Estudio Ambiental'.
-
-        This is for the 'Veterinaria' practice category.
-        """
-        process = Process.objects.create(
-            user=self.user,
-            process_type=ProcessTypeChoices.CONTROL_CALIDAD,
-            practice_category=PracticeCategoryChoices.VETERINARIA,
-        )
-        equipment = Equipment.objects.create(
-            nombre="Equipo Vet", user=self.user, process=process
-        )
-        self.assertEqual(
-            str(equipment.get_report_title()), "Informes de Estudio Ambiental"
-        )
-
-    def test_get_report_title_environmental_study_industrial(self):
-        """Test that the report title is 'Informes de Estudio Ambiental'.
-
-        This is for the 'Industrial' practice category.
-        """
-        process = Process.objects.create(
-            user=self.user,
-            process_type=ProcessTypeChoices.CONTROL_CALIDAD,
-            practice_category=PracticeCategoryChoices.INDUSTRIAL,
-        )
-        equipment = Equipment.objects.create(
-            nombre="Equipo Industrial", user=self.user, process=process
-        )
-        self.assertEqual(
-            str(equipment.get_report_title()), "Informes de Estudio Ambiental"
-        )
-
-    def test_get_report_title_environmental_study_investigacion(self):
-        """Test that the report title is 'Informes de Estudio Ambiental'.
-
-        This is for the 'Investigación' practice category.
-        """
-        process = Process.objects.create(
-            user=self.user,
-            process_type=ProcessTypeChoices.CONTROL_CALIDAD,
-            practice_category=PracticeCategoryChoices.INVESTIGACION,
-        )
-        equipment = Equipment.objects.create(
-            nombre="Equipo de Investigación", user=self.user, process=process
-        )
-        self.assertEqual(
-            str(equipment.get_report_title()), "Informes de Estudio Ambiental"
         )
 
     def test_get_report_title_no_process(self):
