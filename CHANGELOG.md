@@ -1,3 +1,11 @@
+# [1.18.0](https://github.com/rad-solutions/webserver/compare/v1.17.0...v1.18.0) (2025-07-07)
+
+
+### Features
+
+* FIxed asc-desc mixup. ([c47769d](https://github.com/rad-solutions/webserver/commit/c47769d2410b4de0e3f6fa12163e922eaf53d497))
+* Process List for internal users. Filters and ordering options added. Corresponding tests added. ([698f0c7](https://github.com/rad-solutions/webserver/commit/698f0c7f3cc5ea7bc3a92ec48b1959d55918455e))
+
 # [1.17.0](https://github.com/rad-solutions/webserver/compare/v1.16.0...v1.17.0) (2025-07-04)
 
 
