@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone as tz
 
 from ..models import (
     Anotacion,
@@ -714,3 +715,195 @@ class ProcessAssignmentTest(TestCase):
             "assigned_to",
             "Select a valid choice. That choice is not one of the available choices.",
         )
+
+
+class ProcessInternalListViewTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        """Crea datos una sola vez para toda la clase de tests."""
+        # Roles
+        cls.role_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        cls.role_tecnico, _ = Role.objects.get_or_create(
+            name=RoleChoices.DIRECTOR_TECNICO
+        )
+        cls.role_gerente, _ = Role.objects.get_or_create(name=RoleChoices.GERENTE)
+
+        # Usuarios Clientes con Perfiles
+        cls.cliente_aaa = User.objects.create_user(username="cliente_aaa", password="p")
+        cls.cliente_aaa.roles.add(cls.role_cliente)
+        # Importante para probar el ordenamiento por razón social
+        from ..models import ClientProfile
+
+        ClientProfile.objects.create(user=cls.cliente_aaa, razon_social="AAA Company")
+
+        cls.cliente_zzz = User.objects.create_user(username="cliente_zzz", password="p")
+        cls.cliente_zzz.roles.add(cls.role_cliente)
+        ClientProfile.objects.create(
+            user=cls.cliente_zzz, razon_social="ZZZ Company", nit="123456789"
+        )
+
+        # Usuarios Internos
+        cls.tecnico_1 = User.objects.create_user(username="tecnico_juan", password="p")
+        cls.tecnico_1.roles.add(cls.role_tecnico)
+        cls.tecnico_2 = User.objects.create_user(username="tecnico_ana", password="p")
+        cls.tecnico_2.roles.add(cls.role_tecnico)
+
+        cls.gerente = User.objects.create_user(
+            username="gerente_test", password="p", is_staff=True
+        )
+        cls.gerente.roles.add(cls.role_gerente)
+        # Asignar permiso para ver la vista
+        from django.contrib.auth.models import Permission
+
+        view_process_perm = Permission.objects.get(codename="view_process")
+        cls.gerente.user_permissions.add(view_process_perm)
+
+        # Procesos para pruebas
+        hoy = tz.now().date()
+        cls.p1 = Process.objects.create(
+            user=cls.cliente_zzz,
+            assigned_to=cls.tecnico_1,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+            fecha_inicio=hoy - timedelta(days=10),
+            fecha_final=hoy + timedelta(days=30),
+        )
+        Process.objects.filter(pk=cls.p1.pk).update(
+            fecha_inicio=hoy - timedelta(days=10), fecha_final=hoy + timedelta(days=30)
+        )
+        cls.p1.refresh_from_db()
+        cls.p2 = Process.objects.create(
+            user=cls.cliente_aaa,
+            assigned_to=cls.tecnico_2,
+            process_type=ProcessTypeChoices.CONTROL_CALIDAD,
+            estado=ProcessStatusChoices.FINALIZADO,
+            fecha_inicio=hoy - timedelta(days=20),
+            fecha_final=hoy + timedelta(days=10),
+        )
+        Process.objects.filter(pk=cls.p2.pk).update(
+            fecha_inicio=hoy - timedelta(days=20), fecha_final=hoy + timedelta(days=10)
+        )
+        cls.p2.refresh_from_db()
+        cls.p3 = Process.objects.create(
+            user=cls.cliente_aaa,
+            assigned_to=cls.tecnico_1,
+            process_type=ProcessTypeChoices.ASESORIA,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+            fecha_inicio=hoy - timedelta(days=5),
+            fecha_final=None,
+        )
+        Process.objects.filter(pk=cls.p3.pk).update(
+            fecha_inicio=hoy - timedelta(days=5), fecha_final=None
+        )
+        cls.p3.refresh_from_db()
+        cls.p4 = Process.objects.create(
+            user=cls.cliente_zzz,
+            assigned_to=None,
+            process_type=ProcessTypeChoices.OTRO,
+            estado=ProcessStatusChoices.RADICADO,
+            fecha_inicio=hoy - timedelta(days=30),
+            fecha_final=hoy - timedelta(days=1),
+        )
+        Process.objects.filter(pk=cls.p4.pk).update(
+            fecha_inicio=hoy - timedelta(days=30), fecha_final=hoy - timedelta(days=1)
+        )
+        cls.p4.refresh_from_db()
+        cls.url = reverse("process_internal_list")
+
+    def setUp(self):
+        """Loguea un usuario con permisos antes de cada test."""
+        self.client.login(username="gerente_test", password="p")
+
+    def test_view_access_and_template(self):
+        """Verifica que la vista carga correctamente para un usuario interno."""
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "process/process_internal_list.html")
+        self.assertIn("procesos", response.context)
+        # Por defecto, debe haber 4 procesos
+        self.assertEqual(len(response.context["procesos"]), 4)
+
+    def test_filter_by_assigned_user(self):
+        """Prueba el filtro por usuario asignado."""
+        response = self.client.get(self.url, {"assigned_user": self.tecnico_1.id})
+        self.assertEqual(response.status_code, 200)
+        procesos = response.context["procesos"]
+        self.assertEqual(len(procesos), 2)
+        self.assertIn(self.p1, procesos)
+        self.assertIn(self.p3, procesos)
+
+    def test_filter_by_process_type(self):
+        """Prueba el filtro por tipo de proceso."""
+        response = self.client.get(
+            self.url, {"process_type": ProcessTypeChoices.ASESORIA}
+        )
+        self.assertEqual(response.status_code, 200)
+        procesos = response.context["procesos"]
+        self.assertEqual(len(procesos), 2)
+        self.assertIn(self.p1, procesos)
+        self.assertIn(self.p3, procesos)
+
+    def test_combined_filters(self):
+        """Prueba una combinación de filtros."""
+        params = {
+            "process_type": ProcessTypeChoices.ASESORIA,
+            "estado": ProcessStatusChoices.EN_PROGRESO,
+            "assigned_user": self.tecnico_1.id,
+        }
+        response = self.client.get(self.url, params)
+        self.assertEqual(response.status_code, 200)
+        procesos = response.context["procesos"]
+        self.assertEqual(len(procesos), 2)  # p1 y p3 coinciden
+
+    def test_filter_no_results(self):
+        """Prueba un filtro que no debe devolver resultados."""
+        response = self.client.get(
+            self.url, {"process_type": ProcessTypeChoices.CALCULO_BLINDAJES}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["procesos"]), 0)
+        self.assertContains(
+            response, "No se encontraron procesos con los filtros aplicados."
+        )
+
+    def test_default_sorting_is_by_fecha_inicio_desc(self):
+        """Verifica que el orden por defecto sea por fecha de inicio descendente."""
+        response = self.client.get(self.url)
+        procesos = list(response.context["procesos"])
+        expected_order = [self.p4, self.p2, self.p1, self.p3]  # -5, -10, -20, -30 días
+        self.assertEqual(procesos, expected_order)
+
+    def test_sort_by_fecha_final_asc(self):
+        """Prueba el ordenamiento por fecha de finalización ascendente."""
+        # Los valores None se ordenan al final en PostgreSQL por defecto
+        response = self.client.get(
+            self.url, {"sort_by": "fecha_final", "sort_dir": "desc"}
+        )
+        procesos = list(response.context["procesos"])
+        # p4 (-1d), p2 (+10d), p1 (+30d), p3 (None)
+        expected_order = [self.p4, self.p2, self.p1, self.p3]
+        self.assertEqual(procesos, expected_order)
+
+    def test_sort_by_cliente_razon_social_desc(self):
+        """Prueba el ordenamiento por razón social del cliente descendente."""
+        response = self.client.get(self.url, {"sort_by": "cliente", "sort_dir": "asc"})
+        procesos = list(response.context["procesos"])
+        # ZZZ Company (p1, p4), AAA Company (p2, p3)
+        # El orden secundario es el por defecto (fecha_inicio desc)
+        expected_order = [self.p1, self.p4, self.p3, self.p2]
+        self.assertEqual(procesos, expected_order)
+
+    def test_sort_by_assigned_user_asc_with_filter(self):
+        """Prueba el ordenamiento por usuario asignado (asc) combinado con un filtro."""
+        response = self.client.get(
+            self.url,
+            {
+                "estado": ProcessStatusChoices.EN_PROGRESO,  # Filtra p1 y p3
+                "sort_by": "asignado",
+                "sort_dir": "desc",
+            },
+        )
+        procesos = list(response.context["procesos"])
+        # Ambos (p1, p3) están asignados a tecnico_juan, el orden secundario es fecha_inicio desc
+        expected_order = [self.p3, self.p1]
+        self.assertEqual(procesos, expected_order)

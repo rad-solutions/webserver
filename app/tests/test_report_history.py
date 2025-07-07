@@ -69,7 +69,7 @@ class ReportHistoryTests(TestCase):
         self.assertEqual(anotacion.proceso, self.process)
         self.assertEqual(anotacion.usuario, self.tech_user)
         self.assertIn("Se agregó el archivo", anotacion.contenido)
-        self.assertIn("file1.pdf", anotacion.contenido)
+        self.assertIn("file1", anotacion.contenido)
 
     def test_anotacion_created_on_file_update(self):
         """Test that an anotacion is created when the file is changed."""

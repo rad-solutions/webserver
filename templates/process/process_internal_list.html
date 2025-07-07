@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Procesos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Procesos</h1>
+        {% if perms.app.add_process %}
+        <a href="{% url 'process_create' %}" class="btn btn-primary">Crear Proceso</a>
+        {% endif %}
+    </div>
+
+    <!-- Formulario de Filtros -->
+    <form method="get" class="mb-4 p-3 border rounded bg-light">
+        <div class="row g-3 align-items-end">
+            <!-- Filtro Tipo de Proceso -->
+            <div class="col-md-3">
+                <label for="process_type" class="form-label">Tipo de Proceso:</label>
+                <select name="process_type" id="process_type" class="form-select form-select-sm">
+                    {% for value, label in process_types %}
+                    <option value="{{ value }}" {% if value == selected_process_type %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Filtro Estado -->
+            <div class="col-md-3">
+                <label for="estado" class="form-label">Estado:</label>
+                <select name="estado" id="estado" class="form-select form-select-sm">
+                    {% for value, label in process_statuses %}
+                    <option value="{{ value }}" {% if value == selected_estado %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {# Checkbox para Filtro por Fecha de Inicio #}
+            <div class="col-md-1">
+                <div class="form-check mt-4">
+                    <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_inicio_date" data-bs-toggle="collapse" data-bs-target="#inicio_date_fields" aria-expanded="false" aria-controls="inicio_date_fields" {% if inicio_start_date or inicio_end_date %}checked{% endif %}>
+                    <label class="form-check-label" for="toggle_inicio_date">
+                        Fecha Inicio
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-1">
+                <div class="form-check mt-4">
+                    <input class="form-check-input filter-group-toggle" type="checkbox" id="assigned_user_toggle" data-bs-toggle="collapse" data-bs-target="#assigned_user_fields" aria-expanded="false" aria-controls="assigned_user_fields" {% if selected_assigned_user %}checked{% endif %}>
+                    <label class="form-check-label" for="assigned_user_toggle">
+                        Usuario Asignado
+                    </label>
+                </div>
+            </div>
+            {# NUEVO: Checkbox para Opciones de Ordenamiento #}
+            <div class="col-md-1">
+                <div class="form-check mt-4">
+                    <input class="form-check-input" type="checkbox" id="toggle_sort_options" data-bs-toggle="collapse" data-bs-target="#sort_options_fields" {% if request.GET.sort_by %}checked{% endif %}>
+                    <label class="form-check-label" for="toggle_sort_options">Ordenar</label>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-info w-100">Filtrar</button>
+            </div>
+        </div>
+        <hr class="my-3">
+
+        {# Campo para Usuario Asignado #}
+        <div class="row g-3 align-items-end collapse {% if selected_assigned_user %}show{% endif %}" id="assigned_user_fields">
+            <div class="col-md-3">
+                <h5>Usuario Asignado</h5>
+            </div>
+            <!-- NUEVO FILTRO: Usuario Asignado -->
+            <div class="col-md-3">
+                <label for="assigned_user" class="form-label">Usuario Asignado:</label>
+                <select name="assigned_user" id="assigned_user" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for user in internal_users %}
+                    <option value="{{ user.id }}" {% if selected_assigned_user == user.id|stringformat:"s" %}selected{% endif %}>
+                        {{ user.get_full_name|default:user.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <hr class="my-3">
+        </div>
+
+        {# Campos para Fecha de Inicio #}
+        <div class="row g-3 align-items-end collapse {% if inicio_start_date or inicio_end_date %}show{% endif %}" id="inicio_date_fields">
+            <div class="col-md-3">
+                <h5>Fecha de Inicio</h5>
+            </div>
+            <div class="col-md-3">
+                <label for="inicio_start_date" class="form-label">Desde:</label>
+                <input type="date" name="inicio_start_date" id="inicio_start_date" value="{{ inicio_start_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3">
+                <label for="inicio_end_date" class="form-label">Hasta:</label>
+                <input type="date" name="inicio_end_date" id="inicio_end_date" value="{{ inicio_end_date }}" class="form-control form-control-sm">
+            </div>
+            <hr class="my-3">
+        </div>
+        {# NUEVO: Campos para Opciones de Ordenamiento #}
+        <div class="row g-3 align-items-end collapse {% if request.GET.sort_by %}show{% endif %}" id="sort_options_fields">
+            <div class="col-md-3">
+                <label for="sort_by" class="form-label">Ordenar por:</label>
+                <select name="sort_by" id="sort_by" class="form-select form-select-sm">
+                    {% for value, label in sorting_options.items %}
+                    <option value="{{ value }}" {% if value == selected_sort_by %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Dirección:</label>
+                <div>
+                    <input type="hidden" name="sort_dir" id="sort_dir_input" value="{{ selected_sort_dir }}">
+                    <button type="button" id="sort_dir_button" class="btn btn-outline-secondary btn-sm">
+                        {% if selected_sort_dir == 'asc' %}
+                            <i class="fas fa-arrow-up"></i> Ascendente
+                        {% else %}
+                            <i class="fas fa-arrow-down"></i> Descendente
+                        {% endif %}
+                    </button>
+                </div>
+            </div>
+            <hr class="my-3">
+        </div>
+    </form>
+
+    <!-- Tabla de Procesos -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tipo de Proceso</th>
+                            <th>Cliente (Razón Social)</th>
+                            <th>Asignado a</th>
+                            <th>Fecha Fin</th>
+                            <th>Avance</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for proceso in procesos %}
+                        <tr>
+                            <td>{{ proceso.get_process_type_display }}</td>
+                            <td>{{ proceso.user.client_profile.razon_social|default:proceso.user.username }}</td>
+                            <td>{{ proceso.assigned_to.get_full_name|default:"Sin asignar" }}</td>
+                            <td>{{ proceso.fecha_final|date:"d/m/Y"|default:"N/A" }}</td>
+                            <td>
+                                {% with porcentaje=proceso.get_progress_percentage %}
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ porcentaje }}%;" aria-valuenow="{{ porcentaje|default:0 }}" aria-valuemin="0" aria-valuemax="100">
+                                        {{ porcentaje|default:0 }}%
+                                    </div>
+                                </div>
+                                {% endwith %}
+                            </td>
+                            <td>
+                                <a href="{% url 'process_detail' proceso.id %}" class="btn btn-sm btn-info">Detalles</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">No se encontraron procesos con los filtros aplicados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <!-- Paginación (si la activaste en la vista) -->
+            {% if is_paginated %}
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item"><a class="page-link" href="?page=1&{{ request.GET.urlencode }}">&laquo; Primera</a></li>
+                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">Anterior</a></li>
+                        {% endif %}
+                        <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                        {% if page_obj.has_next %}
+                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">Siguiente</a></li>
+                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&{{ request.GET.urlencode }}">Última &raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sortDirButton = document.getElementById('sort_dir_button');
+    const sortDirInput = document.getElementById('sort_dir_input');
+
+    if (sortDirButton) {
+        sortDirButton.addEventListener('click', function() {
+            const currentDir = sortDirInput.value;
+            if (currentDir === 'desc') {
+                sortDirInput.value = 'asc';
+                this.innerHTML = '<i class="fas fa-arrow-up"></i> Ascendente';
+            } else {
+                sortDirInput.value = 'desc';
+                this.innerHTML = '<i class="fas fa-arrow-down"></i> Descendente';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

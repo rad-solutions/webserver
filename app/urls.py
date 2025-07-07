@@ -14,6 +14,7 @@ from app.views import (
     ProcessCreateView,
     ProcessDeleteView,
     ProcessDetailView,
+    ProcessInternalListView,
     ProcessListView,
     ProcessProgressUpdateView,
     ProcessUpdateAssignmentView,
@@ -65,6 +66,11 @@ urlpatterns = [
     ),
     # Process URLs
     path("processes/", ProcessListView.as_view(), name="process_list"),
+    path(
+        "processes/internal/",
+        ProcessInternalListView.as_view(),
+        name="process_internal_list",
+    ),
     path("processes/<int:pk>/", ProcessDetailView.as_view(), name="process_detail"),
     path("processes/create/", ProcessCreateView.as_view(), name="process_create"),
     path(
