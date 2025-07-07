@@ -8,7 +8,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.views import LoginView, redirect_to_login
 from django.core.exceptions import ValidationError
-from django.db.models import Max, Q
+from django.db.models import F, Max, Q
 from django.forms import inlineformset_factory
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -1531,6 +1531,149 @@ class ProcessListView(LoginRequiredMixin, ListView):
         return context
 
 
+class ProcessInternalListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+    """Process List for Internal Users.
+
+    Vista para que los usuarios internos vean una lista de TODOS los procesos,
+    con filtros avanzados, incluyendo el de usuario asignado.
+    """
+
+    model = Process
+    template_name = "process/process_internal_list.html"
+    context_object_name = "procesos"
+    permission_required = "app.add_anotacion"  # Permiso adecuado para usuarios internos
+    paginate_by = 20  # Opcional: añade paginación para listas largas
+
+    def get_queryset(self):
+        # Empezamos con todos los procesos y optimizamos las consultas
+        queryset = (
+            super()
+            .get_queryset()
+            .select_related("user__client_profile", "assigned_to")
+            .prefetch_related("checklist_items")
+        )
+
+        # --- Reutilizamos la lógica de filtros existentes ---
+        process_type_filter = self.request.GET.get("process_type", "todos")
+        process_status_filter = self.request.GET.get("estado", "todos")
+        inicio_start_date_str = self.request.GET.get("inicio_start_date")
+        inicio_end_date_str = self.request.GET.get("inicio_end_date")
+        fin_start_date_str = self.request.GET.get("fin_start_date")
+        fin_end_date_str = self.request.GET.get("fin_end_date")
+
+        # --- NUEVO FILTRO: Por usuario asignado ---
+        assigned_user_id = self.request.GET.get("assigned_user")
+
+        if process_type_filter != "todos":
+            queryset = queryset.filter(process_type=process_type_filter)
+
+        if process_status_filter != "todos":
+            queryset = queryset.filter(estado=process_status_filter)
+
+        # --- NUEVA LÓGICA DE FILTRO ---
+        if assigned_user_id:
+            try:
+                queryset = queryset.filter(assigned_to_id=int(assigned_user_id))
+            except (ValueError, TypeError):
+                pass  # Ignorar si el ID no es válido
+
+        # Lógica de filtros de fecha (adaptada para el modelo Process)
+        try:
+            if inicio_start_date_str:
+                queryset = queryset.filter(
+                    fecha_inicio__date__gte=datetime.strptime(
+                        inicio_start_date_str, "%Y-%m-%d"
+                    ).date()
+                )
+            if inicio_end_date_str:
+                queryset = queryset.filter(
+                    fecha_inicio__date__lte=datetime.strptime(
+                        inicio_end_date_str, "%Y-%m-%d"
+                    ).date()
+                )
+            if fin_start_date_str:
+                queryset = queryset.filter(
+                    fecha_final__date__gte=datetime.strptime(
+                        fin_start_date_str, "%Y-%m-%d"
+                    ).date()
+                )
+            if fin_end_date_str:
+                queryset = queryset.filter(
+                    fecha_final__date__lte=datetime.strptime(
+                        fin_end_date_str, "%Y-%m-%d"
+                    ).date()
+                )
+        except ValueError:
+            pass  # Ignorar fechas con formato incorrecto
+
+        # --- NUEVA LÓGICA DE ORDENAMIENTO ---
+        sort_by = self.request.GET.get("sort_by", "fecha_inicio")
+        sort_dir = self.request.GET.get("sort_dir", "desc")
+
+        sorting_map = {
+            "fecha_inicio": "fecha_inicio",
+            "fecha_final": "fecha_final",
+            "asignado": "assigned_to__username",
+            "tipo": "process_type",
+            "cliente": "user__client_profile__razon_social",
+        }
+
+        order_field_name = sorting_map.get(sort_by, "fecha_inicio")
+
+        # Crear la expresión de ordenamiento con F() para manejar NULLs consistentemente
+        if sort_dir == "asc":
+            # Para descendente, los NULL van al final
+            order_expression = F(order_field_name).asc(nulls_last=True)
+        else:
+            # Para ascendente, los NULL también van al final
+            order_expression = F(order_field_name).desc(nulls_last=True)
+
+        # Aplicar ordenamiento primario y un ordenamiento secundario para desempates
+        return queryset.order_by(order_expression, "-fecha_inicio")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Pasar datos para poblar los filtros en el template
+        context["process_types"] = [("todos", "Todos")] + ProcessTypeChoices.choices
+        context["process_statuses"] = [
+            ("todos", "Todos")
+        ] + ProcessStatusChoices.choices
+
+        # --- NUEVO CONTEXTO: Lista de usuarios internos para el dropdown ---
+        internal_roles = [
+            RoleChoices.GERENTE,
+            RoleChoices.DIRECTOR_TECNICO,
+            RoleChoices.PERSONAL_TECNICO_APOYO,
+            RoleChoices.PERSONAL_ADMINISTRATIVO,
+        ]
+        context["internal_users"] = User.objects.filter(
+            roles__name__in=internal_roles
+        ).order_by("username")
+
+        # Pasar los valores seleccionados para mantener el estado del formulario
+        context["selected_process_type"] = self.request.GET.get("process_type", "todos")
+        context["selected_estado"] = self.request.GET.get("estado", "todos")
+        context["selected_assigned_user"] = self.request.GET.get("assigned_user")
+        context["inicio_start_date"] = self.request.GET.get("inicio_start_date", "")
+        context["inicio_end_date"] = self.request.GET.get("inicio_end_date", "")
+        context["fin_start_date"] = self.request.GET.get("fin_start_date", "")
+        context["fin_end_date"] = self.request.GET.get("fin_end_date", "")
+
+        # --- NUEVO CONTEXTO PARA ORDENAMIENTO ---
+        context["sorting_options"] = {
+            "fecha_inicio": "Fecha de Inicio",
+            "fecha_final": "Fecha de Finalización",
+            "asignado": "Usuario Asignado",
+            "tipo": "Tipo de Proceso",
+            "cliente": "Razón Social (Cliente)",
+        }
+        context["selected_sort_by"] = self.request.GET.get("sort_by", "fecha_inicio")
+        context["selected_sort_dir"] = self.request.GET.get("sort_dir", "desc")
+
+        return context
+
+
 class ProcessDetailView(LoginRequiredMixin, DetailView):
     model = Process
     template_name = "process/process_detail.html"
@@ -1596,9 +1739,11 @@ class ProcessUpdateAssignmentView(
     model = Process
     form_class = ProcessAssignmentForm
     template_name = "process/process_update_assignment.html"
-    success_url = reverse_lazy("process_list")
     login_url = "/login/"
     permission_required = "app.manage_equipment"
+
+    def get_success_url(self):
+        return reverse_lazy("process_detail", kwargs={"pk": self.object.pk})
 
     def handle_no_permission(self):
         if not self.request.user.is_authenticated:
