@@ -916,6 +916,7 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     context_object_name = "reports"
     login_url = "/login/"
     permission_required = "app.view_report"
+    paginate_by = 20
     raise_exception = True
 
     def handle_no_permission(self):
@@ -943,6 +944,9 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         start_date_str = self.request.GET.get("start_date")
         end_date_str = self.request.GET.get("end_date")
         equipment_id_filter = self.request.GET.get("equipment_id")
+        marca_filter = self.request.GET.get("marca")
+        modelo_filter = self.request.GET.get("modelo")
+        serial_filter = self.request.GET.get("serial")
 
         # Variable para saber si el filtro de equipo se aplicó y tuvo éxito
         equipment_filter_cc_applied_successfully = False
@@ -986,6 +990,14 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
             except ValueError:
                 pass  # Ignorar fecha inválida
 
+        # Filtrar por marca, modelo y serial del equipo
+        if marca_filter:
+            queryset = queryset.filter(equipment__marca__icontains=marca_filter)
+        if modelo_filter:
+            queryset = queryset.filter(equipment__modelo__icontains=modelo_filter)
+        if serial_filter:
+            queryset = queryset.filter(equipment__serial__icontains=serial_filter)
+
         return queryset.order_by("-created_at")
 
     def get_context_data(self, **kwargs):
@@ -999,7 +1011,13 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         context["start_date"] = self.request.GET.get("start_date", "")
         context["end_date"] = self.request.GET.get("end_date", "")
         context["selected_equipment_id"] = self.request.GET.get("equipment_id")
-        context["all_equipment"] = Equipment.objects.filter(user=self.request.user)
+        if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
+            context["all_equipment"] = Equipment.objects.filter(user=self.request.user)
+        else:
+            context["all_equipment"] = Equipment.objects.all()
+        context["marca_filter"] = self.request.GET.get("marca", "")
+        context["modelo_filter"] = self.request.GET.get("modelo", "")
+        context["serial_filter"] = self.request.GET.get("serial", "")
 
         if context["selected_equipment_id"]:
             try:

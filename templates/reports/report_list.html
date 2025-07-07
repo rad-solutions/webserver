@@ -25,17 +25,14 @@
                 </select>
             </div>
 
-            {# Filtro por Equipo #}
+            {# Checkbox para Filtro por Equipo #}
             <div class="col-md-3">
-                <label for="equipment_id" class="form-label">Equipo:</label>
-                <select name="equipment_id" id="equipment_id" class="form-select form-select-sm">
-                    <option value="">Todos los Equipos</option>
-                    {% for equipo in all_equipment %} {# Necesitarás pasar 'all_equipment' desde la vista #}
-                    <option value="{{ equipo.id }}" {% if equipo.id|stringformat:"s" == selected_equipment_id %}selected{% endif %}>
-                        {{ equipo.nombre }} ({{ equipo.serial }})
-                    </option>
-                    {% endfor %}
-                </select>
+                <div class="form-check mt-4">
+                    <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_equipment_filters" data-bs-toggle="collapse" data-bs-target="#equipment_filters_fields" {% if selected_equipment_id or marca_filter or modelo_filter or serial_filter %}checked{% endif %}>
+                    <label class="form-check-label" for="toggle_equipment_filters">
+                        Filtrar por Equipo
+                    </label>
+                </div>
             </div>
 
             {# Checkbox para Filtro por Fecha de Creación #}
@@ -54,6 +51,37 @@
         </div>
         <hr class="my-3">
 
+        {# NUEVO: Contenedor colapsable para todos los filtros de equipo #}
+        <div class="collapse {% if selected_equipment_id or marca_filter or modelo_filter or serial_filter %}show{% endif %}" id="equipment_filters_fields">
+            <div class="row g-3 align-items-end p-3 mb-3 rounded">
+                <div class="col-12"><h5>Filtros de Equipo</h5></div>
+                <div class="col-md-3">
+                    <label for="equipment_id" class="form-label">Equipo Específico:</label>
+                    <select name="equipment_id" id="equipment_id" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        {% for equipo in all_equipment %}
+                        <option value="{{ equipo.id }}" {% if equipo.id|stringformat:"s" == selected_equipment_id %}selected{% endif %}>
+                            {{ equipo.nombre }} ({{ equipo.serial }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="marca" class="form-label">Marca:</label>
+                    <input type="text" name="marca" id="marca" value="{{ marca_filter }}" class="form-control form-control-sm" placeholder="Contiene...">
+                </div>
+                <div class="col-md-3">
+                    <label for="modelo" class="form-label">Modelo:</label>
+                    <input type="text" name="modelo" id="modelo" value="{{ modelo_filter }}" class="form-control form-control-sm" placeholder="Contiene...">
+                </div>
+                <div class="col-md-3">
+                    <label for="serial" class="form-label">Serial:</label>
+                    <input type="text" name="serial" id="serial" value="{{ serial_filter }}" class="form-control form-control-sm" placeholder="Contiene...">
+                </div>
+            </div>
+            <hr class="my-3">
+        </div>
+
         {# Campos para Fecha de Creación #}
         <div class="row g-3 align-items-end collapse {% if start_date or end_date %}show{% endif %}" id="creation_date_fields">
             <div class="col-md-3">
@@ -67,6 +95,7 @@
                 <label for="end_date" class="form-label">Hasta:</label>
                 <input type="date" name="end_date" id="end_date" value="{{ end_date }}" class="form-control form-control-sm">
             </div>
+            <hr class="my-3">
         </div>
     </form>
 

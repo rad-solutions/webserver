@@ -790,3 +790,103 @@ class ReportStatusAndNoteTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Actualizar Estado del Reporte")
         self.assertContains(response, "Anotación al proceso")
+
+
+class ReportListEquipmentFilterTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Crear usuario y rol
+        cls.user = User.objects.create_user(username="test_equip_filter", password="p")
+        role_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        cls.user.roles.add(role_cliente)
+
+        # Asignar permisos necesarios para ver la lista
+        view_report_perm = Permission.objects.get(codename="view_report")
+        cls.user.user_permissions.add(view_report_perm)
+
+        # Crear equipos con datos variados
+        cls.eq1 = Equipment.objects.create(
+            user=cls.user,
+            nombre="Equipo A1",
+            marca="Siemens",
+            modelo="X-100",
+            serial="SN-A1",
+        )
+        cls.eq2 = Equipment.objects.create(
+            user=cls.user,
+            nombre="Equipo A2",
+            marca="Siemens",
+            modelo="Y-200",
+            serial="SN-A2",
+        )
+        cls.eq3 = Equipment.objects.create(
+            user=cls.user,
+            nombre="Equipo B1",
+            marca="GE",
+            modelo="X-100",
+            serial="SN-B1",
+        )
+
+        # Crear reportes asociados a los equipos
+        cls.report1 = Report.objects.create(
+            user=cls.user, title="Reporte para A1", equipment=cls.eq1
+        )
+        cls.report2 = Report.objects.create(
+            user=cls.user, title="Reporte para A2", equipment=cls.eq2
+        )
+        cls.report3 = Report.objects.create(
+            user=cls.user, title="Reporte para B1", equipment=cls.eq3
+        )
+
+        cls.url = reverse("report_list")
+
+    def setUp(self):
+        self.client.login(username="test_equip_filter", password="p")
+
+    def test_filter_by_marca(self):
+        """Prueba que el filtro por marca de equipo funcione."""
+        response = self.client.get(self.url, {"marca": "Siemens"})
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 2)
+        self.assertIn(self.report1, reports_in_context)
+        self.assertIn(self.report2, reports_in_context)
+        self.assertEqual(response.context["marca_filter"], "Siemens")
+
+    def test_filter_by_modelo_case_insensitive(self):
+        """Prueba que el filtro por modelo sea insensible a mayúsculas."""
+        response = self.client.get(self.url, {"modelo": "x-100"})  # en minúsculas
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 2)
+        self.assertIn(self.report1, reports_in_context)
+        self.assertIn(self.report3, reports_in_context)
+        self.assertEqual(response.context["modelo_filter"], "x-100")
+
+    def test_filter_by_serial_partial(self):
+        """Prueba que el filtro por serial parcial funcione."""
+        response = self.client.get(self.url, {"serial": "SN-A"})
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 2)
+        self.assertIn(self.report1, reports_in_context)
+        self.assertIn(self.report2, reports_in_context)
+        self.assertEqual(response.context["serial_filter"], "SN-A")
+
+    def test_combined_equipment_filters(self):
+        """Prueba una combinación de los nuevos filtros de equipo."""
+        params = {"marca": "Siemens", "modelo": "X-100"}
+        response = self.client.get(self.url, params)
+        self.assertEqual(response.status_code, 200)
+        reports_in_context = response.context["reports"]
+        self.assertEqual(len(reports_in_context), 1)
+        self.assertIn(self.report1, reports_in_context)
+        self.assertEqual(response.context["marca_filter"], "Siemens")
+        self.assertEqual(response.context["modelo_filter"], "X-100")
+
+    def test_filter_with_no_results(self):
+        """Prueba un filtro de equipo que no debe devolver resultados."""
+        response = self.client.get(self.url, {"marca": "Philips"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["reports"]), 0)
+        self.assertContains(response, "No hay reportes registrados.")
