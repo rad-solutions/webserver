@@ -870,14 +870,14 @@ class ProcessInternalListViewTest(TestCase):
         """Verifica que el orden por defecto sea por fecha de inicio descendente."""
         response = self.client.get(self.url)
         procesos = list(response.context["procesos"])
-        expected_order = [self.p4, self.p2, self.p1, self.p3]  # -5, -10, -20, -30 días
+        expected_order = [self.p3, self.p1, self.p2, self.p4]  # -5, -10, -20, -30 días
         self.assertEqual(procesos, expected_order)
 
     def test_sort_by_fecha_final_asc(self):
         """Prueba el ordenamiento por fecha de finalización ascendente."""
         # Los valores None se ordenan al final en PostgreSQL por defecto
         response = self.client.get(
-            self.url, {"sort_by": "fecha_final", "sort_dir": "desc"}
+            self.url, {"sort_by": "fecha_final", "sort_dir": "asc"}
         )
         procesos = list(response.context["procesos"])
         # p4 (-1d), p2 (+10d), p1 (+30d), p3 (None)
@@ -886,7 +886,7 @@ class ProcessInternalListViewTest(TestCase):
 
     def test_sort_by_cliente_razon_social_desc(self):
         """Prueba el ordenamiento por razón social del cliente descendente."""
-        response = self.client.get(self.url, {"sort_by": "cliente", "sort_dir": "asc"})
+        response = self.client.get(self.url, {"sort_by": "cliente", "sort_dir": "desc"})
         procesos = list(response.context["procesos"])
         # ZZZ Company (p1, p4), AAA Company (p2, p3)
         # El orden secundario es el por defecto (fecha_inicio desc)
@@ -900,7 +900,7 @@ class ProcessInternalListViewTest(TestCase):
             {
                 "estado": ProcessStatusChoices.EN_PROGRESO,  # Filtra p1 y p3
                 "sort_by": "asignado",
-                "sort_dir": "desc",
+                "sort_dir": "asc",
             },
         )
         procesos = list(response.context["procesos"])

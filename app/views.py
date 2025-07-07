@@ -1621,8 +1621,7 @@ class ProcessInternalListView(LoginRequiredMixin, PermissionRequiredMixin, ListV
         order_field_name = sorting_map.get(sort_by, "fecha_inicio")
 
         # Crear la expresión de ordenamiento con F() para manejar NULLs consistentemente
-        # Template tiene el botón invertido.
-        if sort_dir == "desc":
+        if sort_dir == "asc":
             # Para descendente, los NULL van al final
             order_expression = F(order_field_name).asc(nulls_last=True)
         else:
