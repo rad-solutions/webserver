@@ -56,16 +56,21 @@ class ClientProfile(models.Model):
 
 
 class PracticeCategoryChoices(models.TextChoices):
-    VETERINARIA = "veterinaria", _("Veterinaria")
-    INDUSTRIAL = "industrial", _("Industrial")
-    INVESTIGACION = "investigacion", _("Investigación")
+    # For Estudio Ambiental y Asesoría
+    CAT1 = "cat1", _("Categoría 1")
+    CAT2 = "cat2", _("Categoría 2")
+    CAT3 = "cat3", _("Categoría 3")  # For future use
+
+    # For Asesoría (Médica)
     MEDICA_CAT1 = "medica_cat1", _("Médica Categoría 1")
     MEDICA_CAT2 = "medica_cat2", _("Médica Categoría 2")
+    MEDICA_CAT3 = "medica_cat3", _("Médica Categoría 3")  # For future use
 
 
 class ProcessTypeChoices(models.TextChoices):
     CALCULO_BLINDAJES = "calculo_blindajes", _("Cálculo de Blindajes")
     CONTROL_CALIDAD = "control_calidad", _("Control de Calidad")
+    ESTUDIO_AMBIENTAL = "estudio_ambiental", _("Estudio Ambiental")
     ASESORIA = "asesoria", _("Asesoría")
     OTRO = "otro", _("Otro")
 
@@ -154,8 +159,11 @@ class Process(models.Model):
         """Create checklist items for this process based on its type and practice category if they don't already exist."""
         if not self.checklist_items.exists():
             filter_kwargs = {"process_type": self.process_type}
-            # Only filter by practice_category if process_type is ASESORIA
-            if self.process_type == ProcessTypeChoices.ASESORIA:
+            # Only filter by practice_category if the process type requires it
+            if self.process_type in [
+                ProcessTypeChoices.ASESORIA,
+                ProcessTypeChoices.ESTUDIO_AMBIENTAL,
+            ]:
                 filter_kwargs["practice_category"] = self.practice_category
             definitions = ChecklistItemDefinition.objects.filter(**filter_kwargs)
             for definition in definitions:
@@ -224,15 +232,9 @@ class Equipment(models.Model):
 
         This is based on the practice category of the associated process.
         """
-        environmental_study_categories = [
-            PracticeCategoryChoices.VETERINARIA,
-            PracticeCategoryChoices.INDUSTRIAL,
-            PracticeCategoryChoices.INVESTIGACION,
-        ]
-
         if (
             self.process
-            and self.process.practice_category in environmental_study_categories
+            and self.process.process_type == ProcessTypeChoices.ESTUDIO_AMBIENTAL
         ):
             return _("Informes de Estudio Ambiental")
         return _("Informes de Control de Calidad")
@@ -355,34 +357,52 @@ class Report(models.Model):
     def save(self, *args, **kwargs):
         user_who_modified = kwargs.pop("user_who_modified", None)
         is_new = self._state.adding
-        old_instance = None
+        old_pdf_file_name = None
 
         if not is_new:
             try:
+                # Get the old instance from DB to compare the pdf_file
                 old_instance = Report.objects.get(pk=self.pk)
+                if old_instance.pdf_file:
+                    old_pdf_file_name = old_instance.pdf_file.name
             except Report.DoesNotExist:
-                pass  # Should not happen on an update
+                pass  # Should not happen on an update but good to be safe
+
+        # Temporarily store the original filename if a new file is being uploaded
+        # This is done before super().save() might change self.pdf_file.name
+        original_filename = None
+        if self.pdf_file and (
+            is_new or not old_pdf_file_name or old_pdf_file_name != self.pdf_file.name
+        ):
+            original_filename = self.pdf_file.name
 
         super().save(*args, **kwargs)
 
-        # After saving, compare old and new pdf_file
-        if old_instance and old_instance.pdf_file != self.pdf_file:
-            if self.process:
-                # Determine if the file was added, changed,or removed.
-                if old_instance.pdf_file and not self.pdf_file:
-                    change_description = (
-                        f"Se eliminó el archivo del informe '{self.title}'."
-                    )
-                elif not old_instance.pdf_file and self.pdf_file:
-                    change_description = f"Se agregó el archivo '{self.pdf_file.name.split('/')[-1]}' al informe '{self.title}'."
-                else:  # It was changed
-                    change_description = f"Se actualizó el archivo del informe '{self.title}'. Nuevo archivo: {self.pdf_file.name.split('/')[-1]}."
+        # After saving, get the new pdf_file name
+        new_pdf_file_name = self.pdf_file.name if self.pdf_file else None
 
-                Anotacion.objects.create(
-                    proceso=self.process,
-                    usuario=user_who_modified,
-                    contenido=change_description,
+        # Only create an annotation if the instance is being updated (not new)
+        # and the file has actually changed.
+        if not is_new and old_pdf_file_name != new_pdf_file_name and self.process:
+            # Use the stored original filename for the annotation content
+            display_filename = original_filename or (
+                new_pdf_file_name.split("/")[-1] if new_pdf_file_name else ""
+            )
+
+            if old_pdf_file_name and not new_pdf_file_name:
+                change_description = (
+                    f"Se eliminó el archivo del informe '{self.title}'."
                 )
+            elif not old_pdf_file_name and new_pdf_file_name:
+                change_description = f"Se agregó el archivo '{display_filename}' al informe '{self.title}'."
+            else:  # It was changed
+                change_description = f"Se actualizó el archivo del informe '{self.title}'. Nuevo archivo: {display_filename}."
+
+            Anotacion.objects.create(
+                proceso=self.process,
+                usuario=user_who_modified,
+                contenido=change_description,
+            )
 
     def delete(self, *args, **kwargs):
         if self.pdf_file:

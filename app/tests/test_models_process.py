@@ -22,13 +22,15 @@ class AsesoriaChecklistCreationTests(TestCase):
             email="test_ac@example.com",
         )
 
-    def test_create_checklist_items_asesoria_veterinaria(self):
-        """Test checklist creation for Asesoría - Veterinaria."""
+    def test_create_checklist_items_estudio_ambiental_cat1(self):
+        """Test checklist creation for Estudio Ambiental - Categoría 1."""
+        # Ensure the definitions are clean before the test
         ChecklistItemDefinition.objects.filter(
-            process_type=ProcessTypeChoices.ASESORIA,
-            practice_category=PracticeCategoryChoices.VETERINARIA,
+            process_type=ProcessTypeChoices.ESTUDIO_AMBIENTAL,
+            practice_category=PracticeCategoryChoices.CAT1,
         ).delete()
-        # Create definitions for Asesoría - Veterinaria
+
+        # Create definitions for Estudio Ambiental - Categoría 1
         items = [
             "CARTA SOLICITUD DE LICENCIA (Bogotá no)",
             "ANEXO 4",
@@ -43,23 +45,73 @@ class AsesoriaChecklistCreationTests(TestCase):
             "CONSTANCIA ASISTENCIA A CURSO SOBRE MANEJO DE EQUIPOS RX",
             "PROGRAMA DE CAPACITACIÓN EN PROTECCIÓN RADIOLÓGICA",
             "CERTIFICADO DE DOSIMETRÍA",
-            "EVALUACIÓN DE EMERGENCIAS. (NO APLICA PARA INDUSTRIALES CAT I)",
             "HOJA DE VIDA DEL EQUIPO/MANTENIMIENTO/FICHA TECNICA/MANUAL DE USUARIO / REGISTRO DE IMPORTACIÓN",
             "LICENCIA ANTERIOR/PUESTA EN MARCHA O PRUEBAS INICIALES",
             "PLANO GENERAL",
         ]
-        percentage = round(100 / len(items), 2)
+        # Use the same percentage logic as the migration
         for idx, name in enumerate(items, 1):
+            percentage = 7 if idx <= 4 else 6
             ChecklistItemDefinition.objects.get_or_create(
-                process_type=ProcessTypeChoices.ASESORIA,
-                practice_category=PracticeCategoryChoices.VETERINARIA,
+                process_type=ProcessTypeChoices.ESTUDIO_AMBIENTAL,
+                practice_category=PracticeCategoryChoices.CAT1,
+                name=name,
+                order=idx,
+                defaults={"percentage": percentage},
+            )
+
+        process = Process.objects.create(
+            process_type=ProcessTypeChoices.ESTUDIO_AMBIENTAL,
+            practice_category=PracticeCategoryChoices.CAT1,
+            user=self.test_user,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+        self.assertEqual(process.checklist_items.count(), len(items))
+        for idx, name in enumerate(items, 1):
+            self.assertTrue(
+                process.checklist_items.filter(
+                    definition__name=name, definition__order=idx
+                ).exists()
+            )
+
+    def test_create_checklist_items_estudio_ambiental_cat2(self):
+        """Test checklist creation for Estudio Ambiental - Categoría 2."""
+        ChecklistItemDefinition.objects.filter(
+            process_type=ProcessTypeChoices.ESTUDIO_AMBIENTAL,
+            practice_category=PracticeCategoryChoices.CAT2,
+        ).delete()
+        items_cat1 = [
+            "CARTA SOLICITUD DE LICENCIA (Bogotá no)",
+            "ANEXO 4",
+            "RUT",
+            "CÉDULA Y DIPLOMAS EPR",
+            "PROGRAMA DE PROTECCIÓN RADIOLÓGICA",
+            "ESTUDIO AMBIENTAL",
+            "ESTUDIO MEDIO AMBIENTAL",
+            "CÁLCULO DE BLINDAJES",
+            "PROGRAMA DE VIGILANCIA POST MERCADO",
+            "CERTIFICADO DE CURSO DE PROTECCIÓN RADIOLÓGICA TOES",
+            "CONSTANCIA ASISTENCIA A CURSO SOBRE MANEJO DE EQUIPOS RX",
+            "PROGRAMA DE CAPACITACIÓN EN PROTECCIÓN RADIOLÓGICA",
+            "CERTIFICADO DE DOSIMETRÍA",
+            "HOJA DE VIDA DEL EQUIPO/MANTENIMIENTO/FICHA TECNICA/MANUAL DE USUARIO / REGISTRO DE IMPORTACIÓN",
+            "LICENCIA ANTERIOR/PUESTA EN MARCHA O PRUEBAS INICIALES",
+            "PLANO GENERAL",
+        ]
+        items = items_cat1 + ["EVALUACIÓN DE EMERGENCIAS."]
+
+        for idx, name in enumerate(items, 1):
+            percentage = 5 if idx <= 2 else 6
+            ChecklistItemDefinition.objects.get_or_create(
+                process_type=ProcessTypeChoices.ESTUDIO_AMBIENTAL,
+                practice_category=PracticeCategoryChoices.CAT2,
                 name=name,
                 order=idx,
                 defaults={"percentage": percentage},
             )
         process = Process.objects.create(
-            process_type=ProcessTypeChoices.ASESORIA,
-            practice_category=PracticeCategoryChoices.VETERINARIA,
+            process_type=ProcessTypeChoices.ESTUDIO_AMBIENTAL,
+            practice_category=PracticeCategoryChoices.CAT2,
             user=self.test_user,
             estado=ProcessStatusChoices.EN_PROGRESO,
         )
