@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - feat/deploy-to-AWS
+    tags:
+      - 'v*'
 
 # Aquí defines tus “env” globales para este workflow
 env:
