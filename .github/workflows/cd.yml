@@ -3,7 +3,7 @@ name: Build & Push to ECR
 on:
   push:
     branches:
-      - feat/deploy-to-AWS
+      - main
     tags:
       - 'v*'
 
