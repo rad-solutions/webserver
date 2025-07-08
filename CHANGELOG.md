@@ -1,3 +1,10 @@
+## [1.18.1](https://github.com/rad-solutions/webserver/compare/v1.18.0...v1.18.1) (2025-07-08)
+
+
+### Bug Fixes
+
+* Refactor process and checklist logic ([6ed91df](https://github.com/rad-solutions/webserver/commit/6ed91df816aa3c084532705f3d61859c17648a5a))
+
 # [1.18.0](https://github.com/rad-solutions/webserver/compare/v1.17.0...v1.18.0) (2025-07-07)
 
 
