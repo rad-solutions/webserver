@@ -1,3 +1,10 @@
+# [1.22.0](https://github.com/rad-solutions/webserver/compare/v1.21.0...v1.22.0) (2025-07-09)
+
+
+### Features
+
+* Document CI/CD workflow with ECR integration test 3 ([7d65f78](https://github.com/rad-solutions/webserver/commit/7d65f78a0d059a4476d6700d1651fd0f4613c5d3))
+
 # [1.21.0](https://github.com/rad-solutions/webserver/compare/v1.20.0...v1.21.0) (2025-07-09)
 
 
