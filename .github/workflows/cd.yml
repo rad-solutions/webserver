@@ -2,12 +2,9 @@ name: Build & Push to ECR
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
 
-# Aquí defines tus “env” globales para este workflow
 env:
   AWS_REGION: us-east-1
   AWS_ACCOUNT_ID: 978368259161
@@ -33,7 +30,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Log in to Amazon ECR
-        # Le pasamos directamente el Account ID (12 dígitos) al action
+
         uses: aws-actions/amazon-ecr-login@v2
         with:
           registries: ${{ env.AWS_ACCOUNT_ID }}
