@@ -61,7 +61,24 @@ jobs:
         id: semantic
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: npx semantic-release
+        run: |
+          # Ejecuta semantic-release y captura el resultado en una variable
+          # El resultado es un JSON si hay release, o la palabra "false" si no lo hay.
+          RESULT=$(npx semantic-release)
+
+          # Verifica si se publicó un release
+          # El JSON de resultado contiene la propiedad "version"
+          if [[ $RESULT == *"version"* ]]; then
+            # Extrae la versión del JSON usando una herramienta simple
+            VERSION=$(echo $RESULT | grep -o '"version":"[^"]*' | grep -o '[^"]*$')
+            echo "New release version found: $VERSION"
+            # Declara los outputs para los siguientes jobs
+            echo "new_release_published=true" >> $GITHUB_OUTPUT
+            echo "new_release_version=$VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "No new release published."
+            echo "new_release_published=false" >> $GITHUB_OUTPUT
+          fi
 
   build-and-push-ecr:
     name: Build and Push to ECR
