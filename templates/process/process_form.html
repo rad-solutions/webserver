@@ -26,20 +26,68 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const processTypeField = document.getElementById('id_process_type');
+    const practiceCategoryField = document.getElementById('id_practice_category');
     const practiceCategoryRow = document.getElementById('div_id_practice_category');
-    function togglePracticeCategory() {
-        if (processTypeField.value === "{{ ProcessTypeChoices.ASESORIA }}") {
-            practiceCategoryRow.style.display = '';
-            document.getElementById('id_practice_category').required = true;
-        } else {
-            practiceCategoryRow.style.display = 'none';
-            document.getElementById('id_practice_category').required = false;
-            document.getElementById('id_practice_category').value = '';
+
+    // Guardar una copia de todas las opciones originales al cargar la página
+    const allPracticeOptions = Array.from(practiceCategoryField.options);
+
+    // Función para filtrar las opciones de Categoría de Práctica
+    function filterPracticeCategoryOptions() {
+        const selectedProcessType = processTypeField.value;
+        const currentValue = practiceCategoryField.value; // Guardar el valor actual para intentar restaurarlo
+
+        // 1. Limpiar todas las opciones actuales del select (excepto el placeholder si existe)
+        practiceCategoryField.innerHTML = '';
+        if (allPracticeOptions.length > 0 && !allPracticeOptions[0].value) {
+            practiceCategoryField.add(allPracticeOptions[0]); // Re-añadir el placeholder
+        }
+
+        // 2. Iterar sobre las opciones originales y añadir solo las que cumplen la condición
+        allPracticeOptions.forEach(option => {
+            if (!option.value) return; // Omitir el placeholder que ya fue añadido
+
+            const isMedicaOption = option.text.toLowerCase().includes('médica');
+            let shouldBeVisible = true;
+
+            // Ocultar opciones médicas si el tipo es "Estudio Ambiental"
+            if (selectedProcessType === "{{ ProcessTypeChoices.ESTUDIO_AMBIENTAL.value }}" && isMedicaOption) {
+                shouldBeVisible = false;
+            }
+
+            if (shouldBeVisible) {
+                // Añadir la opción de vuelta al select
+                practiceCategoryField.add(option);
+            }
+        });
+
+        // 3. Intentar restaurar la selección anterior si todavía existe
+        practiceCategoryField.value = currentValue;
+        // Si el valor anterior ya no existe, se seleccionará la primera opción por defecto
+        if (practiceCategoryField.value !== currentValue) {
+            practiceCategoryField.value = ''; // Opcional: limpiar si la opción ya no es válida
         }
     }
+
+    // Función principal para gestionar la visibilidad del campo y sus opciones
+    function togglePracticeCategory() {
+        const selectedProcessType = processTypeField.value;
+        const isRelevantType = selectedProcessType === "{{ ProcessTypeChoices.ASESORIA.value }}" || selectedProcessType === "{{ ProcessTypeChoices.ESTUDIO_AMBIENTAL.value }}";
+
+        if (isRelevantType) {
+            practiceCategoryRow.style.display = '';
+            practiceCategoryField.required = true;
+            filterPracticeCategoryOptions(); // Aplicar el filtro de opciones
+        } else {
+            practiceCategoryRow.style.display = 'none';
+            practiceCategoryField.required = false;
+            practiceCategoryField.value = ''; // Limpiar valor si se oculta
+        }
+    }
+
     if (processTypeField && practiceCategoryRow) {
-        togglePracticeCategory();
-        processTypeField.addEventListener('change', togglePracticeCategory);
+        togglePracticeCategory(); // Ejecutar al cargar la página
+        processTypeField.addEventListener('change', togglePracticeCategory); // Ejecutar al cambiar la selección
     }
 });
 </script>
