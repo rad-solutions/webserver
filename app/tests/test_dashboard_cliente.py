@@ -416,17 +416,17 @@ class ClientDashboardTest(TestCase):
 
         # Verificar que los enlaces a los tipos de proceso que SÍ tiene están presentes
         self.assertContains(
-            response, f'href="?proceso_activo={self.process_type_blindajes.value}"'
+            response, f'href="/?proceso_activo={self.process_type_blindajes.value}"'
         )
         self.assertContains(
-            response, f'href="?proceso_activo={self.process_type_calidad.value}"'
+            response, f'href="/?proceso_activo={self.process_type_calidad.value}"'
         )
         self.assertContains(
-            response, f'href="?proceso_activo={self.process_type_asesoria.value}"'
+            response, f'href="/?proceso_activo={self.process_type_asesoria.value}"'
         )
 
         # Verificar que el enlace al tipo de proceso que NO tiene NO está presente
         self.assertNotContains(
             response,
-            f'href="?proceso_activo={ProcessTypeChoices.ESTUDIO_AMBIENTAL.value}"',
+            f'href="/?proceso_activo={ProcessTypeChoices.ESTUDIO_AMBIENTAL.value}"',
         )
