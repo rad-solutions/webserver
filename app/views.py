@@ -670,6 +670,13 @@ def main(request):
             for ec_con_fecha in equipos_candidatos_con_fecha_ordenacion[:5]
         ]
 
+        # Obtener una lista de los tipos de proceso que el usuario realmente tiene
+        user_process_types = list(
+            Process.objects.filter(user=request.user)
+            .values_list("process_type", flat=True)
+            .distinct()
+        )
+
         context = {
             "titulo": "RadSolutions",
             "mensaje_bienvenida": f"Bienvenido, {request.user.first_name or ''} {request.user.last_name or ''}",
@@ -681,6 +688,7 @@ def main(request):
             "proceso_activo": proceso_activo,
             "process_types_choices": ProcessTypeChoices.choices,
             "ProcessTypeChoices": ProcessTypeChoices,
+            "user_process_types": user_process_types,
         }
         return render(request, "dashboard_cliente.html", context)
     else:
@@ -1685,7 +1693,7 @@ class ProcessCreateView(LoginRequiredMixin, CreateView):
     model = Process
     form_class = ProcessForm
     template_name = "process/process_form.html"
-    success_url = reverse_lazy("process_list")
+    success_url = reverse_lazy("process_internal_list")
     login_url = "/login/"
 
     def form_valid(self, form):
