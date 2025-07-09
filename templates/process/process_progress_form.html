@@ -17,6 +17,7 @@
                     <th>Completado</th>
                     <th>Fecha inicio</th>
                     <th>Fecha completado</th>
+                    <th>Completado por</th>
                 </tr>
             </thead>
             <tbody>
@@ -27,6 +28,13 @@
                     <td>{{ item_form.is_completed }}</td>
                     <td>{{ item_form.started_at }}</td>
                     <td>{{ item_form.completed_at }}</td>
+                    <td>
+                        {% if item_form.instance.is_completed and item_form.instance.completed_by %}
+                            {{ item_form.instance.completed_by.get_full_name|default:item_form.instance.completed_by.username }}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
