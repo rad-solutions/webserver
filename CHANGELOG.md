@@ -1,3 +1,11 @@
+# [1.19.0](https://github.com/rad-solutions/webserver/compare/v1.18.1...v1.19.0) (2025-07-09)
+
+
+### Features
+
+* Added buttons for process and equipment creation for internal user on process list page. ([d3265d3](https://github.com/rad-solutions/webserver/commit/d3265d39344087a737814c99cf4430ec2d3a2d25))
+* Added equipment filters on report list page. Added corresponding tests. ([52a9055](https://github.com/rad-solutions/webserver/commit/52a90559397f4863d30fc924ec12fb0bde139e01))
+
 ## [1.18.1](https://github.com/rad-solutions/webserver/compare/v1.18.0...v1.18.1) (2025-07-08)
 
 
