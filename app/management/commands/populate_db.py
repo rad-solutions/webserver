@@ -13,6 +13,8 @@ from app.models import (
     Equipment,
     EstadoEquipoChoices,
     EstadoReporteChoices,
+    HistorialTuboRayosX,
+    PracticeCategoryChoices,
     Process,
     ProcessStatusChoices,
     ProcessTypeChoices,
@@ -30,6 +32,7 @@ NUM_PROCESSES_PER_USER = 2
 NUM_EQUIPMENT_PER_CLIENT = 2
 NUM_REPORTS_PER_PROCESS = 1
 NUM_ANOTACIONES_PER_PROCESS = 3
+NUM_HISTORIAL_TUBOS_PER_EQUIPMENT = 2
 
 
 class Command(BaseCommand):
@@ -137,9 +140,17 @@ class Command(BaseCommand):
         processes = []
         for user_obj in users:  # Create processes for all types of users
             for _ in range(NUM_PROCESSES_PER_USER):
+                process_type = random.choice(ProcessTypeChoices.choices)[0]
+                practice_category = None
+                if process_type == ProcessTypeChoices.ASESORIA:
+                    practice_category = random.choice(PracticeCategoryChoices.choices)[
+                        0
+                    ]
+
                 process = Process.objects.create(
                     user=user_obj,
-                    process_type=random.choice(ProcessTypeChoices.choices)[0],
+                    process_type=process_type,
+                    practice_category=practice_category,
                     estado=random.choice(ProcessStatusChoices.choices)[0],
                     fecha_final=(
                         fake.date_time_this_decade(
@@ -204,6 +215,27 @@ class Command(BaseCommand):
                             f"Created equipment for user: {client_user.username}"
                         )
                     )
+
+        # --- Create HistorialTuboRayosX ---
+        self.stdout.write("Creating HistorialTuboRayosX...")
+        if equipments:
+            for equipment_obj in equipments:
+                for i in range(NUM_HISTORIAL_TUBOS_PER_EQUIPMENT):
+                    HistorialTuboRayosX.objects.create(
+                        equipment=equipment_obj,
+                        marca=fake.company(),
+                        modelo=fake.bothify(text="Tubo-??##"),
+                        serial=fake.unique.ean(length=8),
+                        fecha_cambio=fake.date_between(
+                            start_date=equipment_obj.fecha_adquisicion or "-5y",
+                            end_date="today",
+                        ),
+                    )
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"Created tube history for equipment ID: {equipment_obj.id}"
+                    )
+                )
 
         # --- Create Reports ---
         self.stdout.write("Creating Reports...")  # Corrected F541
