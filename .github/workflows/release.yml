@@ -30,6 +30,8 @@ jobs:
         with:
           app-id: ${{ vars.APP_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          issues: write
+          pull-requests: write
 
       - name: Checkout repository
         uses: actions/checkout@v4
