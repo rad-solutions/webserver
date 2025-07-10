@@ -64,19 +64,23 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          # Ejecuta semantic-release y captura el resultado en una variable
-          # El resultado es un JSON si hay release, o la palabra "false" si no lo hay.
-          RESULT=$(npx semantic-release || true)
+          # Obtiene la última etiqueta de git antes de ejecutar semantic-release
+          LATEST_TAG_BEFORE=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
-          # Verifica si se publicó un release
-          # El JSON de resultado contiene la propiedad "version"
-          if [[ $RESULT == *"version"* ]]; then
-            # Extrae la versión del JSON usando una herramienta simple
-            VERSION=$(echo $RESULT | grep -o '"version":"[^"]*' | grep -o '[^"]*$')
-            echo "New release version found: $VERSION"
-            # Declara los outputs para los siguientes jobs
+          # Ejecuta semantic-release. El `|| true` es para que el paso no falle si no hay release.
+          npx semantic-release || true
+
+          # Obtiene la última etiqueta de git después de ejecutar semantic-release
+          LATEST_TAG_AFTER=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          echo "Latest tag before release: $LATEST_TAG_BEFORE"
+          echo "Latest tag after release: $LATEST_TAG_AFTER"
+
+          # Compara las etiquetas para ver si se creó una nueva versión
+          if [[ "$LATEST_TAG_AFTER" != "$LATEST_TAG_BEFORE" && "$LATEST_TAG_AFTER" != "" ]]; then
+            echo "New release version found: $LATEST_TAG_AFTER"
             echo "new_release_published=true" >> $GITHUB_OUTPUT
-            echo "new_release_version=$VERSION" >> $GITHUB_OUTPUT
+            echo "new_release_version=$LATEST_TAG_AFTER" >> $GITHUB_OUTPUT
           else
             echo "No new release published."
             echo "new_release_published=false" >> $GITHUB_OUTPUT
