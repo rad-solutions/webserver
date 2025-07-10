@@ -64,7 +64,7 @@ jobs:
         run: |
           # Ejecuta semantic-release y captura el resultado en una variable
           # El resultado es un JSON si hay release, o la palabra "false" si no lo hay.
-          RESULT=$(npx semantic-release)
+          RESULT=$(npx semantic-release || true)
 
           # Verifica si se publicó un release
           # El JSON de resultado contiene la propiedad "version"
