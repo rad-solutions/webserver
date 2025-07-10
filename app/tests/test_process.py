@@ -12,6 +12,7 @@ from ..models import (
     ProcessChecklistItem,
     ProcessStatusChoices,
     ProcessTypeChoices,
+    Report,
     Role,
     RoleChoices,
     User,
@@ -941,3 +942,82 @@ class ProcessInternalListViewTest(TestCase):
         # Ambos (p1, p3) están asignados a tecnico_juan, el orden secundario es fecha_inicio desc
         expected_order = [self.p3, self.p1]
         self.assertEqual(procesos, expected_order)
+
+
+class ProcessListViewTest(TestCase):
+
+    def test_process_list_shows_most_recent_process_progress(self):
+        """Test ProcessListView muestra el progreso del proceso más reciente.
+
+        Prueba que la lista de equipos muestre el progreso del proceso
+        asociado más reciente (por fecha_inicio), ya sea directo o vía reporte.
+        """
+        # --- Arrange ---
+        client_user = User.objects.create_user(
+            username="progress_test_user", password="p"
+        )
+        client_role, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        client_user.roles.add(client_role)
+        def1 = ChecklistItemDefinition.objects.create(
+            process_type=ProcessTypeChoices.ASESORIA,
+            name="Def1",
+            order=1,
+            percentage=50,
+        )
+        ChecklistItemDefinition.objects.create(
+            process_type=ProcessTypeChoices.ASESORIA,
+            name="Def2",
+            order=2,
+            percentage=50,
+        )
+
+        equipment = Equipment.objects.create(
+            user=client_user, nombre="Equipo de Test de Progreso"
+        )
+
+        # 1. Crear los procesos (los checklist items se crean automáticamente)
+        process_old = Process.objects.create(
+            user=client_user,
+            process_type=ProcessTypeChoices.ASESORIA,
+            fecha_inicio=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        )
+        equipment.process = process_old
+        equipment.save()
+
+        process_new = Process.objects.create(
+            user=client_user,
+            process_type=ProcessTypeChoices.ASESORIA,
+            fecha_inicio=datetime(2024, 6, 1, tzinfo=timezone.utc),
+        )
+        Report.objects.create(
+            user=client_user,
+            equipment=equipment,
+            process=process_new,
+            title="Reporte Reciente",
+        )
+
+        # 2. Recuperar y actualizar los items del checklist en lugar de crearlos
+        # Para el proceso antiguo (50% de progreso)
+        item_old_1 = ProcessChecklistItem.objects.get(
+            process=process_old, definition=def1
+        )
+        item_old_1.is_completed = True
+        item_old_1.save()
+        # El segundo ítem (item_old_2) se queda como is_completed=False
+
+        # Para el proceso nuevo (100% de progreso)
+        ProcessChecklistItem.objects.filter(process=process_new).update(
+            is_completed=True
+        )
+
+        # --- Act ---
+        self.client.login(username="progress_test_user", password="p")
+        response = self.client.get(reverse("process_list"))
+
+        # --- Assert ---
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Equipo de Test de Progreso")
+        # Verifica que se muestra el progreso del proceso más reciente (100%)
+        self.assertContains(response, "width: 100%")
+        # Verifica que NO se muestra el progreso del proceso antiguo (50%)
+        self.assertNotContains(response, "width: 50%")

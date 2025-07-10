@@ -2,6 +2,8 @@
 
 {% block title %}Lista de Procesos{% endblock %}
 
+{% load app_extras %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -94,6 +96,7 @@
                             <th>Serial</th>
                             <th>Fecha Inicio</th>
                             <th>Estado</th>
+                            <th>Progreso</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -104,16 +107,32 @@
                             <td>{{ equipo.marca }}</td>
                             <td>{{ equipo.modelo }}</td>
                             <td>{{ equipo.serial }}</td>
-                            <td>{{ equipo.process.fecha_inicio|date:"d/m/Y" }}</td>
+                            {% with progress_data=equipment_progress_map|get_item:equipo.id %}
+                            <td>{{ progress_data.process.fecha_inicio|date:"d/m/Y"|default:"N/A" }}</td>
                             <td>{{ equipo.get_estado_actual_display }}</td>
                             <td>
-                                <a href="{% url 'equipos_detail' equipo.id %}" class="btn btn-sm btn-info">Detalles</a>
-
+                                {% if progress_data.process %}
+                                    {% if progress_data.progress or progress_data.progress != 0 %}
+                                        <div class="progress" style="height: 20px;" title="{{ progress_data.progress|default:0 }}%">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ progress_data.progress }}%;" aria-valuenow="{{ progress_data.progress|default:0 }}" aria-valuemin="0" aria-valuemax="100">
+                                            {{ progress_data.progress|default:0 }}%
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                        <span class="text-muted ">No disponible</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
                             </td>
+                            <td>
+                                <a href="{% url 'equipos_detail' equipo.id %}" class="btn btn-sm btn-info">Detalles</a>
+                            </td>
+                            {% endwith %}
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="text-center">No hay procesos registrados.</td>
+                            <td colspan="8" class="text-center">No hay procesos registrados.</td>
                         </tr>
                         {% endfor %}
                     </tbody>

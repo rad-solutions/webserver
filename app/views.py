@@ -1529,10 +1529,51 @@ class ProcessListView(LoginRequiredMixin, ListView):
             except ValueError:
                 pass  # Ignorar fecha inválida
 
+        queryset = queryset.prefetch_related(
+            "process__checklist_items",  # Proceso directo y su checklist
+            "reports__process__checklist_items",  # Procesos vía reportes y sus checklists
+        )
+
         return queryset.order_by("-process__fecha_inicio")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        equipos = context["equipos"]
+
+        # --- LÓGICA PARA CALCULAR EL PROGRESO DEL PROCESO MÁS RECIENTE ---
+        equipment_progress_map = {}
+        for equipo in equipos:
+            candidate_processes = set()
+
+            # 1. Recolectar proceso asociado directamente
+            if equipo.process:
+                candidate_processes.add(equipo.process)
+
+            # 2. Recolectar procesos asociados vía reportes (usa datos precargados)
+            for report in equipo.reports.all():
+                if report.process:
+                    candidate_processes.add(report.process)
+
+            most_recent_process = None
+            if candidate_processes:
+                # Filtrar procesos sin fecha de inicio para evitar errores
+                valid_processes = [p for p in candidate_processes if p.fecha_inicio]
+                if valid_processes:
+                    # 3. Seleccionar el más reciente por fecha de inicio
+                    most_recent_process = sorted(
+                        valid_processes, key=lambda p: p.fecha_inicio, reverse=True
+                    )[0]
+
+            # Guardar el proceso y su progreso en un mapa
+            if most_recent_process:
+                equipment_progress_map[equipo.id] = {
+                    "process": most_recent_process,
+                    "progress": most_recent_process.get_progress_percentage(),
+                }
+            else:
+                equipment_progress_map[equipo.id] = {"process": None, "progress": 0}
+
+        context["equipment_progress_map"] = equipment_progress_map
         # Pasar el tipo de proceso seleccionado al contexto
         context["selected_process_type"] = self.request.GET.get("process_type", "todos")
         # Pasar todos los tipos de proceso al contexto para el dropdown
