@@ -32,6 +32,14 @@ class ClientDashboardTest(TestCase):
             last_name="User",
         )
         self.user.roles.add(self.role_cliente)
+        self.other_user = User.objects.create_user(
+            username="otheruser",
+            email="other@example.com",
+            password="testpassword",
+            first_name="Other",
+            last_name="User",
+        )
+        self.other_user.roles.add(self.role_cliente)
 
         # Crear tipos de proceso (usando los valores de ProcessTypeChoices)
         self.process_type_blindajes = ProcessTypeChoices.CALCULO_BLINDAJES
@@ -391,3 +399,34 @@ class ClientDashboardTest(TestCase):
         self.assertNotContains(
             response, self.equipment_cc_proximo.nombre
         )  # Asegurarse que no se lista
+
+    def test_sidebar_shows_only_user_process_types(self):
+        """Verifica que el sidebar solo muestre enlaces para los tipos de proceso que el usuario tiene."""
+        # Por defecto, el usuario tiene procesos de Blindajes, Calidad y Asesoría.
+        # Vamos a crear un tipo de proceso que el usuario NO tiene.
+        Process.objects.create(
+            user=self.other_user,  # Proceso de OTRO usuario
+            process_type=ProcessTypeChoices.ESTUDIO_AMBIENTAL,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+
+        self.client.login(username="clientuser", password="testpassword")
+        response = self.client.get(reverse("home"))
+        self.assertEqual(response.status_code, 200)
+
+        # Verificar que los enlaces a los tipos de proceso que SÍ tiene están presentes
+        self.assertContains(
+            response, f'href="/?proceso_activo={self.process_type_blindajes.value}"'
+        )
+        self.assertContains(
+            response, f'href="/?proceso_activo={self.process_type_calidad.value}"'
+        )
+        self.assertContains(
+            response, f'href="/?proceso_activo={self.process_type_asesoria.value}"'
+        )
+
+        # Verificar que el enlace al tipo de proceso que NO tiene NO está presente
+        self.assertNotContains(
+            response,
+            f'href="/?proceso_activo={ProcessTypeChoices.ESTUDIO_AMBIENTAL.value}"',
+        )

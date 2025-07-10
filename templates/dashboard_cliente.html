@@ -73,11 +73,13 @@
                 </a>
             </li>
             {% for value, label in process_types_choices %}
+            {% if value in user_process_types %}
             <li class="nav-item">
                 <a class="nav-link {% if proceso_activo == value %}active{% endif %}" href="{% url 'home' %}?proceso_activo={{ value }}">
                     {{ label }}
                 </a>
             </li>
+            {% endif %}
             {% endfor %}
         </ul>
     </nav>
@@ -99,11 +101,13 @@
                             </a>
                         </li>
                         {% for value, label in process_types_choices %}
+                        {% if value in user_process_types %}
                         <li class="nav-item">
                             <a class="nav-link {% if proceso_activo == value %}active{% endif %}" href="{% url 'home' %}?proceso_activo={{ value }}">
                                 {{ label }}
                             </a>
                         </li>
+                        {% endif %}
                         {% endfor %}
                     </ul>
                 </div>
@@ -251,7 +255,7 @@
 
                     <div class="row">
                         <!-- Columna de Equipos Asociados (siempre visible si hay proceso activo) -->
-                        <div class="{% if proceso_activo == ProcessTypeChoices.CALCULO_BLINDAJES.value or proceso_activo == ProcessTypeChoices.CONTROL_CALIDAD.value %}col-md-12{% else %}col-md-6{% endif %}">
+                        <div class="{% if proceso_activo == ProcessTypeChoices.CALCULO_BLINDAJES.value or proceso_activo == ProcessTypeChoices.CONTROL_CALIDAD.value or proceso_activo == ProcessTypeChoices.ESTUDIO_AMBIENTAL.value %}col-md-12{% else %}col-md-6{% endif %}">
                             <div class="card card-custom mb-4">
                                 <div class="card-header bg-light"><h5 class="mb-0"><i class="fas fa-tools me-2"></i>Equipos Asociados</h5></div>
                                 <div class="card-body">
@@ -263,7 +267,7 @@
                                                 <th>Marca</th>
                                                 <th>Modelo</th>
                                                 <th>Serial</th>
-                                            {% if proceso_activo == ProcessTypeChoices.CALCULO_BLINDAJES.value or proceso_activo == ProcessTypeChoices.CONTROL_CALIDAD.value %}
+                                            {% if proceso_activo == ProcessTypeChoices.CALCULO_BLINDAJES.value or proceso_activo == ProcessTypeChoices.CONTROL_CALIDAD.value or proceso_activo == ProcessTypeChoices.ESTUDIO_AMBIENTAL.value %}
                                                 <th>Informes del Equipo</th>
                                             {% endif %}
                                             </tr></thead>
@@ -274,7 +278,7 @@
                                                     <td>{{ equipo_item.marca }}</td>
                                                     <td>{{ equipo_item.modelo }}</td>
                                                     <td>{{ equipo_item.serial|default:"N/A" }}</td>
-                                                    {% if proceso_activo == ProcessTypeChoices.CALCULO_BLINDAJES.value or proceso_activo == ProcessTypeChoices.CONTROL_CALIDAD.value %}
+                                                    {% if proceso_activo == ProcessTypeChoices.CALCULO_BLINDAJES.value or proceso_activo == ProcessTypeChoices.CONTROL_CALIDAD.value or proceso_activo == ProcessTypeChoices.ESTUDIO_AMBIENTAL.value %}
                                                     <td>
                                                         <a href="{% url 'report_list' %}?equipment_id={{ equipo_item.id }}&process_type={{ proceso_activo }}" class="btn btn-sm btn-outline-info">
                                                             Ver Informes <i class="fas fa-angle-right"></i>
@@ -309,7 +313,7 @@
                                 </div>
                             </div>
                         </div>
-                        {% elif proceso_activo != ProcessTypeChoices.CALCULO_BLINDAJES.value and proceso_activo != ProcessTypeChoices.CONTROL_CALIDAD.value %}
+                        {% elif proceso_activo != ProcessTypeChoices.CALCULO_BLINDAJES.value and proceso_activo != ProcessTypeChoices.CONTROL_CALIDAD.value and proceso_activo != ProcessTypeChoices.ESTUDIO_AMBIENTAL.value %}
                         <!-- Espacio para otros tipos de proceso si se implementan con dos columnas -->
                         <!-- Por ahora, si no es Blindajes, Calidad o Asesoría, esta columna podría estar vacía o mostrar algo genérico -->
                         <div class="col-md-6">

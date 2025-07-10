@@ -1,3 +1,4 @@
+import re
 from datetime import date, datetime, timedelta, timezone
 
 from django.test import TestCase
@@ -689,6 +690,53 @@ class ProcessAPITest(TestCase):
                 pos_newest < pos_old,
                 "El log más reciente debe aparecer primero en el historial.",
             )
+
+    def test_progress_form_displays_completed_by_user(self):
+        """Verifica que el formulario de progreso muestre quién completó un ítem."""
+        # Setup: Marcar un ítem como completado por un usuario específico
+        completing_user = User.objects.create_user(
+            username="completer", password="p", first_name="Juan", last_name="Perez"
+        )
+        self.item1.is_completed = True
+        self.item1.completed_by = completing_user
+        self.item1.save()
+
+        # Acceder a la vista de progreso
+        self.client.login(username="admin_proc", password="password")
+        url = reverse("process_progress", args=[self.process.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "process/process_progress_form.html")
+
+        # Verificar que el nombre del usuario que completó el ítem 1 está en el HTML
+        # Usamos una expresión regular para encontrar la fila de la tabla (<tr>) que contiene
+        # el nombre del ítem y luego verificamos que el nombre del usuario esté en esa misma fila.
+        content = response.content.decode("utf-8")
+
+        # Buscar la fila del item1 y verificar que contiene el nombre "Juan Perez"
+        match_item1 = re.search(
+            rf"<tr.*?>"  # Inicio de la fila
+            rf".*?<td>\s*{re.escape(self.item1.name)}.*?</td>"  # Celda que CONTIENE el nombre del ítem
+            rf".*?<td>\s*Juan Perez\s*</td>"  # Celda que CONTIENE el nombre del usuario
+            rf".*?</tr>",  # Fin de la fila
+            content,
+            re.DOTALL | re.IGNORECASE,
+        )
+        self.assertIsNotNone(
+            match_item1,
+            "No se encontró el nombre del usuario que completó el ítem 1 en su fila.",
+        )
+
+        # Buscar la fila del item2 y verificar que contiene el guion "-"
+        match_item2 = re.search(
+            rf'<tr.*?>.*?<td>\s*{re.escape(self.item2.name)}.*?</td>.*?<span class="text-muted">-</span>.*?</tr>',
+            content,
+            re.DOTALL | re.IGNORECASE,
+        )
+        self.assertIsNotNone(
+            match_item2, "No se encontró el guion para el ítem 2 incompleto."
+        )
 
 
 class ProcessAssignmentTest(TestCase):
