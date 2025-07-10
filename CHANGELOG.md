@@ -1,3 +1,13 @@
+# [1.27.0](https://github.com/rad-solutions/webserver/compare/v1.26.0...v1.27.0) (2025-07-10)
+
+
+### Features
+
+* Fix minor issue with a test. ([40c972b](https://github.com/rad-solutions/webserver/commit/40c972bb32c1d37c1c98ac7ddd6ae1058d33f270))
+* Now showing the user that completed a checklist item when retrievieng information after being saved. ([a17b0b2](https://github.com/rad-solutions/webserver/commit/a17b0b23ddf2a82ce201647510ebc67668434f82))
+* Updated dashboard cliente to include the new process type and the buttons for the sidebar are now dynamic. Corresponding test added. ([69e4c2e](https://github.com/rad-solutions/webserver/commit/69e4c2ec90a65fb634de9a935190b407c5d38cd6))
+* Updated the form and now the process categories are dynamic matching the process type selection. ([6f7b045](https://github.com/rad-solutions/webserver/commit/6f7b0454142bb644642c6bb5825c4484797057fa))
+
 # [1.26.0](https://github.com/rad-solutions/webserver/compare/v1.25.0...v1.26.0) (2025-07-10)
 
 
