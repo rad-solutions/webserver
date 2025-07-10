@@ -1,3 +1,10 @@
+# [1.29.0](https://github.com/rad-solutions/webserver/compare/v1.28.0...v1.29.0) (2025-07-10)
+
+
+### Features
+
+* Added process progress percentage on process list for a client. Corresponding tests added. ([8c5cff0](https://github.com/rad-solutions/webserver/commit/8c5cff0f51fcd3ba43e4f85478da9f97cb495c6c))
+
 # [1.28.0](https://github.com/rad-solutions/webserver/compare/v1.27.0...v1.28.0) (2025-07-10)
 
 
