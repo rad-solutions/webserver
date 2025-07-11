@@ -287,7 +287,7 @@ class AsesoriaChecklistCreationTests(TestCase):
         )
 
         for item in process.checklist_items.all():
-            item.is_completed = True
+            item.status = "aprobado"
             item.completed_at = timezone.now()
             item.save()
 
@@ -355,7 +355,7 @@ class AsesoriaChecklistCreationTests(TestCase):
         )
 
         for item in process.checklist_items.all():
-            item.is_completed = True
+            item.status = "aprobado"
             item.completed_at = timezone.now()
             item.save()
 
@@ -489,7 +489,7 @@ class ProcessChecklistModelTests(TestCase):
         )
 
         item1 = process.checklist_items.get(definition=self.def1_calc)
-        item1.is_completed = True
+        item1.status = "aprobado"
         item1.completed_at = timezone.now()
         item1.save()
         self.assertEqual(
@@ -497,7 +497,7 @@ class ProcessChecklistModelTests(TestCase):
         )
 
         item2 = process.checklist_items.get(definition=self.def2_calc)
-        item2.is_completed = True
+        item2.status = "aprobado"
         item2.completed_at = timezone.now()
         item2.save()
         self.assertEqual(
@@ -507,7 +507,7 @@ class ProcessChecklistModelTests(TestCase):
         )
 
         item3 = process.checklist_items.get(definition=self.def3_calc)
-        item3.is_completed = True
+        item3.status = "aprobado"
         item3.completed_at = timezone.now()
         item3.save()
         self.assertEqual(
@@ -515,7 +515,7 @@ class ProcessChecklistModelTests(TestCase):
         )
 
         item4 = process.checklist_items.get(definition=self.def4_calc)
-        item4.is_completed = True
+        item4.status = "aprobado"
         item4.completed_at = timezone.now()
         item4.save()
         self.assertEqual(
@@ -533,11 +533,12 @@ class ProcessChecklistModelTests(TestCase):
             estado=ProcessStatusChoices.EN_PROGRESO,
         )
         item1 = process.checklist_items.get(definition=self.def1_calc)
-        item1.is_completed = True
+        item1.status = "aprobado"
         item1.completed_at = timezone.now()
         item1.save()
 
         self.assertEqual(process.get_progress_percentage(), 30)
+        item1.refresh_from_db()
         self.assertTrue(item1.is_completed)
 
         process.estado = ProcessStatusChoices.EN_MODIFICACION
@@ -589,7 +590,7 @@ class ProcessChecklistModelTests(TestCase):
             estado=ProcessStatusChoices.EN_PROGRESO,
         )
         item1 = process.checklist_items.get(definition=self.def1_calc)
-        item1.is_completed = True
+        item1.status = "aprobado"
         item1.completed_at = timezone.now()
         item1.save()
         self.assertEqual(process.get_progress_percentage(), 30)
@@ -623,7 +624,7 @@ class ProcessChecklistModelTests(TestCase):
         start_time = timezone.now()
         completion_time = start_time + timezone.timedelta(hours=1)
 
-        item.is_completed = True
+        item.status = "aprobado"
         item.started_at = start_time
         item.completed_at = completion_time
         item.completed_by = self.technical_user
