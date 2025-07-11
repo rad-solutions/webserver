@@ -1079,16 +1079,19 @@ class ReportCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         return PermissionRequiredMixin.handle_no_permission(self)
 
     def form_valid(self, form):
-        # Guardar la instancia sin hacer commit a la BD para poder modificarla
-        self.object = form.save(commit=False)
-
-        # Llamar al método save() del modelo, pasando el usuario que modifica
-        self.object.save(user_who_modified=self.request.user)
-
-        logger.info(f"Archivo guardado exitosamente: {self.object.pdf_file.name}")
-        logger.info(f"URL del archivo: {self.object.pdf_file.url}")
-
-        return redirect(self.get_success_url())
+        try:
+            response = super().form_valid(form)
+            # Verificar si el archivo se guardó correctamente
+            if hasattr(form.instance, "pdf_file") and form.instance.pdf_file:
+                logger.info(
+                    f"Archivo guardado exitosamente: {form.instance.pdf_file.name}"
+                )
+                logger.info(f"URL del archivo: {form.instance.pdf_file.url}")
+            return response
+        except Exception as e:
+            logger.error(f"Error al guardar el reporte: {str(e)}")
+            form.add_error(None, f"Error al guardar el reporte: {str(e)}")
+            return self.form_invalid(form)
 
 
 class ReportUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
@@ -1110,12 +1113,6 @@ class ReportUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
         # User is authenticated, but lacks permission.
         # Delegate to PermissionRequiredMixin's original behavior.
         return PermissionRequiredMixin.handle_no_permission(self)
-
-    def form_valid(self, form):
-        self.object = form.save(commit=False)
-        # Llamar al método save() del modelo, pasando el usuario que modifica
-        self.object.save(user_who_modified=self.request.user)
-        return redirect(self.get_success_url())
 
 
 class ReportDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
@@ -1760,13 +1757,11 @@ class ProcessCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         try:
-            self.object = form.save(commit=False)
-            # Llamar al método save() del modelo, pasando el usuario que modifica
-            self.object.save(user_who_modified=self.request.user)
+            response = super().form_valid(form)
             logger.info(
-                f"Proceso '{self.object.process_type}' creado exitosamente por {self.request.user} con ID {self.object.id}."
+                f"Proceso '{form.instance.process_type}' creado exitosamente por {self.request.user} con ID {form.instance.id}."
             )
-            return redirect(self.get_success_url())
+            return response
         except Exception as e:
             logger.error(
                 f"Error crítico al guardar el proceso para el usuario {self.request.user}: {str(e)}"
@@ -1803,12 +1798,6 @@ class ProcessUpdateView(LoginRequiredMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context["ProcessTypeChoices"] = ProcessTypeChoices
         return context
-
-    def form_valid(self, form):
-        self.object = form.save(commit=False)
-        # Llamar al método save() del modelo, pasando el usuario que modifica
-        self.object.save(user_who_modified=self.request.user)
-        return redirect(self.get_success_url())
 
 
 class ProcessUpdateAssignmentView(
@@ -1869,8 +1858,7 @@ class ProcessProgressUpdateView(LoginRequiredMixin, UpdateView):
         if form.is_valid() and (
             not self.object.checklist_items.exists() or checklist_formset.is_valid()
         ):
-            process_instance = form.save(commit=False)
-            process_instance.save(user_who_modified=request.user)
+            form.save()
             if self.object.checklist_items.exists():
                 checklist_items = checklist_formset.save(commit=False)
                 for item in checklist_items:
