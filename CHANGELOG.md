@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/rad-solutions/webserver/compare/v1.29.0...v1.30.0) (2025-07-11)
+
+
+### Features
+
+* Actualizar script populate_db y configuración de Docker ([f1d30c9](https://github.com/rad-solutions/webserver/commit/f1d30c91020e4a34fc14b29edfd2d4829b5ab3e5))
+
 # [1.29.0](https://github.com/rad-solutions/webserver/compare/v1.28.0...v1.29.0) (2025-07-10)
 
 
