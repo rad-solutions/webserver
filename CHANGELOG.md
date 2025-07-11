@@ -1,3 +1,10 @@
+# [1.31.0](https://github.com/rad-solutions/webserver/compare/v1.30.0...v1.31.0) (2025-07-11)
+
+
+### Features
+
+* Implementar seguimiento de estado para ítems de checklist ([e2ba73d](https://github.com/rad-solutions/webserver/commit/e2ba73dc9129d4ebe18fa657d031a27c4adef096))
+
 # [1.30.0](https://github.com/rad-solutions/webserver/compare/v1.29.0...v1.30.0) (2025-07-11)
 
 
