@@ -172,8 +172,11 @@ class Process(models.Model):
     def _reset_checklist_items(self):
         """Reset all checklist items for this process to not completed."""
         self.checklist_items.update(
-            is_completed=False, completed_at=None
-        )  # Add completed_by=None if you add that field
+            status=ChecklistItemStatusChoices.PENDIENTE,
+            is_completed=False,
+            completed_at=None,
+            completed_by=None,
+        )
 
     def get_progress_percentage(self):
         """Calculate the total progress percentage based on completed checklist items."""
@@ -181,9 +184,11 @@ class Process(models.Model):
             return 0
 
         completed_percentage = (
-            self.checklist_items.filter(is_completed=True).aggregate(
-                total_percentage=models.Sum("definition__percentage")
-            )["total_percentage"]
+            self.checklist_items.filter(
+                status=ChecklistItemStatusChoices.APROBADO
+            ).aggregate(total_percentage=models.Sum("definition__percentage"))[
+                "total_percentage"
+            ]
             or 0
         )
 
@@ -448,6 +453,14 @@ class Anotacion(models.Model):
         verbose_name_plural = _("Anotaciones")
 
 
+class ChecklistItemStatusChoices(models.TextChoices):
+    PENDIENTE = "pendiente", _("Pendiente")
+    EN_PROGRESO = "en_progreso", _("En Progreso")
+    EN_REVISION = "en_revision", _("En Revisión")
+    APROBADO = "aprobado", _("Aprobado")
+    RECHAZADO = "rechazado", _("Rechazado")
+
+
 class ChecklistItemDefinition(models.Model):
     process_type = models.CharField(
         max_length=20,
@@ -483,6 +496,12 @@ class ProcessChecklistItem(models.Model):
         Process, on_delete=models.CASCADE, related_name="checklist_items"
     )
     definition = models.ForeignKey(ChecklistItemDefinition, on_delete=models.CASCADE)
+    status = models.CharField(
+        max_length=20,
+        choices=ChecklistItemStatusChoices.choices,
+        default=ChecklistItemStatusChoices.PENDIENTE,
+        verbose_name=_("Estado"),
+    )
     is_completed = models.BooleanField(default=False, verbose_name=_("Completado"))
     started_at = models.DateTimeField(
         null=True, blank=True, verbose_name=_("Fecha de Inicio")
@@ -505,8 +524,35 @@ class ProcessChecklistItem(models.Model):
         ordering = ["process", "definition__order"]
         unique_together = [("process", "definition")]
 
+    def save(self, *args, **kwargs):
+        user_who_modified = kwargs.pop("user_who_modified", None)
+        is_new = self._state.adding
+        old_status = None
+
+        if not is_new:
+            try:
+                old_status = ProcessChecklistItem.objects.get(pk=self.pk).status
+            except ProcessChecklistItem.DoesNotExist:
+                pass  # Should not happen
+        else:
+            # For new items, old_status should be the initial status to avoid logging creation
+            old_status = self.status
+
+        # Update is_completed based on status
+        self.is_completed = self.status == ChecklistItemStatusChoices.APROBADO
+
+        super().save(*args, **kwargs)
+
+        if old_status != self.status:
+            ChecklistItemStatusLog.objects.create(
+                item=self,
+                estado_anterior=old_status if not is_new else None,
+                estado_nuevo=self.status,
+                usuario_modifico=user_who_modified,
+            )
+
     def __str__(self):
-        return f"{self.process} - {self.definition.name} ({'Completado' if self.is_completed else 'Pendiente'})"
+        return f"{self.process} - {self.definition.name} ({self.get_status_display()})"
 
     @property
     def name(self):
@@ -515,6 +561,46 @@ class ProcessChecklistItem(models.Model):
     @property
     def percentage(self):
         return self.definition.percentage
+
+
+class ChecklistItemStatusLog(models.Model):
+    item = models.ForeignKey(
+        ProcessChecklistItem,
+        on_delete=models.CASCADE,
+        related_name="status_logs",
+        verbose_name=_("Ítem del Checklist"),
+    )
+    estado_anterior = models.CharField(
+        max_length=20,
+        choices=ChecklistItemStatusChoices.choices,
+        null=True,
+        blank=True,
+        verbose_name=_("Estado Anterior"),
+    )
+    estado_nuevo = models.CharField(
+        max_length=20,
+        choices=ChecklistItemStatusChoices.choices,
+        verbose_name=_("Estado Nuevo"),
+    )
+    fecha_cambio = models.DateTimeField(
+        auto_now_add=True, verbose_name=_("Fecha del Cambio")
+    )
+    usuario_modifico = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="checklist_item_status_changes",
+        verbose_name=_("Usuario que Modificó"),
+    )
+
+    class Meta:
+        verbose_name = _("Log de Estado de Ítem de Checklist")
+        verbose_name_plural = _("Logs de Estado de Ítems de Checklist")
+        ordering = ["-fecha_cambio"]
+
+    def __str__(self):
+        return f"Ítem {self.item.id}: {self.get_estado_anterior_display()} -> {self.get_estado_nuevo_display()}"
 
 
 class ProcessStatusLog(models.Model):
