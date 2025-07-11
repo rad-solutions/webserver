@@ -60,7 +60,7 @@ class Command(BaseCommand):
         User.objects.filter(is_superuser=False).exclude(
             username__in=predefined_usernames
         ).delete()
-        Role.objects.all().delete()
+        # Role.objects.all().delete() # This was deleting all roles and causing test users to lose their roles.
         # ClientProfile, Process, Equipment, Report, Anotacion will cascade delete
         # or be deleted if their User/Process is deleted.
 
@@ -147,10 +147,16 @@ class Command(BaseCommand):
                         0
                     ]
 
+                # Assign the process to a random internal staff member
+                assigned_user = None
+                if internal_staff_users:
+                    assigned_user = random.choice(internal_staff_users)
+
                 process = Process.objects.create(
                     user=user_obj,
                     process_type=process_type,
                     practice_category=practice_category,
+                    assigned_to=assigned_user,  # Assign internal staff
                     estado=random.choice(ProcessStatusChoices.choices)[0],
                     fecha_final=(
                         fake.date_time_this_decade(
