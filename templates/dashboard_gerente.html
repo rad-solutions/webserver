@@ -6,115 +6,103 @@
 {% block content %}
 <div class="container mt-4">
     <h1 class="mb-4">Dashboard de Gerencia</h1>
-    <p class="lead">Aquí puedes ver un resumen de todos los procesos. Haz clic en una sección del gráfico o en un botón para filtrar las listas.</p>
 
-    <!-- Fila Principal -->
+    <!-- Fila de Cards con Resúmenes de Procesos -->
     <div class="row">
-        <!-- Columna Izquierda: Gráfica y Botones -->
+        <!-- Card de Gráfica -->
         <div class="col-lg-4 mb-4">
-            <div class="card">
+            <div class="card h-100">
                 <div class="card-header">
                     <i class="fas fa-chart-pie me-2"></i>Resumen de Procesos Activos
                 </div>
-                <div class="card-body d-flex flex-column justify-content-center align-items-center">
-                    <div style="position: relative; height:300px; width:300px">
-                        <canvas id="processChart"></canvas>
-                    </div>
-                    <!-- ======== BOTONES DE FILTRO AÑADIDOS ======== -->
-                    <div class="btn-group mt-3" role="group" aria-label="Filtros de procesos">
-                        <button type="button" class="btn btn-sm btn-outline-danger btn-filter" data-card-id="card-vencidos">
-                            Vencidos ({{ procesos_vencidos|length }})
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-warning btn-filter" data-card-id="card-proximos">
-                            Próximos ({{ procesos_proximos|length }})
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-success btn-filter" data-card-id="card-en-progreso">
-                            En Progreso ({{ procesos_en_progreso|length }})
-                        </button>
-                    </div>
+                <div class="card-body d-flex justify-content-center align-items-center">
+                    <canvas id="processChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Columna Derecha: Contenedor de TODAS las listas de procesos -->
+        <!-- Card de Procesos Vencidos -->
         <div class="col-lg-8 mb-4">
-            <div id="process-lists-container">
-                <!-- Card de Procesos Vencidos -->
-                <div id="card-vencidos" class="process-list-card card mb-4">
-                    <div class="card-header bg-danger text-white">
-                        <i class="fas fa-exclamation-triangle me-2"></i>Procesos Vencidos ({{ procesos_vencidos|length }})
-                    </div>
-                    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
-                        {% if procesos_vencidos %}
-                            <ul class="list-group list-group-flush">
-                                {% for proceso in procesos_vencidos %}
-                                    <li class="list-group-item">
-                                        <a href="{% url 'process_detail' proceso.id %}"><strong>{{ proceso.get_process_type_display }}</strong></a>
-                                        <br>
-                                        <small>
-                                            <strong>Cliente:</strong> {{ proceso.user.client_profile.razon_social|default:"N/A" }} <br>
-                                            <strong>Asignado a:</strong> {{ proceso.assigned_to.get_full_name|default:"Sin asignar" }} <br>
-                                            <strong>Venció el:</strong> {{ proceso.fecha_final|date:"d/m/Y" }}
-                                            <span class="badge bg-danger rounded-pill">{{ proceso.dias_vencido }} días vencido</span>
-                                        </small>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            <p class="text-muted text-center mt-3">No hay procesos vencidos.</p>
-                        {% endif %}
-                    </div>
+            <div class="card h-100">
+                <div class="card-header bg-danger text-white">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Procesos Vencidos ({{ procesos_vencidos|length }})
                 </div>
-
-                <!-- Card de Procesos Próximos a Vencer -->
-                <div id="card-proximos" class="process-list-card card mb-4">
-                    <div class="card-header bg-warning text-dark">
-                        <i class="fas fa-clock me-2"></i>Próximos a Vencer ({{ procesos_proximos|length }})
-                    </div>
-                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-                        {% if procesos_proximos %}
-                            <ul class="list-group list-group-flush">
-                                {% for proceso in procesos_proximos %}
-                                    <li class="list-group-item">
-                                        <a href="{% url 'process_detail' proceso.id %}"><strong>{{ proceso.get_process_type_display }}</strong></a>
-                                        <br>
-                                        <small>
-                                            <strong>Cliente:</strong> {{ proceso.user.client_profile.razon_social|default:"N/A" }} <br>
-                                            <strong>Asignado a:</strong> {{ proceso.assigned_to.get_full_name|default:"Sin asignar" }} <br>
-                                            <strong>Vence el:</strong> {{ proceso.fecha_final|date:"d/m/Y" }}
-                                        </small>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            <p class="text-muted text-center mt-3">No hay procesos próximos a vencer.</p>
-                        {% endif %}
-                    </div>
+                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                    {% if procesos_vencidos %}
+                        <ul class="list-group list-group-flush">
+                            {% for proceso in procesos_vencidos %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'process_detail' proceso.id %}"><strong>{{ proceso.get_process_type_display }}</strong></a>
+                                    <br>
+                                    <small>
+                                        <strong>Cliente:</strong> {{ proceso.user.client_profile.razon_social|default:"N/A" }} <br>
+                                        <strong>Asignado a:</strong> {{ proceso.assigned_to.get_full_name|default:"Sin asignar" }} <br>
+                                        <strong>Venció el:</strong> {{ proceso.fecha_final|date:"d/m/Y" }}
+                                        <span class="badge bg-danger rounded-pill">{{ proceso.dias_vencido }} días vencido</span>
+                                    </small>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted text-center mt-3">No hay procesos vencidos.</p>
+                    {% endif %}
                 </div>
+            </div>
+        </div>
+    </div>
 
-                <!-- Card de Otros Procesos en Progreso -->
-                <div id="card-en-progreso" class="process-list-card card mb-4">
-                    <div class="card-header">
-                        <i class="fas fa-tasks me-2"></i>Otros Procesos en Progreso ({{ procesos_en_progreso|length }})
-                    </div>
-                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-                        {% if procesos_en_progreso %}
-                            <ul class="list-group list-group-flush">
-                                {% for proceso in procesos_en_progreso %}
-                                    <li class="list-group-item">
-                                        <a href="{% url 'process_detail' proceso.id %}"><strong>{{ proceso.get_process_type_display }}</strong></a>
-                                        <br>
-                                        <small>
-                                            <strong>Cliente:</strong> {{ proceso.user.client_profile.razon_social|default:"N/A" }} <br>
-                                            <strong>Asignado a:</strong> {{ proceso.assigned_to.get_full_name|default:"Sin asignar" }}
-                                        </small>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            <p class="text-muted text-center mt-3">No hay otros procesos en progreso.</p>
-                        {% endif %}
-                    </div>
+    <div class="row">
+        <!-- Card de Procesos Próximos a Vencer -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <i class="fas fa-clock me-2"></i>Próximos a Vencer ({{ procesos_proximos|length }})
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    {% if procesos_proximos %}
+                        <ul class="list-group list-group-flush">
+                            {% for proceso in procesos_proximos %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'process_detail' proceso.id %}"><strong>{{ proceso.get_process_type_display }}</strong></a>
+                                    <br>
+                                    <small>
+                                        <strong>Cliente:</strong> {{ proceso.user.client_profile.razon_social|default:"N/A" }} <br>
+                                        <strong>Asignado a:</strong> {{ proceso.assigned_to.get_full_name|default:"Sin asignar" }} <br>
+                                        <strong>Vence el:</strong> {{ proceso.fecha_final|date:"d/m/Y" }}
+                                    </small>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted text-center mt-3">No hay procesos próximos a vencer.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Card de Otros Procesos en Progreso -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-tasks me-2"></i>Otros Procesos en Progreso ({{ procesos_en_progreso|length }})
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    {% if procesos_en_progreso %}
+                        <ul class="list-group list-group-flush">
+                            {% for proceso in procesos_en_progreso %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'process_detail' proceso.id %}"><strong>{{ proceso.get_process_type_display }}</strong></a>
+                                    <br>
+                                    <small>
+                                        <strong>Cliente:</strong> {{ proceso.user.client_profile.razon_social|default:"N/A" }} <br>
+                                        <strong>Asignado a:</strong> {{ proceso.assigned_to.get_full_name|default:"Sin asignar" }}
+                                    </small>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted text-center mt-3">No hay otros procesos en progreso.</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -124,61 +112,17 @@
 <!-- Incluir Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// El script es idéntico al de dashboard_interno.html
 document.addEventListener('DOMContentLoaded', function () {
     const ctx = document.getElementById('processChart').getContext('2d');
 
+    // Datos pasados desde la vista de Django
     const chartData = {{ chart_data.data|safe }};
     const chartLabels = {{ chart_data.labels|safe }};
-    const doughnutThickness = '75%';
 
-    const cardIds = ['card-vencidos', 'card-proximos', 'card-en-progreso'];
-    const container = document.getElementById('process-lists-container');
-    const filterButtons = document.querySelectorAll('.btn-filter');
-
-    let currentlySelectedCardId = null;
-
-    function showAllCards() {
-        cardIds.forEach(cardId => {
-            const cardElement = document.getElementById(cardId);
-            if (cardElement) {
-                cardElement.style.display = 'block';
-            }
-        });
-        // Restablece el orden original
-        cardIds.forEach(cardId => container.appendChild(document.getElementById(cardId)));
-    }
-
-    function showSingleCard(selectedCardId) {
-        cardIds.forEach(cardId => {
-            const cardElement = document.getElementById(cardId);
-            if (cardElement) {
-                if (cardId === selectedCardId) {
-                    cardElement.style.display = 'block';
-                    container.prepend(cardElement); // Mover la card seleccionada al principio
-                } else {
-                    cardElement.style.display = 'none';
-                }
-            }
-        });
-    }
-
-    function handleFilterClick(newlyClickedCardId) {
-        if (newlyClickedCardId === currentlySelectedCardId) {
-            showAllCards();
-            currentlySelectedCardId = null;
-        } else {
-            showSingleCard(newlyClickedCardId);
-            currentlySelectedCardId = newlyClickedCardId;
-        }
-    }
-
-    filterButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const cardIdToFilter = this.dataset.cardId;
-            handleFilterClick(cardIdToFilter);
-        });
-    });
+    // Para modificar el grosor del anillo, ajusta el valor de 'cutout'.
+    // Un valor más alto (ej. '80%') hace el anillo más delgado.
+    // Un valor más bajo (ej. '50%') lo hace más grueso.
+    const doughnutThickness = '75%'; // <-- MODIFICA AQUÍ EL GROSOR
 
     new Chart(ctx, {
         type: 'doughnut',
@@ -188,9 +132,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 label: 'Procesos',
                 data: chartData,
                 backgroundColor: [
-                    'rgba(220, 53, 69, 0.7)',
-                    'rgba(255, 193, 7, 0.7)',
-                    'rgba(25, 135, 84, 0.7)'
+                    'rgba(220, 53, 69, 0.7)',  // Rojo para Vencidos
+                    'rgba(255, 193, 7, 0.7)',   // Amarillo para Próximos
+                    'rgba(25, 135, 84, 0.7)'   // Verde para En Progreso
                 ],
                 borderColor: [
                     'rgba(220, 53, 69, 1)',
@@ -207,13 +151,20 @@ document.addEventListener('DOMContentLoaded', function () {
             plugins: {
                 legend: {
                     position: 'top',
-                }
-            },
-            onClick: (event, elements) => {
-                if (elements.length > 0) {
-                    const clickedElementIndex = elements[0].index;
-                    const newlyClickedCardId = cardIds[clickedElementIndex];
-                    handleFilterClick(newlyClickedCardId);
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed !== null) {
+                                label += context.parsed;
+                            }
+                            return label;
+                        }
+                    }
                 }
             }
         }
