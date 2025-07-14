@@ -25,6 +25,7 @@ from django.views.generic import (
 
 from .models import (
     Anotacion,
+    ChecklistItemStatusChoices,
     ClientProfile,
     Equipment,
     HistorialTuboRayosX,
@@ -282,9 +283,8 @@ class ProcessProgressForm(forms.ModelForm):
 class ProcessChecklistItemForm(forms.ModelForm):
     class Meta:
         model = ProcessChecklistItem
-        fields = ["is_completed", "started_at", "completed_at"]
+        fields = ["status", "started_at", "completed_at"]
         widgets = {
-            "is_completed": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "started_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
             "completed_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
         }
@@ -1874,9 +1874,9 @@ class ProcessProgressUpdateView(LoginRequiredMixin, UpdateView):
             if self.object.checklist_items.exists():
                 checklist_items = checklist_formset.save(commit=False)
                 for item in checklist_items:
-                    if item.is_completed:
+                    if item.status == ChecklistItemStatusChoices.APROBADO:
                         item.completed_by = request.user
-                    item.save()
+                    item.save(user_who_modified=self.request.user)
                 checklist_formset.save_m2m()
             return redirect(self.get_success_url())
         else:

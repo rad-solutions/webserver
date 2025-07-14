@@ -567,46 +567,44 @@ class ProcessAPITest(TestCase):
         # Los nombres de los ítems deben aparecer
         self.assertContains(response, self.def1.name)
         self.assertContains(response, self.def2.name)
-        # Los checkboxes deben estar presentes
-        self.assertContains(response, 'type="checkbox"')
 
-    # def test_progress_form_update_checklist_and_status(self):
-    #     # Simula marcar el primer ítem como completado y cambiar el estado del proceso
-    #     self.url = reverse("process_progress", args=[self.process.id])
-    #     started_at = datetime(2025, 6, 20, 10, 0, tzinfo=timezone.utc)
-    #     completed_at = datetime(2025, 6, 21, 12, 0, tzinfo=timezone.utc)
-    #     data = {
-    #         "estado": ProcessStatusChoices.FINALIZADO,
-    #         "checklist_items-TOTAL_FORMS": "2",
-    #         "checklist_items-INITIAL_FORMS": "2",
-    #         "checklist_items-MIN_NUM_FORMS": "0",
-    #         "checklist_items-MAX_NUM_FORMS": "1000",
-    #         "checklist_items-0-id": str(self.item1.id),
-    #         "checklist_items-0-status": ChecklistItemStatusChoices.APROBADO,  # Marcar como aprobado
-    #         "checklist_items-0-started_at": started_at.strftime("%Y-%m-%dT%H:%M"),
-    #         "checklist_items-0-completed_at": completed_at.strftime("%Y-%m-%dT%H:%M"),
-    #         "checklist_items-1-id": str(self.item2.id),
-    #         "checklist_items-1-status": ChecklistItemStatusChoices.PENDIENTE,  # Marcar como pendiente
-    #         "checklist_items-1-started_at": "",
-    #         "checklist_items-1-completed_at": "",
-    #     }
-    #     response = self.client.post(self.url, data)
-    #     self.assertEqual(response.status_code, 302)  # Redirige al detalle del proceso
-    #
-    #     # Refrescar de la base de datos
-    #     self.item1.refresh_from_db()
-    #     self.item2.refresh_from_db()
-    #     self.process.refresh_from_db()
-    #     self.assertTrue(self.item1.is_completed)
-    #     self.assertEqual(self.item1.status, ChecklistItemStatusChoices.APROBADO)
-    #     self.assertFalse(self.item2.is_completed)
-    #     self.assertEqual(self.item2.status, ChecklistItemStatusChoices.PENDIENTE)
-    #     self.assertEqual(self.process.estado, ProcessStatusChoices.FINALIZADO)
-    #     # Verifica fechas y completed_by
-    #     self.assertEqual(self.item1.started_at, started_at)
-    #     self.assertEqual(self.item1.completed_at, completed_at)
-    #     self.assertEqual(self.item1.completed_by, self.user)
-    #     self.assertIsNone(self.item2.completed_by)
+    def test_progress_form_update_checklist_and_status(self):
+        # Simula marcar el primer ítem como completado y cambiar el estado del proceso
+        self.url = reverse("process_progress", args=[self.process.id])
+        started_at = datetime(2025, 6, 20, 10, 0, tzinfo=timezone.utc)
+        completed_at = datetime(2025, 6, 21, 12, 0, tzinfo=timezone.utc)
+        data = {
+            "estado": ProcessStatusChoices.FINALIZADO,
+            "checklist_items-TOTAL_FORMS": "2",
+            "checklist_items-INITIAL_FORMS": "2",
+            "checklist_items-MIN_NUM_FORMS": "0",
+            "checklist_items-MAX_NUM_FORMS": "1000",
+            "checklist_items-0-id": str(self.item1.id),
+            "checklist_items-0-status": ChecklistItemStatusChoices.APROBADO,  # Marcar como aprobado
+            "checklist_items-0-started_at": started_at.strftime("%Y-%m-%dT%H:%M"),
+            "checklist_items-0-completed_at": completed_at.strftime("%Y-%m-%dT%H:%M"),
+            "checklist_items-1-id": str(self.item2.id),
+            "checklist_items-1-status": ChecklistItemStatusChoices.PENDIENTE,  # Marcar como pendiente
+            "checklist_items-1-started_at": "",
+            "checklist_items-1-completed_at": "",
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, 302)  # Redirige al detalle del proceso
+
+        # Refrescar de la base de datos
+        self.item1.refresh_from_db()
+        self.item2.refresh_from_db()
+        self.process.refresh_from_db()
+        self.assertTrue(self.item1.is_completed)
+        self.assertEqual(self.item1.status, ChecklistItemStatusChoices.APROBADO)
+        self.assertFalse(self.item2.is_completed)
+        self.assertEqual(self.item2.status, ChecklistItemStatusChoices.PENDIENTE)
+        self.assertEqual(self.process.estado, ProcessStatusChoices.FINALIZADO)
+        # Verifica fechas y completed_by
+        self.assertEqual(self.item1.started_at, started_at)
+        self.assertEqual(self.item1.completed_at, completed_at)
+        self.assertEqual(self.item1.completed_by, self.user)
+        self.assertIsNone(self.item2.completed_by)
 
     def test_progress_form_no_checklist_items(self):
         # Crear un proceso sin checklist items
@@ -645,10 +643,12 @@ class ProcessAPITest(TestCase):
             "checklist_items-MIN_NUM_FORMS": "0",
             "checklist_items-MAX_NUM_FORMS": "1000",
             "checklist_items-0-id": str(self.item1.id),
-            # No is_completed
+            # No status change, solo fechas
             "checklist_items-0-started_at": started_at.strftime("%Y-%m-%dT%H:%M"),
-            "checklist_items-0-completed_at": completed_at.strftime("%Y-%m-%dT%H:%M"),
+            "checklist_items-0-status": ChecklistItemStatusChoices.PENDIENTE,
+            "checklist_items-0-completed_at": completed_at,
             "checklist_items-1-id": str(self.item2.id),
+            "checklist_items-1-status": ChecklistItemStatusChoices.PENDIENTE,
             "checklist_items-1-started_at": "",
             "checklist_items-1-completed_at": "",
         }
