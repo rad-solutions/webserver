@@ -2,7 +2,7 @@
 
 Este documento explica la configuración del pipeline de Integración Continua (CI) y Despliegue Continuo (CD) que integra Docker, Amazon ECR y GitHub Actions.
 
-## Flujo de Ejecución de los Workflows
+## Flujo de Ejecución de los Workflow
 
 El proceso está orquestado a través de tres workflows de GitHub Actions que se ejecutan en una secuencia específica:
 
