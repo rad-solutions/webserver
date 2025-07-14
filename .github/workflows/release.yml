@@ -4,7 +4,7 @@ name: Release and Publish
 on:
   workflow_run:
     workflows:
-      - "Django CI and Release"
+      - "Django CI"
     types:
       - completed
 
