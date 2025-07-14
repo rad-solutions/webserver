@@ -5,3 +5,6 @@ services:
     # Construye la imagen de Docker localmente usando el Dockerfile en el directorio actual.
     # Esto asegura que la CI pruebe los cambios más recientes del código.
     build: .
+
+    volumes:
+      - .:/app
