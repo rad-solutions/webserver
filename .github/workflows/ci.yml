@@ -18,14 +18,14 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.12'
 
     - name: Install dependencies in GitHub Actions runner
       run: |
         python -m pip install --upgrade pip
         pip install poetry
         poetry config virtualenvs.create false
-        poetry install --no-root --no-dev
+        poetry install --no-root --without dev
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
