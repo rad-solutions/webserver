@@ -1,0 +1,6 @@
+# Este archivo contiene la configuración específica para el desarrollo local.
+# Docker Compose lo aplica automáticamente sobre 'docker-compose.yml'.
+services:
+  web:
+    # Construye la imagen de Docker localmente usando el Dockerfile en el directorio actual.
+    build: .
