@@ -1,3 +1,10 @@
+# [1.33.0](https://github.com/rad-solutions/webserver/compare/v1.32.0...v1.33.0) (2025-07-14)
+
+
+### Features
+
+* Restauración Rama a PR # 49 ([e5508f8](https://github.com/rad-solutions/webserver/commit/e5508f881c01d809ce08d3797680ec4c3eb9d01f))
+
 # [1.32.0](https://github.com/rad-solutions/webserver/compare/v1.31.0...v1.32.0) (2025-07-14)
 
 
