@@ -1,3 +1,33 @@
+# [1.33.0](https://github.com/rad-solutions/webserver/compare/v1.32.0...v1.33.0) (2025-07-14)
+
+
+### Features
+
+* Restauración Rama a PR # 49 ([e5508f8](https://github.com/rad-solutions/webserver/commit/e5508f881c01d809ce08d3797680ec4c3eb9d01f))
+
+# [1.32.0](https://github.com/rad-solutions/webserver/compare/v1.31.0...v1.32.0) (2025-07-14)
+
+
+### Bug Fixes
+
+* github actions ([0cb9d1e](https://github.com/rad-solutions/webserver/commit/0cb9d1ed931577d7b307b8bd0946ced958c88b2c))
+* github actions ([47524d2](https://github.com/rad-solutions/webserver/commit/47524d298611839aebdb79f06403dab388887435))
+* github actions2 ([ece8fce](https://github.com/rad-solutions/webserver/commit/ece8fce4e9481baeca1e5cbe209acebc7c3433f6))
+* github actions3 ([956dfeb](https://github.com/rad-solutions/webserver/commit/956dfeb9d1d0d2edbcfff683be1c66dcfee63ff0))
+
+
+### Features
+
+* Added buttons to the dashboard of internal users. No test changes are needed. ([f35f070](https://github.com/rad-solutions/webserver/commit/f35f0709b860906668227f5c24ae1604bea037c6))
+* FIxed saving process and report, now using the save() model function. No need to update or create new tests. ([e5a9965](https://github.com/rad-solutions/webserver/commit/e5a996508b9d10379032e33e20ecf545cc058015))
+
+# [1.31.0](https://github.com/rad-solutions/webserver/compare/v1.30.0...v1.31.0) (2025-07-11)
+
+
+### Features
+
+* Implementar seguimiento de estado para ítems de checklist ([e2ba73d](https://github.com/rad-solutions/webserver/commit/e2ba73dc9129d4ebe18fa657d031a27c4adef096))
+
 # [1.30.0](https://github.com/rad-solutions/webserver/compare/v1.29.0...v1.30.0) (2025-07-11)
 
 
