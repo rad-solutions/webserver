@@ -1,3 +1,11 @@
+# [1.34.0](https://github.com/rad-solutions/webserver/compare/v1.33.0...v1.34.0) (2025-07-15)
+
+
+### Features
+
+* Implementar seguimiento de estado para ítems de checklist ([4e6441e](https://github.com/rad-solutions/webserver/commit/4e6441e5d7986445eb50ed001739de336da39394))
+* pull always policy in docker compose.yaml ([40a5804](https://github.com/rad-solutions/webserver/commit/40a580420ecf23cef417ff4a13bb6c0537b506e2))
+
 # [1.33.0](https://github.com/rad-solutions/webserver/compare/v1.32.0...v1.33.0) (2025-07-14)
 
 
