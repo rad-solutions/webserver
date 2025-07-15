@@ -14,7 +14,7 @@
             <thead>
                 <tr>
                     <th>Ítem</th>
-                    <th>Completado</th>
+                    <th>Estado</th>
                     <th>Fecha inicio</th>
                     <th>Fecha completado</th>
                     <th>Completado por</th>
@@ -25,7 +25,9 @@
                 {% for item_form in checklist_formset %}
                 <tr>
                     <td>{{ item_form.instance.name }} {{ item_form.id }}</td>
-                    <td>{{ item_form.is_completed }}</td>
+                    <td>
+                        {{ item_form.status }}
+                    </td>
                     <td>{{ item_form.started_at }}</td>
                     <td>{{ item_form.completed_at }}</td>
                     <td>
