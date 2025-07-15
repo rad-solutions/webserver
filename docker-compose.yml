@@ -1,9 +1,5 @@
 services:
   web:
-    # Para construir la imagen localmente usando el Dockerfile,
-    # comenta la siguiente línea 'image' y descomenta la línea 'build'.
-    image: 978368259161.dkr.ecr.us-east-1.amazonaws.com/webserver:latest
-    # build: .
     container_name: radsolutions_web
     command: gunicorn --bind 0.0.0.0:8000 app_server.wsgi:application
     ports:
@@ -23,8 +19,9 @@ services:
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
     ports:
       - "${DATABASE_PORT}:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+    # Descomenta la siguiente sección para habilitar la persistencia de datos de la base de datos localmente.
+    # volumes:
+    #   - pgdata:/var/lib/postgresql/data
 
 volumes:
   pgdata:
