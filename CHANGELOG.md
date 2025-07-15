@@ -1,3 +1,10 @@
+# [1.37.0](https://github.com/rad-solutions/webserver/compare/v1.36.0...v1.37.0) (2025-07-15)
+
+
+### Features
+
+* Change messages for the client in dashboard. Corresponding tests adapted. ([1d835e8](https://github.com/rad-solutions/webserver/commit/1d835e8318d709446fec0f8354f1ed4e6b76f307))
+
 # [1.36.0](https://github.com/rad-solutions/webserver/compare/v1.35.0...v1.36.0) (2025-07-15)
 
 
