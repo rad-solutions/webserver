@@ -1,3 +1,10 @@
+# [1.36.0](https://github.com/rad-solutions/webserver/compare/v1.35.0...v1.36.0) (2025-07-15)
+
+
+### Features
+
+* Add Razón Social of the Client to the process detail. ([ecb2c9a](https://github.com/rad-solutions/webserver/commit/ecb2c9a5764f55deb97fee8903ecfce3e525a628))
+
 # [1.35.0](https://github.com/rad-solutions/webserver/compare/v1.34.0...v1.35.0) (2025-07-15)
 
 
