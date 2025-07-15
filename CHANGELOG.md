@@ -1,3 +1,10 @@
+# [1.38.0](https://github.com/rad-solutions/webserver/compare/v1.37.0...v1.38.0) (2025-07-15)
+
+
+### Features
+
+* ProcessCheckList Item field "Status" now showing on UI. ([f7b3f11](https://github.com/rad-solutions/webserver/commit/f7b3f11cc1a3748116b4f9c86b1bda54eba091d5))
+
 # [1.37.0](https://github.com/rad-solutions/webserver/compare/v1.36.0...v1.37.0) (2025-07-15)
 
 
