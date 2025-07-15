@@ -9,8 +9,6 @@ on:
 jobs:
   test-and-lint:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
     - uses: actions/checkout@v3
@@ -18,14 +16,18 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.12'
+        python-version: '3.10'
 
     - name: Install dependencies in GitHub Actions runner
       run: |
         python -m pip install --upgrade pip
-        pip install poetry
-        poetry config virtualenvs.create false
-        poetry install --no-root --without dev
+        pip install isort flake8 black pytest boto3 django-storages
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Update Makefile for Docker Compose V2
+      run: |
+        # Actualizar el Makefile para usar 'docker compose' en lugar de 'docker-compose'
+        sed -i 's/docker-compose/docker compose/g' makefile
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
@@ -39,27 +41,32 @@ jobs:
         echo "DATABASE_PORT=5432" >> .env
         echo "DEBUG=True" >> .env
         echo "DJANGO_SECRET_KEY='django-insecure-k#cb*25^f8d9js*%rnkjc24_^r^(8#-@$m*8ia1-zn*ytg=#u*'" >> .env
+        echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID || 'dummy_key' }}" >> .env
+        echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY || 'dummy_secret' }}" >> .env
+        echo "AWS_STORAGE_BUCKET_NAME=${{ secrets.AWS_STORAGE_BUCKET_NAME || 'dummy_bucket' }}" >> .env
+        echo "AWS_S3_REGION_NAME=${{ secrets.AWS_S3_REGION_NAME || 'us-east-1' }}" >> .env
         echo "USE_MOCK_STORAGE=True" >> .env
 
-    - name: Build and start Docker containers
+    - name: Build Docker containers using make
       run: |
-        docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
+        make setup
 
     - name: Run linting checks
       run: |
-        docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm web bash -c "pip install isort flake8 black && isort . --check --profile black && black . --check && flake8 ."
+        docker compose run --rm web bash -c "pip install isort flake8 black && isort . --check --profile black && black . --check && flake8 ."
 
     - name: Wait for PostgreSQL to be ready
       run: |
         echo "Esperando que PostgreSQL esté listo..."
         # Esperar hasta 30 segundos para que PostgreSQL esté listo
         timeout=30
-        while ! docker compose -f docker-compose.yml -f docker-compose.ci.yml exec db pg_isready -h localhost -U radsolutions_user -d radsolutions_db; do
+        while ! docker compose exec db pg_isready -h localhost -U radsolutions_user -d radsolutions_db; do
           timeout=$((timeout-1))
           if [ $timeout -eq 0 ]; then
             echo "Timeout esperando a PostgreSQL"
             exit 1
           fi
+          echo "Esperando que PostgreSQL esté listo... ${timeout}s restantes"
           sleep 1
         done
         echo "PostgreSQL está listo!"
@@ -67,9 +74,8 @@ jobs:
     - name: Run Django tests
       run: |
         # Usar SQLite en memoria para los tests
-        docker compose -f docker-compose.yml -f docker-compose.ci.yml run -e DATABASE_ENGINE=django.db.backends.sqlite3 -e DATABASE_NAME=':memory:' --rm web bash -c "python manage.py test"
+        docker compose run -e DATABASE_ENGINE=django.db.backends.sqlite3 -e DATABASE_NAME=':memory:' --rm web bash -c "python manage.py test"
 
-    - name: Stop containers
-      if: always()
+    - name: Stop containers using make
       run: |
-        docker compose -f docker-compose.yml -f docker-compose.ci.yml down
+        make down

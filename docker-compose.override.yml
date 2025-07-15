@@ -4,3 +4,6 @@ services:
   web:
     # Construye la imagen de Docker localmente usando el Dockerfile en el directorio actual.
     build: .
+
+    volumes:
+      - .:/app
