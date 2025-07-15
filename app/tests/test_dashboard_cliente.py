@@ -394,7 +394,7 @@ class ClientDashboardTest(TestCase):
         # Este mensaje depende de tu plantilla, ajústalo si es necesario.
         self.assertContains(
             response,
-            "¡Felicidades, no hay equipos con controles de calidad próximos a vencer!",
+            "Le informamos que, al día de hoy, no se han detectado controles de calidad próximos a vencer en sus equipos.",
         )
         self.assertNotContains(
             response, self.equipment_cc_proximo.nombre
