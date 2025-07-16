@@ -23,7 +23,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://*.ngrok-free.app",
     "http://*.ngrok-free.app",
     "http://localhost",
-    "https://93xbj3r6wi.us-east-1.awsapprunner.com",
+    APP_RUNNER_URL,
 ]
 
 # Application definition
