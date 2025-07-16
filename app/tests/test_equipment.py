@@ -412,6 +412,20 @@ class EquipmentAPITest(TestCase):
         self.assertNotIn(self.eq3, equipos_en_contexto)  # Pertenece a admin_user
         self.assertEqual(response.context["text_search_term"], "ModeloX100")
 
+    def test_equipment_create_view_shows_correct_labels(self):
+        """Verifica que el formulario de creación de equipos muestra las etiquetas en español."""
+        self.client.login(
+            username="admin_user", password="password"
+        )  # Usar un usuario con permisos
+        url = reverse("equipos_create")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        # Verificar algunas de las nuevas etiquetas
+        self.assertContains(response, "Nombre del Equipo")
+        self.assertContains(response, "Práctica Asociada")
+        self.assertContains(response, "Cliente Propietario")
+
 
 class XRayTubeHistoryTest(TestCase):
     def setUp(self):
