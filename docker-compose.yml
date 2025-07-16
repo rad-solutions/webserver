@@ -1,7 +1,7 @@
 services:
   web:
     container_name: radsolutions_web
-    command: gunicorn --bind 0.0.0.0:8000 app_server.wsgi:application
+    command: gunicorn --bind 0.0.0.0:8000 --timeout 120 app_server.wsgi:application
     ports:
       - "80:8000"
     depends_on:
