@@ -13,13 +13,17 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 AUTH_USER_MODEL = "app.User"
 
-ALLOWED_HOSTS = ["*"]
+# Add the App Runner domain to both lists
+APP_RUNNER_URL = f"https://{os.getenv('AWS_APP_RUNNER_URL_HOST', '*')}"
+
+ALLOWED_HOSTS = ["*", APP_RUNNER_URL]
 
 # CSRF configuration for ngrok
 CSRF_TRUSTED_ORIGINS = [
     "https://*.ngrok-free.app",
     "http://*.ngrok-free.app",
     "http://localhost",
+    "https://93xbj3r6wi.us-east-1.awsapprunner.com",
 ]
 
 # Application definition
