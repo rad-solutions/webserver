@@ -49,6 +49,23 @@ class UserWithProfileForm(UserCreationForm):
         label="Rol",
         required=True,
     )
+    # Redefinir campos en español
+    username = forms.CharField(
+        label="Nombre de Usuario",
+        max_length=150,
+        help_text="Requerido. 150 caracteres o menos. Letras, dígitos y @/./+/-/_ solamente.",
+    )
+    password1 = forms.CharField(
+        label="Contraseña",
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+        help_text="La contraseña debe contener al menos 8 caracteres, no puede ser únicamente numérica, no debe ser similar a los otros datos y no puede ser demasiado común.",
+    )
+    password2 = forms.CharField(
+        label="Confirmación de Contraseña",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+        help_text="Introduce la misma contraseña que antes, para su verificación.",
+    )
     # Campos de ClientProfile (solo para cliente)
     razon_social = forms.CharField(required=False)
     nit = forms.CharField(required=False)
@@ -101,6 +118,18 @@ class UserEditWithProfileForm(UserCreationForm):
         queryset=Role.objects.none(),
         label="Rol",
         required=True,
+    )
+    # Redefinir campos en español
+    username = forms.CharField(
+        label="Nombre de Usuario",
+        max_length=150,
+        help_text="Requerido. 150 caracteres o menos. Letras, dígitos y @/./+/-/_ solamente.",
+    )
+    password2 = forms.CharField(
+        label="Confirmación de Contraseña",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+        help_text="Introduce la misma contraseña que antes, para su verificación.",
     )
     # Campos de ClientProfile (solo para cliente)
     razon_social = forms.CharField(required=False)
