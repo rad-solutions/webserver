@@ -319,6 +319,7 @@ class EstadoReporteChoices(models.TextChoices):
     EN_GENERACION = "en_generacion", _("En Generación")
     REVISADO = "revisado", _("Revisado")
     APROBADO = "aprobado", _("Aprobado")
+    REQUIERE_CORRECCION = "requiere_correccion", _("Requiere Corrección")
 
 
 class Report(models.Model):
@@ -345,7 +346,7 @@ class Report(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     fecha_vencimiento = models.DateField(null=True, blank=True)
     estado_reporte = models.CharField(
-        max_length=15,
+        max_length=25,
         choices=EstadoReporteChoices.choices,
         default=EstadoReporteChoices.EN_GENERACION,
     )
