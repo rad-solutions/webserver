@@ -68,9 +68,10 @@
             {% endif %}
         </div>
         <div class="card-footer">
-            {% if perms.app.add_anotacion %}
+            {% if perms.app.add_anotacion and report.process %}
                 <a href="{% url 'anotacion_create' process_id=report.process.id %}" class="btn btn-primary">Agregar Anotación al Proceso Asociado</a>
             {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}
