@@ -509,6 +509,9 @@ class ProcessChecklistItem(models.Model):
     completed_at = models.DateTimeField(
         null=True, blank=True, verbose_name=_("Fecha de Completado")
     )
+    due_date = models.DateTimeField(
+        null=True, blank=True, verbose_name=_("Fecha Límite")
+    )
     # Optional: track who completed it
     completed_by = models.ForeignKey(
         User,
