@@ -60,6 +60,15 @@ class UserWithProfileForm(UserCreationForm):
 
     class Meta(UserCreationForm.Meta):
         model = User
+        labels = {
+            "username": "Nombre de Usuario",
+            "first_name": "Nombre",
+            "last_name": "Apellido",
+            "email": "Correo Electrónico",
+            "role": "Rol",
+            "password1": "Contraseña",
+            "password2": "Confirmar Contraseña",
+        }
         fields = [
             "username",
             "first_name",
@@ -85,12 +94,6 @@ class UserWithProfileForm(UserCreationForm):
                 if not cleaned_data.get(field):
                     self.add_error(field, "Este campo es obligatorio para clientes.")
         return cleaned_data
-
-
-class UserForm(UserCreationForm):
-    class Meta:
-        model = User
-        fields = ["username", "first_name", "last_name", "email"]
 
 
 class UserEditWithProfileForm(UserCreationForm):
@@ -119,6 +122,15 @@ class UserEditWithProfileForm(UserCreationForm):
             "password1",
             "password2",
         ]
+        labels = {
+            "username": "Nombre de Usuario",
+            "first_name": "Nombre",
+            "last_name": "Apellido",
+            "email": "Correo Electrónico",
+            "role": "Rol",
+            "password1": "Contraseña",
+            "password2": "Confirmar Contraseña",
+        }
 
     def clean_username(self):
         username = self.cleaned_data["username"]
@@ -212,6 +224,16 @@ class ReportForm(forms.ModelForm):
             "estado_reporte",
             "fecha_vencimiento",
         ]
+        labels = {
+            "title": "Título del Reporte",
+            "description": "Descripción",
+            "pdf_file": "Archivo PDF",
+            "user": "Cliente Asociado",
+            "process": "Proceso Asociado",
+            "equipment": "Equipo Asociado",
+            "estado_reporte": "Estado del Reporte",
+            "fecha_vencimiento": "Fecha de Vencimiento",
+        }
         widgets = {
             "fecha_vencimiento": forms.DateInput(attrs={"type": "date"}),
         }
@@ -244,12 +266,22 @@ class ReportStatusAndNoteForm(forms.ModelForm):
     class Meta:
         model = Report
         fields = ["estado_reporte"]
+        labels = {
+            "estado_reporte": "Estado del Reporte",
+        }
 
 
 class ProcessForm(forms.ModelForm):
     class Meta:
         model = Process
         fields = ["process_type", "practice_category", "estado", "user", "fecha_final"]
+        labels = {
+            "process_type": "Tipo de Proceso",
+            "practice_category": "Categoría de la Práctica",
+            "estado": "Estado del Proceso",
+            "user": "Cliente",
+            "fecha_final": "Fecha de Finalización",
+        }
         widgets = {
             "fecha_final": forms.DateTimeInput(
                 attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"
@@ -277,6 +309,9 @@ class ProcessProgressForm(forms.ModelForm):
     class Meta:
         model = Process
         fields = ["estado"]
+        labels = {
+            "estado": "Estado del Proceso",
+        }
         widgets = {"estado": forms.Select(choices=ProcessStatusChoices.choices)}
 
 
@@ -284,6 +319,11 @@ class ProcessChecklistItemForm(forms.ModelForm):
     class Meta:
         model = ProcessChecklistItem
         fields = ["status", "started_at", "completed_at"]
+        labels = {
+            "status": "Estado del Ítem",
+            "started_at": "Fecha de Inicio",
+            "completed_at": "Fecha de Finalización",
+        }
         widgets = {
             "started_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
             "completed_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
@@ -303,6 +343,9 @@ class ProcessAssignmentForm(forms.ModelForm):
     class Meta:
         model = Process
         fields = ["assigned_to"]
+        labels = {
+            "assigned_to": "Asignar a Usuario Interno",
+        }
         widgets = {
             "assigned_to": forms.Select(attrs={"class": "form-select"}),
         }
@@ -319,6 +362,9 @@ class AnotacionForm(forms.ModelForm):
     class Meta:
         model = Anotacion
         fields = ["contenido"]
+        labels = {
+            "contenido": "Contenido de la Anotación",
+        }
         widgets = {
             "fecha_final": forms.DateTimeInput(
                 attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"
@@ -380,6 +426,22 @@ class EquipmentForm(forms.ModelForm):
             "estado_actual",
             "sede",
         ]
+        labels = {
+            "nombre": "Nombre del Equipo",
+            "marca": "Marca",
+            "modelo": "Modelo",
+            "serial": "Serial",
+            "practica_asociada": "Práctica Asociada",
+            "fecha_adquisicion": "Fecha de Adquisición",
+            "fecha_vigencia_licencia": "Vigencia de la Licencia",
+            "fecha_ultimo_control_calidad": "Último Control de Calidad",
+            "fecha_vencimiento_control_calidad": "Vencimiento del Control de Calidad",
+            "tiene_proceso_de_asesoria": "Tiene Proceso de Asesoría Activo",
+            "user": "Cliente Propietario",
+            "process": "Proceso Principal Asociado",
+            "estado_actual": "Estado Actual",
+            "sede": "Sede",
+        }
         widgets = {
             "fecha_adquisicion": forms.DateInput(attrs={"type": "date"}),
             "fecha_vigencia_licencia": forms.DateInput(attrs={"type": "date"}),
@@ -394,6 +456,11 @@ class HistorialTuboRayosXForm(forms.ModelForm):
     class Meta:
         model = HistorialTuboRayosX
         fields = ["marca", "modelo", "serial"]
+        labels = {
+            "marca": "Marca del Tubo de Rayos X",
+            "modelo": "Modelo del Tubo de Rayos X",
+            "serial": "Serial del Tubo de Rayos X",
+        }
 
 
 def load_user_processes(request):

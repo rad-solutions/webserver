@@ -44,6 +44,9 @@ class ReportAPITest(TestCase):
             is_superuser=True,
         )
 
+        self.role_dtp, _ = Role.objects.get_or_create(name=RoleChoices.DIRECTOR_TECNICO)
+        self.admin_user.roles.add(self.role_dtp)
+
         self.temp_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         self.temp_file.write(b"contenido de prueba del PDF")
         self.temp_file.close()
@@ -726,6 +729,18 @@ class ReportAPITest(TestCase):
         )
         self.assertEqual(response.context["start_date"], start_date_filter)
         self.assertEqual(response.context["end_date"], end_date_filter)
+
+    def test_report_create_view_shows_correct_labels(self):
+        """Verifica que el formulario de creación de reportes muestra las etiquetas en español."""
+        self.client.login(username="adminuser", password="adminpassword")
+        url = reverse("report_create")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        # Verificar algunas de las nuevas etiquetas
+        self.assertContains(response, "Título del Reporte")
+        self.assertContains(response, "Archivo PDF")
+        self.assertContains(response, "Fecha de Vencimiento")
 
 
 class ReportStatusAndNoteTest(TestCase):

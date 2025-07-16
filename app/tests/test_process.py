@@ -742,6 +742,20 @@ class ProcessAPITest(TestCase):
             match_item2, "No se encontró el guion para el ítem 2 incompleto."
         )
 
+    def test_process_create_view_shows_correct_labels(self):
+        """Verifica que el formulario de creación de procesos muestra las etiquetas en español."""
+        self.client.login(
+            username="admin_proc", password="password"
+        )  # Usar un usuario con permisos
+        url = reverse("process_create")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        # Verificar algunas de las nuevas etiquetas
+        self.assertContains(response, "Tipo de Proceso")
+        self.assertContains(response, "Cliente")
+        self.assertContains(response, "Fecha de Finalización")
+
 
 class ProcessAssignmentTest(TestCase):
     def setUp(self):
