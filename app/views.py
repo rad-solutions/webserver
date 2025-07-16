@@ -807,6 +807,28 @@ class UserListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     permission_required = "app.view_user"
     raise_exception = True
 
+    def get_context_data(self, **kwargs):
+        """Añade la lógica para mostrar los roles de cada usuario."""
+        # Primero, obtenemos el contexto base de la clase padre
+        context = super().get_context_data(**kwargs)
+
+        # Obtenemos la lista de usuarios del contexto
+        users_list = context["users"]
+
+        # Iteramos sobre cada usuario para añadirle la cadena de roles
+        for user in users_list:
+            # Obtenemos los nombres "display" de todos los roles y los unimos con una coma
+            # Ej: "Gerente, Personal Técnico"
+            roles_display = ", ".join(
+                [role.get_name_display() for role in user.roles.all()]
+            )
+            # Adjuntamos la cadena como un nuevo atributo al objeto user
+            user.roles_display_string = (
+                roles_display if roles_display else "Sin rol asignado"
+            )
+
+        return context
+
     def handle_no_permission(self):
         if not self.request.user.is_authenticated:
             return redirect_to_login(
