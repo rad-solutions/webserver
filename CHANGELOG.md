@@ -1,3 +1,12 @@
+# [1.40.0](https://github.com/rad-solutions/webserver/compare/v1.39.0...v1.40.0) (2025-07-16)
+
+
+### Features
+
+* Fix labels and help text in User Creation Form. ([91594c4](https://github.com/rad-solutions/webserver/commit/91594c4ddbe1ab2f684ab867d6eacd2bff51b183))
+* Fix title in process_detail to show correct Process Type String (For example, Calculo de Blindajes instead of calculo_blindajes). ([460ac1a](https://github.com/rad-solutions/webserver/commit/460ac1adb1bde7098c3fda8fa323d4fb6aca01b7))
+* Labels on forms now in Spanish and well written. Corresponding tests added. ([229f1a1](https://github.com/rad-solutions/webserver/commit/229f1a15603a80a0c5d1a860be28d600d697afa8))
+
 # [1.39.0](https://github.com/rad-solutions/webserver/compare/v1.38.0...v1.39.0) (2025-07-16)
 
 
