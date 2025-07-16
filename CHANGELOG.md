@@ -1,3 +1,10 @@
+# [1.39.0](https://github.com/rad-solutions/webserver/compare/v1.38.0...v1.39.0) (2025-07-16)
+
+
+### Features
+
+* Implement dynamic host configuration for deployments ([2b776dd](https://github.com/rad-solutions/webserver/commit/2b776dd3e77f8ef04e80d4c9ac8411efa99a854f))
+
 # [1.38.0](https://github.com/rad-solutions/webserver/compare/v1.37.0...v1.38.0) (2025-07-15)
 
 
