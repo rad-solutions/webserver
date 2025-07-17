@@ -81,6 +81,10 @@ class ProcessStatusChoices(models.TextChoices):
     RADICADO = "radicado", _("Radicado")
     FINALIZADO = "finalizado", _("Finalizado")
     EN_MODIFICACION = "en_modificacion", _("En Modificación")
+    EN_ESPERA_ADMINISTRATIVA = (
+        "en_espera_administrativa",
+        _("En Espera Administrativa"),
+    )
 
 
 class Process(models.Model):
@@ -113,7 +117,7 @@ class Process(models.Model):
         },
     )
     estado = models.CharField(
-        max_length=15,
+        max_length=30,
         choices=ProcessStatusChoices.choices,
         default=ProcessStatusChoices.EN_PROGRESO,
     )
