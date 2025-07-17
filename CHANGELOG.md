@@ -1,3 +1,10 @@
+# [1.42.0](https://github.com/rad-solutions/webserver/compare/v1.41.0...v1.42.0) (2025-07-17)
+
+
+### Features
+
+* Fix error report detail crash when no process asociated to it. ([b16aec0](https://github.com/rad-solutions/webserver/commit/b16aec005ba648725baff5f54175b3ed068cff00))
+
 # [1.41.0](https://github.com/rad-solutions/webserver/compare/v1.40.0...v1.41.0) (2025-07-17)
 
 
