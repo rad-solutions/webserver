@@ -19,6 +19,7 @@
                             <th>Nombre</th>
                             <th>Apellido</th>
                             <th>Email</th>
+                            <th>Perfil de Usuario</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -29,6 +30,7 @@
                             <td>{{ user.first_name }}</td>
                             <td>{{ user.last_name }}</td>
                             <td>{{ user.email }}</td>
+                            <td>{{ user.roles_display_string }}</td>
                             <td>
                                 <a href="{% url 'user_detail' user.id %}" class="btn btn-sm btn-info">Ver</a>
                                 <a href="{% url 'user_update' user.id %}" class="btn btn-sm btn-warning">Editar</a>
