@@ -1,3 +1,14 @@
+# [1.43.0](https://github.com/rad-solutions/webserver/compare/v1.42.0...v1.43.0) (2025-07-17)
+
+
+### Features
+
+* Add 'En Espera Administrativa' process status ([5a452e6](https://github.com/rad-solutions/webserver/commit/5a452e6fd1744c0d23ce6119ac1c3dcf80b49069))
+* Add 'Requiere Corrección' status to Report model ([984a63e](https://github.com/rad-solutions/webserver/commit/984a63e7648935ecf36d064b7c3290958113da21))
+* Add 'Requiere Corrección' status to Report model ([a76b675](https://github.com/rad-solutions/webserver/commit/a76b675e536ae84887a64958e166e1b8a0a2f468))
+* Fix migrations inconsistency 3 ([6dd6481](https://github.com/rad-solutions/webserver/commit/6dd6481b16c67678a2df254ac8929c55076f81b6))
+* User role now showing on the User List. ([1dc7daf](https://github.com/rad-solutions/webserver/commit/1dc7daf32d428d3ae3cb5fd4f70f09323793972f))
+
 # [1.42.0](https://github.com/rad-solutions/webserver/compare/v1.41.0...v1.42.0) (2025-07-17)
 
 
