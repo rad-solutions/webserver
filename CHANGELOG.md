@@ -1,3 +1,10 @@
+# [1.41.0](https://github.com/rad-solutions/webserver/compare/v1.40.0...v1.41.0) (2025-07-17)
+
+
+### Features
+
+* Add due_date to ProcessChecklistItem model ([1e838e8](https://github.com/rad-solutions/webserver/commit/1e838e82934a02d1c7bfa2cb3d3fce780d98c619))
+
 # [1.40.0](https://github.com/rad-solutions/webserver/compare/v1.39.0...v1.40.0) (2025-07-16)
 
 
