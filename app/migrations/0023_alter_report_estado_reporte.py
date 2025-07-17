@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("app", "0021_processchecklistitem_status_checklistitemstatuslog"),
+        ("app", "0022_processchecklistitem_due_date"),
     ]
 
     operations = [
