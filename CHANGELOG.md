@@ -1,3 +1,10 @@
+# [1.44.0](https://github.com/rad-solutions/webserver/compare/v1.43.1...v1.44.0) (2025-07-18)
+
+
+### Features
+
+* Changed table labels in report list to make them more clear. ([9c39955](https://github.com/rad-solutions/webserver/commit/9c3995546ac55cec8d81a9d8de031ac2be65a534))
+
 ## [1.43.1](https://github.com/rad-solutions/webserver/compare/v1.43.0...v1.43.1) (2025-07-18)
 
 
