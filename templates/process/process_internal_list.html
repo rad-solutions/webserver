@@ -147,7 +147,17 @@
                         <tr>
                             <td>{{ proceso.get_process_type_display }}</td>
                             <td>{{ proceso.user.client_profile.razon_social|default:proceso.user.username }}</td>
-                            <td>{{ proceso.assigned_to.get_full_name|default:"Sin asignar" }}</td>
+                            <td>
+                                {% if proceso.assigned_to.all %}
+                                    <ul class="list-unstyled mb-0 small">
+                                        {% for user_assigned in proceso.assigned_to.all %}
+                                            <li>{{ user_assigned.get_full_name|default:user_assigned.username }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <span class="text-muted">Sin asignar</span>
+                                {% endif %}
+                            </td>
                             <td>{{ proceso.fecha_final|date:"d/m/Y"|default:"N/A" }}</td>
                             <td>
                                 {% with porcentaje=proceso.get_progress_percentage %}
