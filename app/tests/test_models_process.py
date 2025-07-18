@@ -612,10 +612,12 @@ class ProcessChecklistModelTests(TestCase):
             process_type=ProcessTypeChoices.CONTROL_CALIDAD,
             user=self.test_user,
             estado=ProcessStatusChoices.EN_PROGRESO,
-            assigned_to=self.technical_user,
         )
+        process.assigned_to.add(self.technical_user)
+
         process.refresh_from_db()
-        self.assertEqual(process.assigned_to, self.technical_user)
+        self.assertEqual(process.assigned_to.count(), 1)
+        self.assertEqual(process.assigned_to.first(), self.technical_user)
 
         # 2. Test checklist item tracking fields
         item = process.checklist_items.first()

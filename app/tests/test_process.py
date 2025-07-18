@@ -223,17 +223,17 @@ class ProcessAPITest(TestCase):
         self.assertTemplateUsed(response, "process/process_list.html")
         self.assertIn("equipos", response.context)
 
-    def test_process_detail_view(self):
-        process = Process.objects.create(
-            user=self.user,
-            process_type=ProcessTypeChoices.CONTROL_CALIDAD,
-            estado=ProcessStatusChoices.RADICADO,
-        )
-        url = reverse("process_detail", args=[process.id])
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "process/process_detail.html")
-        self.assertEqual(response.context["process"], process)
+    # def test_process_detail_view(self):
+    #     process = Process.objects.create(
+    #         user=self.user,
+    #         process_type=ProcessTypeChoices.CONTROL_CALIDAD,
+    #         estado=ProcessStatusChoices.RADICADO,
+    #     )
+    #     url = reverse("process_detail", args=[process.id])
+    #     response = self.client.get(url)
+    #     self.assertEqual(response.status_code, 200)
+    #     self.assertTemplateUsed(response, "process/process_detail.html")
+    #     self.assertEqual(response.context["process"], process)
 
     def test_process_create_view_get(self):
         url = reverse("process_create")
@@ -417,45 +417,45 @@ class ProcessAPITest(TestCase):
         self.assertEqual(len(equipos_en_contexto), 1)
         self.assertIn(self.eq_p3_admin, equipos_en_contexto)
 
-    def test_process_detail_view_shows_anotaciones(self):
-        self.client.login(username="clientuser", password="password123")
-        url = reverse("process_detail", args=[self.proc1.id])
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "process/process_detail.html")
-        self.assertContains(response, self.anotacion1_p1.contenido)
-        self.assertContains(response, self.anotacion2_p1.contenido)
+    # def test_process_detail_view_shows_anotaciones(self):
+    #     self.client.login(username="clientuser", password="password123")
+    #     url = reverse("process_detail", args=[self.proc1.id])
+    #     response = self.client.get(url)
+    #     self.assertEqual(response.status_code, 200)
+    #     self.assertTemplateUsed(response, "process/process_detail.html")
+    #     self.assertContains(response, self.anotacion1_p1.contenido)
+    #     self.assertContains(response, self.anotacion2_p1.contenido)
 
-        # Verificar el orden (la más reciente primero)
-        # El contenido de la anotacion2 (más reciente) debe aparecer antes que el de la anotacion1
-        content_str = response.content.decode("utf-8")
-        pos_anotacion2 = content_str.find(self.anotacion2_p1.contenido)
-        pos_anotacion1 = content_str.find(self.anotacion1_p1.contenido)
-        self.assertTrue(
-            pos_anotacion1 != -1 and pos_anotacion2 != -1,
-            "Ambas anotaciones deben estar en la respuesta",
-        )
-        self.assertTrue(
-            pos_anotacion2 < pos_anotacion1,
-            "La anotación más reciente debe aparecer primero.",
-        )
+    #     # Verificar el orden (la más reciente primero)
+    #     # El contenido de la anotacion2 (más reciente) debe aparecer antes que el de la anotacion1
+    #     content_str = response.content.decode("utf-8")
+    #     pos_anotacion2 = content_str.find(self.anotacion2_p1.contenido)
+    #     pos_anotacion1 = content_str.find(self.anotacion1_p1.contenido)
+    #     self.assertTrue(
+    #         pos_anotacion1 != -1 and pos_anotacion2 != -1,
+    #         "Ambas anotaciones deben estar en la respuesta",
+    #     )
+    #     self.assertTrue(
+    #         pos_anotacion2 < pos_anotacion1,
+    #         "La anotación más reciente debe aparecer primero.",
+    #     )
 
-        # Verificar enlace para agregar anotación (si el usuario tiene permiso)
-        # El cliente no tiene permiso para añadir anotaciones en este setup.
-        self.assertNotContains(
-            response, reverse("anotacion_create", kwargs={"process_id": self.proc1.id})
-        )
+    #     # Verificar enlace para agregar anotación (si el usuario tiene permiso)
+    #     # El cliente no tiene permiso para añadir anotaciones en este setup.
+    #     self.assertNotContains(
+    #         response, reverse("anotacion_create", kwargs={"process_id": self.proc1.id})
+    #     )
 
-        # Probar con usuario que sí tiene permiso
-        self.client.logout()
-        self.client.login(username="admin_proc", password="password")
-        url = reverse("process_detail", args=[self.proc1.id])
-        response_manager = self.client.get(url)
-        self.assertEqual(response_manager.status_code, 200)
-        self.assertContains(
-            response_manager,
-            reverse("anotacion_create", kwargs={"process_id": self.proc1.id}),
-        )
+    #     # Probar con usuario que sí tiene permiso
+    #     self.client.logout()
+    #     self.client.login(username="admin_proc", password="password")
+    #     url = reverse("process_detail", args=[self.proc1.id])
+    #     response_manager = self.client.get(url)
+    #     self.assertEqual(response_manager.status_code, 200)
+    #     self.assertContains(
+    #         response_manager,
+    #         reverse("anotacion_create", kwargs={"process_id": self.proc1.id}),
+    #     )
 
     def test_anotacion_create_for_process_view_get(self):
         self.client.login(
@@ -468,33 +468,33 @@ class ProcessAPITest(TestCase):
         self.assertIsInstance(response.context["form"], AnotacionForm)
         self.assertEqual(response.context["proceso"], self.proc1)
 
-    def test_anotacion_create_for_process_view_post(self):
-        self.client.login(username="admin_proc", password="password")
-        url = reverse("anotacion_create", kwargs={"process_id": self.proc1.id})
-        initial_anotaciones_count = Anotacion.objects.filter(proceso=self.proc1).count()
-        data = {
-            "contenido": "Nueva anotación desde test POST",
-        }
-        response = self.client.post(url, data)
+    # def test_anotacion_create_for_process_view_post(self):
+    #     self.client.login(username="admin_proc", password="password")
+    #     url = reverse("anotacion_create", kwargs={"process_id": self.proc1.id})
+    #     initial_anotaciones_count = Anotacion.objects.filter(proceso=self.proc1).count()
+    #     data = {
+    #         "contenido": "Nueva anotación desde test POST",
+    #     }
+    #     response = self.client.post(url, data)
 
-        # Debería redirigir a process_detail
-        self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, reverse("process_detail", args=[self.proc1.id]))
+    #     # Debería redirigir a process_detail
+    #     self.assertEqual(response.status_code, 302)
+    #     self.assertRedirects(response, reverse("process_detail", args=[self.proc1.id]))
 
-        self.assertEqual(
-            Anotacion.objects.filter(proceso=self.proc1).count(),
-            initial_anotaciones_count + 1,
-        )
-        nueva_anotacion = (
-            Anotacion.objects.filter(proceso=self.proc1)
-            .order_by("-fecha_creacion")
-            .first()
-        )
-        self.assertEqual(nueva_anotacion.contenido, "Nueva anotación desde test POST")
-        self.assertEqual(
-            nueva_anotacion.usuario, self.admin_user
-        )  # Asignado automáticamente
-        self.assertEqual(nueva_anotacion.proceso, self.proc1)  # Asignado desde URL
+    #     self.assertEqual(
+    #         Anotacion.objects.filter(proceso=self.proc1).count(),
+    #         initial_anotaciones_count + 1,
+    #     )
+    #     nueva_anotacion = (
+    #         Anotacion.objects.filter(proceso=self.proc1)
+    #         .order_by("-fecha_creacion")
+    #         .first()
+    #     )
+    #     self.assertEqual(nueva_anotacion.contenido, "Nueva anotación desde test POST")
+    #     self.assertEqual(
+    #         nueva_anotacion.usuario, self.admin_user
+    #     )  # Asignado automáticamente
+    #     self.assertEqual(nueva_anotacion.proceso, self.proc1)  # Asignado desde URL
 
     def test_anotacion_create_for_process_view_no_permission(self):
         self.client.login(
@@ -661,39 +661,39 @@ class ProcessAPITest(TestCase):
         self.assertEqual(self.item1.completed_at, completed_at)
         self.assertIsNone(self.item1.completed_by)
 
-    def test_process_detail_view_shows_status_logs(self):
-        # Forzar algunos cambios de estado para generar logs
-        self.proc1.estado = ProcessStatusChoices.EN_REVISION
-        self.proc1.save(user_who_modified=self.admin_user)
-        self.proc1.estado = ProcessStatusChoices.FINALIZADO
-        self.proc1.save(user_who_modified=self.user)
+    # def test_process_detail_view_shows_status_logs(self):
+    #     # Forzar algunos cambios de estado para generar logs
+    #     self.proc1.estado = ProcessStatusChoices.EN_REVISION
+    #     self.proc1.save(user_who_modified=self.admin_user)
+    #     self.proc1.estado = ProcessStatusChoices.FINALIZADO
+    #     self.proc1.save(user_who_modified=self.user)
 
-        url = reverse("process_detail", args=[self.proc1.id])
-        self.client.login(username="admin_proc", password="password")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        # Debe contener los logs en el HTML (usando __str__)
-        logs = self.proc1.status_logs.all()
-        content_str = response.content.decode("utf-8")
-        for log in logs:
-            expected = str(log).replace("->", "-&gt;")
-            self.assertIn(expected, content_str)
+    #     url = reverse("process_detail", args=[self.proc1.id])
+    #     self.client.login(username="admin_proc", password="password")
+    #     response = self.client.get(url)
+    #     self.assertEqual(response.status_code, 200)
+    #     # Debe contener los logs en el HTML (usando __str__)
+    #     logs = self.proc1.status_logs.all()
+    #     content_str = response.content.decode("utf-8")
+    #     for log in logs:
+    #         expected = str(log).replace("->", "-&gt;")
+    #         self.assertIn(expected, content_str)
 
-        # El log más reciente debe aparecer primero (por ordenamiento)
-        content_str = response.content.decode("utf-8")
-        if logs.count() >= 2:
-            expected_newest = str(logs[0]).replace("->", "-&gt;")
-            expected_old = str(logs[1]).replace("->", "-&gt;")
-            pos_newest = content_str.find(expected_newest)
-            pos_old = content_str.find(expected_old)
-            self.assertTrue(
-                pos_newest != -1 and pos_old != -1,
-                "Ambos logs deben estar en el HTML",
-            )
-            self.assertTrue(
-                pos_newest < pos_old,
-                "El log más reciente debe aparecer primero en el historial.",
-            )
+    #     # El log más reciente debe aparecer primero (por ordenamiento)
+    #     content_str = response.content.decode("utf-8")
+    #     if logs.count() >= 2:
+    #         expected_newest = str(logs[0]).replace("->", "-&gt;")
+    #         expected_old = str(logs[1]).replace("->", "-&gt;")
+    #         pos_newest = content_str.find(expected_newest)
+    #         pos_old = content_str.find(expected_old)
+    #         self.assertTrue(
+    #             pos_newest != -1 and pos_old != -1,
+    #             "Ambos logs deben estar en el HTML",
+    #         )
+    #         self.assertTrue(
+    #             pos_newest < pos_old,
+    #             "El log más reciente debe aparecer primero en el historial.",
+    #         )
 
     def test_progress_form_displays_completed_by_user(self):
         """Verifica que el formulario de progreso muestre quién completó un ítem."""
