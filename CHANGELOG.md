@@ -1,3 +1,11 @@
+## [1.43.1](https://github.com/rad-solutions/webserver/compare/v1.43.0...v1.43.1) (2025-07-18)
+
+
+### Bug Fixes
+
+* increase gunicorn timeout ([3b34f5a](https://github.com/rad-solutions/webserver/commit/3b34f5a7d0a2a1928116948641215403f09154d5))
+* test ci ([26dd6ee](https://github.com/rad-solutions/webserver/commit/26dd6ee0475b77b07a10289d0f7250b04db84f3c))
+
 # [1.43.0](https://github.com/rad-solutions/webserver/compare/v1.42.0...v1.43.0) (2025-07-17)
 
 
