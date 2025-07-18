@@ -1,3 +1,10 @@
+# [1.45.0](https://github.com/rad-solutions/webserver/compare/v1.44.0...v1.45.0) (2025-07-18)
+
+
+### Features
+
+* Equipos_list page improved. Added marking to near-expiration equipment and added a graph of CC by interval time for Gerente users. Corresponding tests added. ([6e7c011](https://github.com/rad-solutions/webserver/commit/6e7c0114b09c14af9d27692b6cac5b2e9c894b37))
+
 # [1.44.0](https://github.com/rad-solutions/webserver/compare/v1.43.1...v1.44.0) (2025-07-18)
 
 
