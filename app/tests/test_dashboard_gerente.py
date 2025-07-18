@@ -50,25 +50,28 @@ class GerenteDashboardTest(TestCase):
         hoy = timezone.now()
         self.proceso_vencido = Process.objects.create(
             user=self.cliente,
-            assigned_to=self.gerente,
             process_type=ProcessTypeChoices.ASESORIA,
             estado=ProcessStatusChoices.EN_PROGRESO,
             fecha_final=hoy - timedelta(days=15),
         )
+        self.proceso_vencido.assigned_to.add(self.gerente)
+        self.proceso_vencido.save()
         self.proceso_proximo = Process.objects.create(
             user=self.cliente,
-            assigned_to=self.gerente,
             process_type=ProcessTypeChoices.CONTROL_CALIDAD,
             estado=ProcessStatusChoices.EN_PROGRESO,
             fecha_final=hoy + timedelta(days=15),
         )
+        self.proceso_proximo.assigned_to.add(self.gerente)
+        self.proceso_proximo.save()
         self.proceso_en_progreso = Process.objects.create(
             user=self.cliente,
-            assigned_to=self.gerente,
             process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
             estado=ProcessStatusChoices.EN_PROGRESO,
             fecha_final=hoy + timedelta(days=90),
         )
+        self.proceso_en_progreso.assigned_to.add(self.gerente)
+        self.proceso_en_progreso.save()
         self.proceso_sin_fecha = Process.objects.create(
             user=self.cliente,
             process_type=ProcessTypeChoices.OTRO,

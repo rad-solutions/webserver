@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -101,10 +102,8 @@ class Process(models.Model):
         verbose_name=_("Categoría de Práctica"),
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="processes")
-    assigned_to = models.ForeignKey(
+    assigned_to = models.ManyToManyField(
         User,
-        on_delete=models.SET_NULL,
-        null=True,
         blank=True,
         related_name="assigned_processes",
         verbose_name=_("Asignado a"),
@@ -123,6 +122,13 @@ class Process(models.Model):
     )
     fecha_inicio = models.DateTimeField(auto_now_add=True)
     fecha_final = models.DateTimeField(null=True, blank=True)
+
+    def clean(self):
+        super().clean()
+        if self.pk and self.assigned_to.count() > 3:
+            raise ValidationError(
+                _("No se pueden asignar más de 3 usuarios a un proceso.")
+            )
 
     def save(self, *args, **kwargs):
         user_who_modified = kwargs.pop("user_who_modified", None)

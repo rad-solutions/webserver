@@ -32,12 +32,17 @@
                     ({{ process.user.first_name }} {{ process.user.last_name }} - Razón Social: {{ process.user.client_profile.razon_social }})
                 </div>
             </div>
-            {% if process.assigned_to %}
+            {% if process.assigned_to.all %}
                 <div class="row mb-3">
-                    <div class="col-md-4"><strong>Asociado a:</strong></div>
+                    <div class="col-md-4"><strong>Asignado a:</strong></div>
                     <div class="col-md-8">
-                        <a href="{% url 'user_detail' process.assigned_to.id %}">{{ process.assigned_to.username }}</a>
-                        ({{ process.assigned_to.first_name }} {{ process.assigned_to.last_name }})
+                        <ul class="list-unstyled mb-0">
+                            {% for user_assigned in process.assigned_to.all %}
+                                <li>
+                                    <a href="{% url 'user_detail' user_assigned.id %}">{{ user_assigned.get_full_name|default:user_assigned.username }}</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
                     </div>
                 </div>
             {% endif %}

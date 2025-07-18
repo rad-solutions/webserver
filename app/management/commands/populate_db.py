@@ -156,7 +156,6 @@ class Command(BaseCommand):
                     user=user_obj,
                     process_type=process_type,
                     practice_category=practice_category,
-                    assigned_to=assigned_user,  # Assign internal staff
                     estado=random.choice(ProcessStatusChoices.choices)[0],
                     fecha_final=(
                         fake.date_time_this_decade(
@@ -166,6 +165,7 @@ class Command(BaseCommand):
                         else None
                     ),
                 )
+                process.assigned_to.add(assigned_user) if assigned_user else None
                 processes.append(process)
                 self.stdout.write(
                     self.style.SUCCESS(f"Created process for user: {user_obj.username}")

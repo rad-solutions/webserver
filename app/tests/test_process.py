@@ -766,6 +766,17 @@ class ProcessAssignmentTest(TestCase):
         self.user.roles.add(self.rol_cliente)
         self.gerente = User.objects.create_user(username="gerente1", password="pass")
         self.gerente.roles.add(self.rol_gerente)
+        self.rol_tecnico, _ = Role.objects.get_or_create(
+            name=RoleChoices.PERSONAL_TECNICO_APOYO
+        )
+        self.tecnico1 = User.objects.create_user(username="tecnico1", password="pass")
+        self.tecnico1.roles.add(self.rol_tecnico)
+        self.tecnico2 = User.objects.create_user(username="tecnico2", password="pass")
+        self.tecnico2.roles.add(self.rol_tecnico)
+        self.tecnico3 = User.objects.create_user(username="tecnico3", password="pass")
+        self.tecnico3.roles.add(self.rol_tecnico)
+        self.tecnico4 = User.objects.create_user(username="tecnico4", password="pass")
+        self.tecnico4.roles.add(self.rol_tecnico)
         self.process = Process.objects.create(
             user=self.user,
             process_type=ProcessTypeChoices.ASESORIA,
@@ -799,7 +810,43 @@ class ProcessAssignmentTest(TestCase):
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, 302)
         self.process.refresh_from_db()
-        self.assertEqual(self.process.assigned_to, self.gerente)
+        self.assertEqual(self.process.assigned_to.count(), 1)
+        self.assertEqual(self.process.assigned_to.first(), self.gerente)
+
+    def test_assignment_view_post_valid_multiple_users(self):
+        """Prueba que se puedan asignar múltiples usuarios a un proceso."""
+        self.client.login(username="gerente1", password="pass")
+        data = {
+            # Enviar una lista de IDs para el campo ManyToManyField
+            "assigned_to": [self.gerente.id, self.tecnico1.id]
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, 302)
+        self.process.refresh_from_db()
+        self.assertEqual(self.process.assigned_to.count(), 2)
+        self.assertIn(self.gerente, self.process.assigned_to.all())
+        self.assertIn(self.tecnico1, self.process.assigned_to.all())
+
+    def test_assignment_fails_with_more_than_three_users(self):
+        """Prueba que la validación del modelo falle al asignar más de 3 usuarios."""
+        self.client.login(username="gerente1", password="pass")
+        data = {
+            "assigned_to": [
+                self.gerente.id,
+                self.tecnico1.id,
+                self.tecnico2.id,
+                self.tecnico3.id,  # 4 usuarios
+            ]
+        }
+        response = self.client.post(self.url, data)
+        # La validación del modelo (método clean) hace que el formulario no sea válido
+        self.assertEqual(response.status_code, 200)
+        form_in_context = response.context.get("form")
+        self.assertFormError(
+            form_in_context,
+            "assigned_to",
+            "No se pueden asignar más de 3 usuarios a un proceso.",
+        )
 
     def test_assignment_view_post_invalid(self):
         self.client.login(username="gerente1", password="pass")
@@ -813,7 +860,7 @@ class ProcessAssignmentTest(TestCase):
         self.assertFormError(
             form,
             "assigned_to",
-            "Select a valid choice. That choice is not one of the available choices.",
+            "Select a valid choice. 99999 is not one of the available choices.",
         )
 
 
@@ -862,43 +909,45 @@ class ProcessInternalListViewTest(TestCase):
         hoy = tz.now().date()
         cls.p1 = Process.objects.create(
             user=cls.cliente_zzz,
-            assigned_to=cls.tecnico_1,
             process_type=ProcessTypeChoices.ASESORIA,
             estado=ProcessStatusChoices.EN_PROGRESO,
             fecha_inicio=hoy - timedelta(days=10),
             fecha_final=hoy + timedelta(days=30),
         )
+        cls.p1.assigned_to.add(cls.tecnico_1)  # Asignar a tecnico_1
+        cls.p1.refresh_from_db()
         Process.objects.filter(pk=cls.p1.pk).update(
             fecha_inicio=hoy - timedelta(days=10), fecha_final=hoy + timedelta(days=30)
         )
         cls.p1.refresh_from_db()
         cls.p2 = Process.objects.create(
             user=cls.cliente_aaa,
-            assigned_to=cls.tecnico_2,
             process_type=ProcessTypeChoices.CONTROL_CALIDAD,
             estado=ProcessStatusChoices.FINALIZADO,
             fecha_inicio=hoy - timedelta(days=20),
             fecha_final=hoy + timedelta(days=10),
         )
+        cls.p2.assigned_to.add(cls.tecnico_2)  # Asignar a tecnico_2
+        cls.p2.refresh_from_db()
         Process.objects.filter(pk=cls.p2.pk).update(
             fecha_inicio=hoy - timedelta(days=20), fecha_final=hoy + timedelta(days=10)
         )
         cls.p2.refresh_from_db()
         cls.p3 = Process.objects.create(
             user=cls.cliente_aaa,
-            assigned_to=cls.tecnico_1,
             process_type=ProcessTypeChoices.ASESORIA,
             estado=ProcessStatusChoices.EN_PROGRESO,
             fecha_inicio=hoy - timedelta(days=5),
             fecha_final=None,
         )
+        cls.p3.assigned_to.add(cls.tecnico_1)  # Asignar a tecnico_1
+        cls.p3.refresh_from_db()
         Process.objects.filter(pk=cls.p3.pk).update(
             fecha_inicio=hoy - timedelta(days=5), fecha_final=None
         )
         cls.p3.refresh_from_db()
         cls.p4 = Process.objects.create(
             user=cls.cliente_zzz,
-            assigned_to=None,
             process_type=ProcessTypeChoices.OTRO,
             estado=ProcessStatusChoices.RADICADO,
             fecha_inicio=hoy - timedelta(days=30),
@@ -925,12 +974,14 @@ class ProcessInternalListViewTest(TestCase):
 
     def test_filter_by_assigned_user(self):
         """Prueba el filtro por usuario asignado."""
+        # p1 y p3 están asignados a tecnico_1
         response = self.client.get(self.url, {"assigned_user": self.tecnico_1.id})
         self.assertEqual(response.status_code, 200)
         procesos = response.context["procesos"]
         self.assertEqual(len(procesos), 2)
         self.assertIn(self.p1, procesos)
         self.assertIn(self.p3, procesos)
+        self.assertNotIn(self.p2, procesos)  # p2 está asignado a tecnico_2
 
     def test_filter_by_process_type(self):
         """Prueba el filtro por tipo de proceso."""
@@ -1005,7 +1056,7 @@ class ProcessInternalListViewTest(TestCase):
         )
         procesos = list(response.context["procesos"])
         # Ambos (p1, p3) están asignados a tecnico_juan, el orden secundario es fecha_inicio desc
-        expected_order = [self.p3, self.p1]
+        expected_order = [self.p1, self.p3]
         self.assertEqual(procesos, expected_order)
 
 

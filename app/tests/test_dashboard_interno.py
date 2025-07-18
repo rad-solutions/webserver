@@ -58,40 +58,45 @@ class InternoDashboardTest(TestCase):
         # Procesos asignados al usuario_interno
         self.proceso_vencido = Process.objects.create(
             user=self.cliente,
-            assigned_to=self.usuario_interno,
             process_type=ProcessTypeChoices.ASESORIA,
             estado=ProcessStatusChoices.EN_PROGRESO,
             fecha_final=hoy - timedelta(days=10),
         )
+        self.proceso_vencido.assigned_to.add(self.usuario_interno)
+        self.proceso_vencido.save()
         self.proceso_proximo = Process.objects.create(
             user=self.cliente,
-            assigned_to=self.usuario_interno,
             process_type=ProcessTypeChoices.CONTROL_CALIDAD,
             estado=ProcessStatusChoices.EN_PROGRESO,
             fecha_final=hoy + timedelta(days=20),
         )
+        self.proceso_proximo.assigned_to.add(self.usuario_interno)
+        self.proceso_proximo.save()
         self.proceso_en_progreso = Process.objects.create(
             user=self.cliente,
-            assigned_to=self.usuario_interno,
             process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
             estado=ProcessStatusChoices.EN_PROGRESO,
             fecha_final=hoy + timedelta(days=60),
         )
+        self.proceso_en_progreso.assigned_to.add(self.usuario_interno)
+        self.proceso_en_progreso.save()
         self.proceso_finalizado = Process.objects.create(
             user=self.cliente,
-            assigned_to=self.usuario_interno,
             process_type=ProcessTypeChoices.OTRO,
             estado=ProcessStatusChoices.FINALIZADO,
             fecha_final=hoy - timedelta(days=30),
         )
+        self.proceso_finalizado.assigned_to.add(self.usuario_interno)
+        self.proceso_finalizado.save()
         # Proceso asignado a OTRO usuario (no debe aparecer)
         self.proceso_de_otro = Process.objects.create(
             user=self.cliente,
-            assigned_to=self.otro_usuario_interno,
             process_type=ProcessTypeChoices.ASESORIA,
             estado=ProcessStatusChoices.EN_PROGRESO,
             fecha_final=hoy + timedelta(days=5),
         )
+        self.proceso_de_otro.assigned_to.add(self.otro_usuario_interno)
+        self.proceso_de_otro.save()
 
         self.url = reverse("dashboard_interno")
 
