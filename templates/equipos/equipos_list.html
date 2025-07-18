@@ -9,8 +9,30 @@
         {% if perms.app.manage_equipment %}
         <a href="{% url 'equipos_create' %}" class="btn btn-primary">Crear Equipo</a>
         {% endif %}
-
     </div>
+
+    {% if show_chart %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-chart-bar me-1"></i>
+            {{ chart_data.title }}
+        </div>
+        <div class="card-body">
+            <form method="get" id="intervalForm" class="row g-3 align-items-center mb-3">
+                {% for key, value in request.GET.items %}{% if key != 'interval' %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
+                <div class="col-md-3">
+                    <label for="intervalSelect" class="form-label">Seleccionar Periodo:</label>
+                    <select name="interval" id="intervalSelect" class="form-select" onchange="document.getElementById('intervalForm').submit();">
+                        <option value="current_month" {% if selected_interval == 'current_month' %}selected{% endif %}>Mes Actual</option>
+                        <option value="last_3_months" {% if selected_interval == 'last_3_months' %}selected{% endif %}>Últimos 3 Meses</option>
+                        <option value="current_year" {% if selected_interval == 'current_year' %}selected{% endif %}>Año Actual</option>
+                    </select>
+                </div>
+            </form>
+            <canvas id="qualityControlChart" width="100%" height="30"></canvas>
+        </div>
+    </div>
+    {% endif %}
 
     <form method="get" class="mb-4 p-3 border rounded bg-light">
         <div class="row g-3 align-items-center mb-3">
@@ -193,15 +215,21 @@
                     </thead>
                     <tbody>
                         {% for equipo in equipos %}
-                        <tr>
+                        <tr class="{% if equipo.cc_vence_pronto %}table-danger{% elif equipo.licencia_vence_pronto %}table-warning{% endif %}">
                             <td>{{ equipo.marca }}</td>
                             <td>{{ equipo.modelo }}</td>
                             <td>{{ equipo.serial }}</td>
                             <td>{{ equipo.practica_asociada }}</td>
                             <td>{{ equipo.fecha_adquisicion|date:"d/m/Y" }}</td>
-                            <td>{{ equipo.fecha_vigencia_licencia|date:"d/m/Y" }}</td>
+                            <td>
+                                {{ equipo.fecha_vigencia_licencia|date:"d/m/Y" }}
+                                {% if equipo.licencia_vence_pronto %}<span class="badge bg-warning text-dark ms-1">Por Vencer</span>{% endif %}
+                            </td>
                             <td>{{ equipo.fecha_ultimo_control_calidad|date:"d/m/Y" }}</td>
-                            <td>{{ equipo.fecha_vencimiento_control_calidad|date:"d/m/Y" }}</td>
+                            <td>
+                                {{ equipo.fecha_vencimiento_control_calidad|date:"d/m/Y" }}
+                                {% if equipo.cc_vence_pronto %}<span class="badge bg-danger text-white ms-1">Vence Pronto</span>{% endif %}
+                            </td>
                             <td>{{ equipo.get_estado_actual_display }}</td>
                             <td>
                                 <a href="{% url 'equipos_detail' equipo.id %}" class="btn btn-sm btn-info">Detalles</a>
@@ -219,4 +247,33 @@
         </div>
     </div>
 </div>
+
+{% if show_chart %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctx = document.getElementById('qualityControlChart').getContext('2d');
+        const qualityControlChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: {{ chart_data.labels|safe }},
+                datasets: [{
+                    label: 'Nº de Controles de Calidad',
+                    data: {{ chart_data.data|safe }},
+                    backgroundColor: 'rgba(0, 123, 255, 0.5)',
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                },
+                responsive: true,
+                maintainAspectRatio: true
+            }
+        });
+    });
+</script>
+{% endif %}
 {% endblock %}

@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import date, timedelta
 
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
 from django.urls import reverse
 
@@ -503,3 +503,94 @@ class XRayTubeHistoryTest(TestCase):
             fecha_cambio=date(2026, 1, 1),
         )
         self.assertEqual(self.equipo.get_current_xray_tube(), nuevo)
+
+
+class EquipmentListViewExtraFeaturesTest(TestCase):
+    def setUp(self):
+        self.client_user = User.objects.create_user(
+            username="testclient", password="password"
+        )
+        client_role, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        self.client_user.roles.add(client_role)
+
+        self.admin_user = User.objects.create_user(
+            username="testadmin", password="password", is_staff=True
+        )
+        admin_role, _ = Role.objects.get_or_create(name=RoleChoices.GERENTE)
+        self.admin_user.roles.add(admin_role)
+
+        view_perm = Permission.objects.get(codename="view_equipment")
+        self.admin_user.user_permissions.add(view_perm)
+        self.client_user.user_permissions.add(view_perm)
+
+        self.url = reverse("equipos_list")
+        today = date.today()
+
+        self.eq_cc_expiring = Equipment.objects.create(
+            nombre="CC Vence Pronto",
+            user=self.client_user,
+            fecha_vencimiento_control_calidad=today + timedelta(days=15),
+        )
+        self.eq_license_expiring = Equipment.objects.create(
+            nombre="Licencia Vence Pronto",
+            user=self.client_user,
+            fecha_vigencia_licencia=today + timedelta(days=60),
+        )
+        self.eq_normal = Equipment.objects.create(
+            nombre="Equipo Normal",
+            user=self.client_user,
+            fecha_vencimiento_control_calidad=today + timedelta(days=100),
+            fecha_vigencia_licencia=today + timedelta(days=200),
+        )
+        self.eq_cc_this_month = Equipment.objects.create(
+            nombre="CC Mes Actual",
+            user=self.client_user,
+            fecha_ultimo_control_calidad=today.replace(day=5),
+        )
+
+    def test_row_highlighting_logic_in_context(self):
+        """Verifica que los flags de resaltado se calculen correctamente en el contexto."""
+        self.client.login(username="testclient", password="password")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+
+        equipos = response.context["equipos"]
+
+        eq_cc = next(e for e in equipos if e.id == self.eq_cc_expiring.id)
+        self.assertTrue(eq_cc.cc_vence_pronto)
+        self.assertFalse(eq_cc.licencia_vence_pronto)
+
+        eq_lic = next(e for e in equipos if e.id == self.eq_license_expiring.id)
+        self.assertFalse(eq_lic.cc_vence_pronto)
+        self.assertTrue(eq_lic.licencia_vence_pronto)
+
+        eq_norm = next(e for e in equipos if e.id == self.eq_normal.id)
+        self.assertFalse(eq_norm.cc_vence_pronto)
+        self.assertFalse(eq_norm.licencia_vence_pronto)
+
+    def test_chart_not_shown_for_non_gerente(self):
+        """Verifica que la gráfica no se muestre para usuarios no gerentes."""
+        self.client.login(username="testclient", password="password")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["show_chart"])
+        self.assertNotContains(response, 'id="qualityControlChart"')
+
+    def test_chart_shown_for_gerente(self):
+        """Verifica que la gráfica se muestre para usuarios gerentes."""
+        self.client.login(username="testadmin", password="password")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["show_chart"])
+        self.assertContains(response, 'id="qualityControlChart"')
+
+    def test_chart_data_for_current_month(self):
+        """Verifica que los datos de la gráfica sean correctos para el intervalo 'mes actual'."""
+        self.client.login(username="testadmin", password="password")
+        response = self.client.get(self.url, {"interval": "current_month"})
+        self.assertEqual(response.status_code, 200)
+
+        chart_data = response.context.get("chart_data")
+        self.assertIsNotNone(chart_data)
+        self.assertEqual(sum(chart_data["data"]), 1)
+        self.assertEqual(chart_data["data"][0], 1)

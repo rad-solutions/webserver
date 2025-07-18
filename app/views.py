@@ -2,13 +2,15 @@ import logging
 import os
 from datetime import date, datetime, timedelta
 
+from dateutil.relativedelta import relativedelta
 from django import forms
 from django.contrib.auth import logout
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.views import LoginView, redirect_to_login
 from django.core.exceptions import ValidationError
-from django.db.models import F, Max, Q
+from django.db.models import Count, F, Max, Q
+from django.db.models.functions import TruncMonth
 from django.forms import inlineformset_factory
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -1436,6 +1438,98 @@ class EquiposListView(LoginRequiredMixin, ListView):
         context["end_vig_lic_date"] = self.request.GET.get("end_vig_lic_date", "")
         context["end_last_cc_date"] = self.request.GET.get("end_last_cc_date", "")
         context["end_venc_cc_date"] = self.request.GET.get("end_venc_cc_date", "")
+
+        today = timezone.now().date()
+
+        # --- 1. Lógica para el resaltado de filas ---
+        # Añadimos flags a cada objeto de equipo para usarlos fácilmente en la plantilla.
+        equipos_list = context.get("equipos", [])
+        for equipo in equipos_list:
+            # Flag para CC que vence en menos de 30 días
+            equipo.cc_vence_pronto = False
+            if (
+                equipo.fecha_vencimiento_control_calidad
+                and (equipo.fecha_vencimiento_control_calidad - today).days < 30
+            ):
+                equipo.cc_vence_pronto = True
+
+            # Flag para licencia que vence en menos de 90 días
+            equipo.licencia_vence_pronto = False
+            if (
+                equipo.fecha_vigencia_licencia
+                and (equipo.fecha_vigencia_licencia - today).days < 90
+            ):
+                equipo.licencia_vence_pronto = True
+
+        # --- 2. Lógica para la gráfica del gerente ---
+        context["show_chart"] = False
+        if self.request.user.roles.filter(name=RoleChoices.GERENTE).exists():
+            context["show_chart"] = True
+
+            interval = self.request.GET.get("interval", "current_month")
+            context["selected_interval"] = interval
+
+            now = timezone.now()
+
+            if interval == "last_3_months":
+                start_date = now.date() - relativedelta(months=3)
+                title = "Últimos 3 Meses"
+            elif interval == "current_year":
+                start_date = now.date().replace(month=1, day=1)
+                title = f"Año {now.year}"
+            else:  # default to current_month
+                start_date = now.date().replace(day=1)
+                title = "Mes Actual"
+
+            # Contar controles de calidad por mes para el usuario actual
+            qs = (
+                Equipment.objects.filter(
+                    fecha_ultimo_control_calidad__gte=start_date,
+                    fecha_ultimo_control_calidad__lte=now.date(),
+                )
+                .annotate(month=TruncMonth("fecha_ultimo_control_calidad"))
+                .values("month")
+                .annotate(count=Count("id"))
+                .order_by("month")
+            )
+
+            # Formatear datos para Chart.js, incluyendo meses con 0
+            chart_data_dict = {}
+            current_month = start_date.replace(day=1)
+            while current_month <= now.date():
+                chart_data_dict[current_month] = 0
+                current_month += relativedelta(months=1)
+
+            for item in qs:
+                month_key = item["month"].replace(day=1)
+                if month_key in chart_data_dict:
+                    chart_data_dict[month_key] = item["count"]
+
+            meses = {
+                1: "Ene",
+                2: "Feb",
+                3: "Mar",
+                4: "Abr",
+                5: "May",
+                6: "Jun",
+                7: "Jul",
+                8: "Ago",
+                9: "Sep",
+                10: "Oct",
+                11: "Nov",
+                12: "Dic",
+            }
+            labels = [
+                f"{meses[d.month]} {d.year}" for d in sorted(chart_data_dict.keys())
+            ]
+            data = [chart_data_dict[d] for d in sorted(chart_data_dict.keys())]
+
+            context["chart_data"] = {
+                "labels": labels,
+                "data": data,
+                "title": f"Controles de Calidad Realizados ({title})",
+            }
+
         return context
 
 
