@@ -296,8 +296,7 @@ class ReportAPITest(TestCase):
         self.assertFormError(form_in_context, "pdf_file", "This field is required.")
 
     def test_report_create_view_post_invalid_file_type(self):
-        """
-        Test que verifica la validación del tipo de archivo.
+        """Test que verifica la validación del tipo de archivo.
 
         Debe fallar si se sube un archivo que no es PDF.
         """
@@ -741,6 +740,39 @@ class ReportAPITest(TestCase):
         self.assertContains(response, "Título del Reporte")
         self.assertContains(response, "Archivo PDF")
         self.assertContains(response, "Fecha de Vencimiento")
+
+    def test_report_create_with_long_filename(self):
+        """Test that a report can be created with a PDF file that has a name longer than 100 characters."""
+        self.client.login(username="testuser", password="testpassword")
+        url = reverse("report_create")
+        initial_count = Report.objects.count()
+
+        # Create a filename that is longer than 100 characters
+        long_filename = "a" * 150 + ".pdf"
+        pdf_content = b"This is a test PDF content."
+        pdf_file = SimpleUploadedFile(
+            long_filename, pdf_content, content_type="application/pdf"
+        )
+
+        data = {
+            "title": "Informe con nombre de archivo largo",
+            "description": "Prueba de subida de archivo con nombre largo.",
+            "pdf_file": pdf_file,
+            "process": self.process.id,
+            "user": self.user.id,
+            "equipment": self.equipment2_asesoria.id,
+            "estado_reporte": EstadoReporteChoices.EN_GENERACION,
+            "fecha_vencimiento": date.today() + timedelta(days=30),
+        }
+        response = self.client.post(url, data, format="multipart")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Report.objects.count(), initial_count + 1)
+        self.assertRedirects(response, reverse("report_list"))
+
+        new_report = Report.objects.latest("created_at")
+        self.assertEqual(new_report.title, "Informe con nombre de archivo largo")
+        self.assertTrue(new_report.pdf_file.name.endswith(long_filename))
 
 
 class ReportStatusAndNoteTest(TestCase):
