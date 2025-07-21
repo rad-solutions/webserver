@@ -1,3 +1,10 @@
+# [1.48.0](https://github.com/rad-solutions/webserver/compare/v1.47.0...v1.48.0) (2025-07-21)
+
+
+### Features
+
+* Allow long filenames for report PDFs and add test ([028ad35](https://github.com/rad-solutions/webserver/commit/028ad35a0cdd7ff64516794b87b6ed91234b06f6))
+
 # [1.47.0](https://github.com/rad-solutions/webserver/compare/v1.46.0...v1.47.0) (2025-07-21)
 
 
