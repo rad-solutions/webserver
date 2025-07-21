@@ -17,6 +17,7 @@
                     <th>Estado</th>
                     <th>Fecha inicio</th>
                     <th>Fecha completado</th>
+                    <th>Fecha límite</th>
                     <th>Completado por</th>
                 </tr>
             </thead>
@@ -30,6 +31,7 @@
                     </td>
                     <td>{{ item_form.started_at }}</td>
                     <td>{{ item_form.completed_at }}</td>
+                    <td>{{ item_form.due_date }}</td>
                     <td>
                         {% if item_form.instance.is_completed and item_form.instance.completed_by %}
                             {{ item_form.instance.completed_by.get_full_name|default:item_form.instance.completed_by.username }}
