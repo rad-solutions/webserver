@@ -1,3 +1,10 @@
+# [1.49.0](https://github.com/rad-solutions/webserver/compare/v1.48.0...v1.49.0) (2025-07-21)
+
+
+### Features
+
+* Changed date pickers to match model and added a date picker for the due_date field of the model. ([7ae2ad7](https://github.com/rad-solutions/webserver/commit/7ae2ad72ca22ce5e948428ce4e03e7a1f46a1289))
+
 # [1.48.0](https://github.com/rad-solutions/webserver/compare/v1.47.0...v1.48.0) (2025-07-21)
 
 
