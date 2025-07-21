@@ -1,3 +1,10 @@
+# [1.46.0](https://github.com/rad-solutions/webserver/compare/v1.45.0...v1.46.0) (2025-07-21)
+
+
+### Features
+
+* Implementation in the UI of the change in the Process model. Tests revisited and debugged. populate-db command fixed. ([e3ece5d](https://github.com/rad-solutions/webserver/commit/e3ece5db6d78a48d31b9439f132d9842f18bdb44))
+
 # [1.45.0](https://github.com/rad-solutions/webserver/compare/v1.44.0...v1.45.0) (2025-07-18)
 
 
