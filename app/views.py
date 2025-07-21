@@ -349,15 +349,17 @@ class ProcessProgressForm(forms.ModelForm):
 class ProcessChecklistItemForm(forms.ModelForm):
     class Meta:
         model = ProcessChecklistItem
-        fields = ["status", "started_at", "completed_at"]
+        fields = ["status", "started_at", "completed_at", "due_date"]
         labels = {
             "status": "Estado del Ítem",
             "started_at": "Fecha de Inicio",
             "completed_at": "Fecha de Finalización",
+            "due_date": "Fecha Límite",
         }
         widgets = {
-            "started_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
-            "completed_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
+            "started_at": forms.DateInput(attrs={"type": "date"}),
+            "completed_at": forms.DateInput(attrs={"type": "date"}),
+            "due_date": forms.DateInput(attrs={"type": "date"}),
         }
 
 
