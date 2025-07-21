@@ -623,8 +623,8 @@ class ProcessChecklistModelTests(TestCase):
         item = process.checklist_items.first()
         self.assertIsNotNone(item)
 
-        start_time = timezone.now()
-        completion_time = start_time + timezone.timedelta(hours=1)
+        start_time = timezone.now().date()
+        completion_time = start_time + timezone.timedelta(days=1)
 
         item.status = "aprobado"
         item.started_at = start_time

@@ -571,8 +571,8 @@ class ProcessAPITest(TestCase):
     def test_progress_form_update_checklist_and_status(self):
         # Simula marcar el primer ítem como completado y cambiar el estado del proceso
         self.url = reverse("process_progress", args=[self.process.id])
-        started_at = datetime(2025, 6, 20, 10, 0, tzinfo=timezone.utc)
-        completed_at = datetime(2025, 6, 21, 12, 0, tzinfo=timezone.utc)
+        started_at = date(2025, 6, 20)
+        completed_at = date(2025, 6, 21)
         data = {
             "estado": ProcessStatusChoices.FINALIZADO,
             "checklist_items-TOTAL_FORMS": "2",
@@ -581,8 +581,8 @@ class ProcessAPITest(TestCase):
             "checklist_items-MAX_NUM_FORMS": "1000",
             "checklist_items-0-id": str(self.item1.id),
             "checklist_items-0-status": ChecklistItemStatusChoices.APROBADO,  # Marcar como aprobado
-            "checklist_items-0-started_at": started_at.strftime("%Y-%m-%dT%H:%M"),
-            "checklist_items-0-completed_at": completed_at.strftime("%Y-%m-%dT%H:%M"),
+            "checklist_items-0-started_at": started_at.strftime("%Y-%m-%d"),
+            "checklist_items-0-completed_at": completed_at.strftime("%Y-%m-%d"),
             "checklist_items-1-id": str(self.item2.id),
             "checklist_items-1-status": ChecklistItemStatusChoices.PENDIENTE,  # Marcar como pendiente
             "checklist_items-1-started_at": "",
@@ -634,8 +634,8 @@ class ProcessAPITest(TestCase):
 
     def test_progress_form_update_dates_without_completion(self):
         self.url = reverse("process_progress", args=[self.process.id])
-        started_at = datetime(2025, 6, 20, 10, 0, tzinfo=timezone.utc)
-        completed_at = datetime(2025, 6, 21, 12, 0, tzinfo=timezone.utc)
+        started_at = date(2025, 6, 20)
+        completed_at = date(2025, 6, 21)
         data = {
             "estado": ProcessStatusChoices.EN_PROGRESO,
             "checklist_items-TOTAL_FORMS": "2",
@@ -644,9 +644,9 @@ class ProcessAPITest(TestCase):
             "checklist_items-MAX_NUM_FORMS": "1000",
             "checklist_items-0-id": str(self.item1.id),
             # No status change, solo fechas
-            "checklist_items-0-started_at": started_at.strftime("%Y-%m-%dT%H:%M"),
+            "checklist_items-0-started_at": started_at.strftime("%Y-%m-%d"),
             "checklist_items-0-status": ChecklistItemStatusChoices.PENDIENTE,
-            "checklist_items-0-completed_at": completed_at,
+            "checklist_items-0-completed_at": completed_at.strftime("%Y-%m-%d"),
             "checklist_items-1-id": str(self.item2.id),
             "checklist_items-1-status": ChecklistItemStatusChoices.PENDIENTE,
             "checklist_items-1-started_at": "",
