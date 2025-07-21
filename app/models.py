@@ -514,15 +514,13 @@ class ProcessChecklistItem(models.Model):
         verbose_name=_("Estado"),
     )
     is_completed = models.BooleanField(default=False, verbose_name=_("Completado"))
-    started_at = models.DateTimeField(
+    started_at = models.DateField(
         null=True, blank=True, verbose_name=_("Fecha de Inicio")
     )
-    completed_at = models.DateTimeField(
+    completed_at = models.DateField(
         null=True, blank=True, verbose_name=_("Fecha de Completado")
     )
-    due_date = models.DateTimeField(
-        null=True, blank=True, verbose_name=_("Fecha Límite")
-    )
+    due_date = models.DateField(null=True, blank=True, verbose_name=_("Fecha Límite"))
     # Optional: track who completed it
     completed_by = models.ForeignKey(
         User,
