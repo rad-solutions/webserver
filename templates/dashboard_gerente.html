@@ -12,7 +12,7 @@
     <div class="row">
         <!-- Columna Izquierda: Gráfica y Botones -->
         <div class="col-lg-4 mb-4">
-            <div class="card">
+            <div class="card mb-4">
                 <div class="card-header">
                     <i class="fas fa-chart-pie me-2"></i>Resumen de Procesos Activos
                 </div>
@@ -32,6 +32,51 @@
                             En Progreso ({{ procesos_en_progreso|length }})
                         </button>
                     </div>
+                </div>
+            </div>
+            <!-- Formulario para el Selector de Rango de Fechas -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" id="dateRangeForm">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-3">
+                                <label for="intervalSelect" class="form-label fw-bold">Rango Predefinido</label>
+                                <select name="interval" id="intervalSelect" class="form-select">
+                                    <option value="current_month" {% if selected_interval == 'current_month' %}selected{% endif %}>Mes Actual</option>
+                                    <option value="last_3_months" {% if selected_interval == 'last_3_months' %}selected{% endif %}>Últimos 3 Meses</option>
+                                    <option value="current_year" {% if selected_interval == 'current_year' %}selected{% endif %}>Año Actual</option>
+                                    <option value="custom" {% if selected_interval == 'custom' %}selected{% endif %}>Rango Personalizado</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="startDate" class="form-label">Fecha Inicio</label>
+                                <input type="date" id="startDate" name="start_date" class="form-control" value="{{ start_date_form }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="endDate" class="form-label">Fecha Fin</label>
+                                <input type="date" id="endDate" name="end_date" class="form-control" value="{{ end_date_form }}">
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-primary w-100">Aplicar Filtro</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-tasks me-2"></i>Procesos Finalizados por Tipo
+                </div>
+                <div class="card-body">
+                    <canvas id="processTypeChart"></canvas>
+                </div>
+            </div>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-user-check me-2"></i>Procesos Finalizados por Usuario
+                </div>
+                <div class="card-body">
+                    <canvas id="userCompletionChart"></canvas>
                 </div>
             </div>
         </div>
@@ -136,7 +181,69 @@ document.addEventListener('DOMContentLoaded', function () {
     const container = document.getElementById('process-lists-container');
     const filterButtons = document.querySelectorAll('.btn-filter');
 
+    const intervalSelect = document.getElementById('intervalSelect');
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+
     let currentlySelectedCardId = null;
+
+    function toggleCustomDateFields() {
+        const disabled = intervalSelect.value !== 'custom';
+        startDateInput.disabled = disabled;
+        endDateInput.disabled = disabled;
+    }
+
+    intervalSelect.addEventListener('change', function() {
+        toggleCustomDateFields();
+        if (this.value !== 'custom') {
+            document.getElementById('dateRangeForm').submit();
+        }
+    });
+
+    toggleCustomDateFields(); // Estado inicial al cargar la página
+
+    // Gráfica 1: Procesos por Tipo
+    const processTypeCtx = document.getElementById('processTypeChart').getContext('2d');
+    new Chart(processTypeCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ process_type_chart_data.labels|safe }},
+            datasets: [{
+                label: 'Nº de Procesos Finalizados',
+                data: {{ process_type_chart_data.data|safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+            }]
+        },
+        options: {
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+            responsive: true,
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // Gráfica 2: Finalizados por Usuario
+    const userCompletionCtx = document.getElementById('userCompletionChart').getContext('2d');
+    new Chart(userCompletionCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ user_completion_chart_data.labels|safe }},
+            datasets: [{
+                label: 'Nº de Procesos Finalizados',
+                data: {{ user_completion_chart_data.data|safe }},
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y', // Gráfica de barras horizontal
+            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
+            responsive: true,
+            plugins: { legend: { display: false } }
+        }
+    });
 
     function showAllCards() {
         cardIds.forEach(cardId => {
