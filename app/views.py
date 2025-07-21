@@ -589,6 +589,89 @@ class DashboardGerenteView(LoginRequiredMixin, PermissionRequiredMixin, Template
             ],
         }
 
+        # --- INICIO: Lógica para las nuevas gráficas de barras ---
+
+        # 1. Determinar el rango de fechas desde los parámetros GET
+        interval = self.request.GET.get("interval", "current_month")
+        start_date_str = self.request.GET.get("start_date")
+        end_date_str = self.request.GET.get("end_date")
+        start_date, end_date = None, None
+
+        if start_date_str and end_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+                end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+                interval = "custom"
+            except ValueError:
+                start_date, end_date = None, None
+
+        if not (start_date and end_date):
+            if interval == "last_3_months":
+                start_date = hoy - relativedelta(months=3)
+                end_date = hoy
+            elif interval == "current_year":
+                start_date = hoy.replace(month=1, day=1)
+                end_date = hoy
+            else:
+                interval = "current_month"
+                start_date = hoy.replace(day=1)
+                end_date = hoy
+
+        context["selected_interval"] = interval
+        context["start_date_form"] = (
+            start_date.strftime("%Y-%m-%d") if start_date else ""
+        )
+        context["end_date_form"] = end_date.strftime("%Y-%m-%d") if end_date else ""
+
+        # 2. Query base para procesos finalizados en el rango
+        completed_processes = Process.objects.filter(
+            estado=ProcessStatusChoices.FINALIZADO,
+            fecha_final__date__gte=start_date,
+            fecha_final__date__lte=end_date,
+        ).prefetch_related("assigned_to")
+
+        # 3. Datos para la Gráfica 1: Procesos por Tipo
+        process_types_to_chart = [
+            ProcessTypeChoices.CALCULO_BLINDAJES,
+            ProcessTypeChoices.CONTROL_CALIDAD,
+            ProcessTypeChoices.ASESORIA,
+            ProcessTypeChoices.ESTUDIO_AMBIENTAL,
+        ]
+        type_counts = (
+            completed_processes.filter(process_type__in=process_types_to_chart)
+            .values("process_type")
+            .annotate(count=Count("id"))
+        )
+        type_counts_dict = {item["process_type"]: item["count"] for item in type_counts}
+        context["process_type_chart_data"] = {
+            "labels": [ProcessTypeChoices(pt).label for pt in process_types_to_chart],
+            "data": [
+                type_counts_dict.get(pt.value, 0) for pt in process_types_to_chart
+            ],
+        }
+
+        # 4. Datos para la Gráfica 2: Procesos completados por Usuario
+        user_completion_counts = {}
+        internal_users = User.objects.exclude(roles__name=RoleChoices.CLIENTE)
+        for user in internal_users:
+            user_completion_counts[user.get_full_name() or user.username] = 0
+
+        for process in completed_processes:
+            for user in process.assigned_to.all():
+                if not user.roles.filter(name=RoleChoices.CLIENTE).exists():
+                    user_key = user.get_full_name() or user.username
+                    if user_key in user_completion_counts:
+                        user_completion_counts[user_key] += 1
+
+        filtered_user_counts = {
+            user: count for user, count in user_completion_counts.items() if count > 0
+        }
+        context["user_completion_chart_data"] = {
+            "labels": list(filtered_user_counts.keys()),
+            "data": list(filtered_user_counts.values()),
+        }
+        # --- FIN: Lógica para las nuevas gráficas de barras ---
+
         return context
 
 
@@ -2006,7 +2089,7 @@ class ProcessCreateView(LoginRequiredMixin, CreateView):
 class ProcessDeleteView(LoginRequiredMixin, DeleteView):
     model = Process
     template_name = "process/process_confirm_delete.html"
-    success_url = reverse_lazy("process_list")
+    success_url = reverse_lazy("process_internal_list")
     login_url = "/login/"
 
     def get_context_data(self, **kwargs):
@@ -2019,13 +2102,16 @@ class ProcessUpdateView(LoginRequiredMixin, UpdateView):
     model = Process
     form_class = ProcessForm
     template_name = "process/process_form.html"
-    success_url = reverse_lazy("process_list")
     login_url = "/login/"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["ProcessTypeChoices"] = ProcessTypeChoices
         return context
+
+    def get_success_url(self):
+        # Redirigir de vuelta a la página de detalle del proceso
+        return reverse_lazy("process_detail", kwargs={"pk": self.object.pk})
 
     def form_valid(self, form):
         self.object = form.save(commit=False)
