@@ -1,3 +1,10 @@
+# [1.47.0](https://github.com/rad-solutions/webserver/compare/v1.46.0...v1.47.0) (2025-07-21)
+
+
+### Features
+
+* Added new graphs on the dashboard for Gerentes. Corresponding test added. ([23ab2dc](https://github.com/rad-solutions/webserver/commit/23ab2dc1eac32a05492201fe9b531b26660d6313))
+
 # [1.46.0](https://github.com/rad-solutions/webserver/compare/v1.45.0...v1.46.0) (2025-07-21)
 
 
