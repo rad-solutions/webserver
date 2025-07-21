@@ -378,8 +378,19 @@ class ProcessAssignmentForm(forms.ModelForm):
             "assigned_to": "Asignar a Usuario Interno",
         }
         widgets = {
-            "assigned_to": forms.Select(attrs={"class": "form-select"}),
+            "assigned_to": forms.CheckboxSelectMultiple(
+                attrs={"class": "form-check-input"}
+            ),
         }
+
+    def clean_assigned_to(self):
+        """Valida que no se asignen más de 3 usuarios."""
+        assigned_users = self.cleaned_data.get("assigned_to")
+        if assigned_users and len(assigned_users) > 3:
+            raise forms.ValidationError(
+                "No se pueden asignar más de 3 usuarios a un proceso."
+            )
+        return assigned_users
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -540,9 +551,11 @@ class DashboardGerenteView(LoginRequiredMixin, PermissionRequiredMixin, Template
         fecha_limite_proximos = hoy + timedelta(days=dias_proximos_a_vencer)
 
         # Obtener todos los procesos no finalizados, optimizando consultas
-        procesos_activos = Process.objects.exclude(
-            estado=ProcessStatusChoices.FINALIZADO
-        ).select_related("user__client_profile", "assigned_to")
+        procesos_activos = (
+            Process.objects.exclude(estado=ProcessStatusChoices.FINALIZADO)
+            .select_related("user__client_profile")
+            .prefetch_related("assigned_to")
+        )
 
         procesos_vencidos = []
         procesos_proximos = []
@@ -597,7 +610,7 @@ class DashboardInternoView(LoginRequiredMixin, PermissionRequiredMixin, Template
 
         # Obtener procesos asignados al usuario actual que no estén finalizados
         procesos_asignados = (
-            Process.objects.filter(assigned_to=usuario_actual)
+            Process.objects.filter(assigned_to__in=[usuario_actual])
             .exclude(estado=ProcessStatusChoices.FINALIZADO)
             .select_related("user__client_profile")
         )  # Optimiza la consulta para obtener el perfil del cliente
@@ -1831,8 +1844,8 @@ class ProcessInternalListView(LoginRequiredMixin, PermissionRequiredMixin, ListV
         queryset = (
             super()
             .get_queryset()
-            .select_related("user__client_profile", "assigned_to")
-            .prefetch_related("checklist_items")
+            .select_related("user__client_profile")
+            .prefetch_related("checklist_items", "assigned_to")
         )
 
         # --- Reutilizamos la lógica de filtros existentes ---
@@ -1855,7 +1868,7 @@ class ProcessInternalListView(LoginRequiredMixin, PermissionRequiredMixin, ListV
         # --- NUEVA LÓGICA DE FILTRO ---
         if assigned_user_id:
             try:
-                queryset = queryset.filter(assigned_to_id=int(assigned_user_id))
+                queryset = queryset.filter(assigned_to__id=int(assigned_user_id))
             except (ValueError, TypeError):
                 pass  # Ignorar si el ID no es válido
 
@@ -1895,7 +1908,6 @@ class ProcessInternalListView(LoginRequiredMixin, PermissionRequiredMixin, ListV
         sorting_map = {
             "fecha_inicio": "fecha_inicio",
             "fecha_final": "fecha_final",
-            "asignado": "assigned_to__username",
             "tipo": "process_type",
             "cliente": "user__client_profile__razon_social",
         }
@@ -1946,7 +1958,6 @@ class ProcessInternalListView(LoginRequiredMixin, PermissionRequiredMixin, ListV
         context["sorting_options"] = {
             "fecha_inicio": "Fecha de Inicio",
             "fecha_final": "Fecha de Finalización",
-            "asignado": "Usuario Asignado",
             "tipo": "Tipo de Proceso",
             "cliente": "Razón Social (Cliente)",
         }
