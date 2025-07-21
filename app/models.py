@@ -352,7 +352,9 @@ class Report(models.Model):
     )
     title = models.CharField(max_length=200)
     description = models.CharField(max_length=400, blank=True, null=True)
-    pdf_file = models.FileField(upload_to="reports_pdfs/", storage=PDFStorage())
+    pdf_file = models.FileField(
+        upload_to="reports_pdfs/", storage=PDFStorage(), max_length=255
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     fecha_vencimiento = models.DateField(null=True, blank=True)
     estado_reporte = models.CharField(
