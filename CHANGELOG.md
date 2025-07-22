@@ -1,3 +1,10 @@
+# [1.52.0](https://github.com/rad-solutions/webserver/compare/v1.51.0...v1.52.0) (2025-07-22)
+
+
+### Features
+
+* Standardize equipment model with EquipmentType ([b78e604](https://github.com/rad-solutions/webserver/commit/b78e60466d11af95814a1e0e06e1272034ab63ef))
+
 # [1.51.0](https://github.com/rad-solutions/webserver/compare/v1.50.0...v1.51.0) (2025-07-22)
 
 
