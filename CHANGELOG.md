@@ -1,3 +1,10 @@
+# [1.51.0](https://github.com/rad-solutions/webserver/compare/v1.50.0...v1.51.0) (2025-07-22)
+
+
+### Features
+
+* New labels for process list for internal users. Corresponding test added. ([fc20ffc](https://github.com/rad-solutions/webserver/commit/fc20ffc140a49e06cab0dd26ca4c6a5405f4651c))
+
 # [1.50.0](https://github.com/rad-solutions/webserver/compare/v1.49.0...v1.50.0) (2025-07-22)
 
 
