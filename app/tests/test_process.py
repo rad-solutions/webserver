@@ -1059,6 +1059,49 @@ class ProcessInternalListViewTest(TestCase):
         expected_order = [self.p1, self.p3]
         self.assertEqual(procesos, expected_order)
 
+    def test_view_calculates_and_displays_process_days(self):
+        """Verifica que la vista calcule y muestre los días de proceso y vencimiento."""
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+
+        # Verificar que las cabeceras de las columnas están en el template
+        self.assertContains(response, "<th>Días de Proceso</th>")
+        self.assertContains(response, "<th>Días para Vencimiento</th>")
+
+        # Verificar los valores calculados en el contexto
+        today = tz.now().date()
+        procesos_en_contexto = {p.id: p for p in response.context["procesos"]}
+
+        # Caso 1: Proceso próximo a vencer (p2)
+        p2_context = procesos_en_contexto.get(self.p2.id)
+        self.assertIsNotNone(p2_context)
+        dias_proceso_p2 = (today - self.p2.fecha_inicio.date()).days
+        dias_vencimiento_p2 = (self.p2.fecha_final.date() - today).days
+        self.assertEqual(p2_context.dias_de_proceso, dias_proceso_p2)
+        self.assertEqual(p2_context.dias_hasta_vencimiento, dias_vencimiento_p2)
+        self.assertContains(
+            response,
+            f'<span class="badge bg-success">{dias_vencimiento_p2} días restantes</span>',
+        )
+
+        # Caso 2: Proceso vencido (p4)
+        p4_context = procesos_en_contexto.get(self.p4.id)
+        self.assertIsNotNone(p4_context)
+        dias_vencimiento_p4 = (self.p4.fecha_final.date() - today).days
+        self.assertEqual(p4_context.dias_hasta_vencimiento, dias_vencimiento_p4)
+        self.assertContains(
+            response,
+            f'<span class="badge bg-danger">Vencido hace {abs(dias_vencimiento_p4)} días</span>',
+        )
+
+        # Caso 3: Proceso sin fecha de finalización (p3)
+        p3_context = procesos_en_contexto.get(self.p3.id)
+        self.assertIsNotNone(p3_context)
+        self.assertIsNone(p3_context.dias_hasta_vencimiento)
+        # El HTML debe contener el N/A para este proceso
+        # (Esta es una prueba menos específica pero suficiente)
+        self.assertContains(response, '<span class="text-muted">N/A</span>')
+
 
 class ProcessListViewTest(TestCase):
 

@@ -2012,6 +2012,25 @@ class ProcessInternalListView(LoginRequiredMixin, PermissionRequiredMixin, ListV
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        today = timezone.now().date()
+
+        # --- INICIO: Lógica para calcular días de proceso y vencimiento ---
+        for proceso in context["object_list"]:
+            # Calcular días de proceso (desde inicio hasta hoy)
+            if proceso.fecha_inicio:
+                proceso.dias_de_proceso = (today - proceso.fecha_inicio.date()).days
+            else:
+                proceso.dias_de_proceso = None
+
+            # Calcular días para vencimiento (desde hoy hasta fecha final)  y días vencido
+            proceso.dias_hasta_vencimiento = None
+            proceso.dias_vencido = None  # Inicializar el atributo
+            if proceso.fecha_final:
+                dias = (proceso.fecha_final.date() - today).days
+                proceso.dias_hasta_vencimiento = dias
+                if dias < 0:
+                    proceso.dias_vencido = abs(dias)
+        # --- FIN: Lógica para calcular días ---
 
         # Pasar datos para poblar los filtros en el template
         context["process_types"] = [("todos", "Todos")] + ProcessTypeChoices.choices
