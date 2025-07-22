@@ -138,6 +138,8 @@
                             <th>Cliente (Razón Social)</th>
                             <th>Asignado a</th>
                             <th>Fecha Fin</th>
+                            <th>Días de Proceso</th>
+                            <th>Días para Vencimiento</th>
                             <th>Avance</th>
                             <th>Acciones</th>
                         </tr>
@@ -159,6 +161,18 @@
                                 {% endif %}
                             </td>
                             <td>{{ proceso.fecha_final|date:"d/m/Y"|default:"N/A" }}</td>
+                            <td>{{ proceso.dias_de_proceso|default:"N/A" }}</td>
+                            <td>
+                                {% if proceso.dias_hasta_vencimiento is not None %}
+                                    {% if proceso.dias_hasta_vencimiento < 0 %}
+                                        <span class="badge bg-danger">Vencido hace {{ proceso.dias_vencido }} días</span>
+                                    {% else %}
+                                        <span class="badge bg-success">{{ proceso.dias_hasta_vencimiento }} días restantes</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% with porcentaje=proceso.get_progress_percentage %}
                                 <div class="progress" style="height: 20px;">
