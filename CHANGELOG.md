@@ -1,3 +1,10 @@
+# [1.50.0](https://github.com/rad-solutions/webserver/compare/v1.49.0...v1.50.0) (2025-07-22)
+
+
+### Features
+
+* add detailed logging to PDFStorage for debugging ([143d3d9](https://github.com/rad-solutions/webserver/commit/143d3d959bc510643b9368fba476bcdc757c3b4e))
+
 # [1.49.0](https://github.com/rad-solutions/webserver/compare/v1.48.0...v1.49.0) (2025-07-21)
 
 
