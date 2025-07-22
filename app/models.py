@@ -213,9 +213,31 @@ class EstadoEquipoChoices(models.TextChoices):
     DADO_DE_BAJA = "dado_de_baja", _("Dado de Baja")
 
 
-class Equipment(models.Model):
+class EquipmentType(models.Model):
+    name = models.CharField(max_length=100, unique=True, verbose_name=_("Nombre"))
 
-    nombre = models.CharField(max_length=150)
+    class Meta:
+        verbose_name = _("Tipo de Equipo")
+        verbose_name_plural = _("Tipos de Equipo")
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Equipment(models.Model):
+    equipment_type = models.ForeignKey(
+        EquipmentType,
+        on_delete=models.PROTECT,
+        related_name="equipments",
+        verbose_name=_("Tipo de Equipo"),
+        null=True,  # Temporarily allow null for migration
+    )
+    nombre = models.CharField(
+        max_length=150,
+        help_text=_("Nombre específico o identificador del equipo si es necesario."),
+        blank=True,
+    )
     marca = models.CharField(max_length=100, blank=True, null=True)
     modelo = models.CharField(max_length=100, blank=True, null=True)
     serial = models.CharField(max_length=100, unique=True, blank=True, null=True)
@@ -294,7 +316,7 @@ class Equipment(models.Model):
         ).order_by("created_at")
 
     def __str__(self):
-        return f"{self.nombre} ({self.serial or 'No Serial'}) - Owner: {self.user.username if self.user else 'None'}"
+        return f"{self.equipment_type} ({self.serial or 'No Serial'}) - Owner: {self.user.username if self.user else 'None'}"
 
     class Meta:
         permissions = [
