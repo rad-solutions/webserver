@@ -28,6 +28,27 @@ class PDFStorage(S3Boto3Storage):
     def __new__(cls, *args, **kwargs):
         use_mock = os.getenv("USE_MOCK_STORAGE", "False").lower() == "true"
         if use_mock:
-            logger.info("Usando almacenamiento MOCK en lugar de S3")
+            logger.info("USE_MOCK_STORAGE is True. Using MockStorage.")
             return MockStorage()
+
+        logger.info("USE_MOCK_STORAGE is False. Using S3Boto3Storage (PDFStorage).")
         return super().__new__(cls)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        logger.info("PDFStorage (S3Boto3Storage) initialized.")
+        logger.info(f"Bucket Name: {self.bucket_name}")
+        logger.info(f"Location: {self.location}")
+
+    def _save(self, name, content):
+        logger.info(f"Attempting to save '{name}' to S3 bucket '{self.bucket_name}'.")
+        try:
+            # The content object needs to be reset before saving
+            content.seek(0)
+            saved_name = super()._save(name, content)
+            logger.info(f"Successfully saved '{name}' as '{saved_name}' in S3.")
+            return saved_name
+        except Exception as e:
+            # Log the full exception traceback
+            logger.error(f"Failed to save '{name}' to S3. Error: {e}", exc_info=True)
+            raise
