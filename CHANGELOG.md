@@ -1,3 +1,10 @@
+# [1.53.0](https://github.com/rad-solutions/webserver/compare/v1.52.0...v1.53.0) (2025-07-23)
+
+
+### Features
+
+* Implement EquipmentType in UI. Corresponding test updated. ([75af6a9](https://github.com/rad-solutions/webserver/commit/75af6a9e9ec4abc5ba6c316ae5e0f3202eceb85b))
+
 # [1.52.0](https://github.com/rad-solutions/webserver/compare/v1.51.0...v1.52.0) (2025-07-22)
 
 
