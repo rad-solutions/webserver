@@ -455,7 +455,7 @@ class EquipmentForm(forms.ModelForm):
     class Meta:
         model = Equipment
         fields = [
-            "nombre",
+            "equipment_type",
             "marca",
             "modelo",
             "serial",
@@ -471,7 +471,7 @@ class EquipmentForm(forms.ModelForm):
             "sede",
         ]
         labels = {
-            "nombre": "Nombre del Equipo",
+            "equipment_type": "Tipo de Equipo",
             "marca": "Marca",
             "modelo": "Modelo",
             "serial": "Serial",
