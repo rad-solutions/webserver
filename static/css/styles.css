@@ -33,7 +33,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .navbar-logo {
-    height: 35px;
+    height: 50px;
     margin-right: 8px;
     vertical-align: middle; /* Ayuda a alinear mejor con el texto adyacente */
 }
@@ -42,6 +42,8 @@ h1, h2, h3, h4, h5, h6 {
     border-bottom-color: #002B5A !important; /* Azul oscuro para la barra de navegación */
     border-bottom-width: 1px !important; /* Grosor de la línea inferior */
     border-bottom-style: solid !important; /* Estilo de línea sólida */
+    padding-top: 0.5rem; /* Añade espacio vertical para acomodar el logo más grande */
+    padding-bottom: 0.5rem; /* Añade espacio vertical para acomodar el logo más grande */
 }
 
 /* Personalización de colores */
@@ -102,4 +104,23 @@ footer {
 /* Cambiar color del icono de hamburguesa del navbar */
 .navbar-color .navbar-toggler-icon {
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23002B5A' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+/* Estilo por defecto (Mobile-First): se aplica a pantallas pequeñas primero */
+body {
+    /* Reemplaza 'background-mobile.jpg' con el nombre de tu imagen vertical */
+    background-image: url('../images/fondo_3.jpg');
+    background-size: cover; /* Hace que la imagen cubra todo el fondo */
+    background-position: center center; /* Centra la imagen */
+    background-repeat: no-repeat; /* Evita que la imagen se repita */
+    background-attachment: fixed; /* Fija la imagen para que no se desplace con el contenido */
+}
+
+/* Media Query para pantallas más grandes (tablets y desktops) */
+/* El breakpoint '768px' es un estándar común, pero puedes ajustarlo */
+@media (min-width: 768px) {
+    body {
+        /* Reemplaza 'background-desktop.jpg' con el nombre de tu imagen horizontal */
+        background-image: url('../images/fondo_2.jpg');
+    }
 }

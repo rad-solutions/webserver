@@ -746,7 +746,7 @@ def main(request):
     if not request.user.is_authenticated:
         # Si el usuario no está autenticado, mostrar una página de bienvenida sencilla
         context = {
-            "titulo": "Bienvenido a RadSolutions Reports",
+            "titulo": "Bienvenido al sistema de gestión de reportes de RadSolutions",
             "mensaje": "Inicia sesión para acceder al sistema",
         }
         return render(request, "welcome.html", context)
