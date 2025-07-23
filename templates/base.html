@@ -19,8 +19,8 @@
     <!-- Barra de navegación -->
     <nav class="navbar navbar-expand-lg navbar-light navbar-color">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'home' %}">
-                <img src="{% static 'images/logo.png' %}" alt="RadSolutions Logo" class="navbar-logo">RadSolutions
+            <a class="navbar-brand  d-inline-flex align-items-center" href="{% url 'home' %}">
+                <img src="{% static 'images/logo_1.png' %}" alt="RadSolutions Logo" class="navbar-logo">RadSolutions
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -66,6 +66,10 @@
                             <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión
                         </a>
                     {% else %}
+                        <a class="nav-link" href="http://3.219.65.171/login/index.php">
+                            <i class="fa-solid fa-graduation-cap"></i>Modulo Capacitaciones
+                        </a>
+                        <div style="padding-left: 1rem;"></div>
                         <a class="nav-link" href="{% url 'login' %}">
                             <i class="fas fa-sign-in-alt me-1"></i>Iniciar Sesión
                         </a>
