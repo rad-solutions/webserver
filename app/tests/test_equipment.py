@@ -6,6 +6,7 @@ from django.urls import reverse
 
 from ..models import (
     Equipment,
+    EquipmentType,
     EstadoEquipoChoices,
     HistorialTuboRayosX,
     Process,
@@ -125,8 +126,9 @@ class EquipmentAPITest(TestCase):
     def test_equipment_create_view_post_valid(self):
         url = reverse("equipos_create")
         initial_count = Equipment.objects.count()
+        mamografo_type, _ = EquipmentType.objects.get_or_create(name="MAMÓGRAFO")
         data = {
-            "nombre": "Nuevo Equipo Gamma",
+            "equipment_type": mamografo_type.id,
             "marca": "MarcaTest",
             "modelo": "ModeloTest",
             "serial": "SNTEST123",
@@ -140,7 +142,7 @@ class EquipmentAPITest(TestCase):
         self.assertEqual(response.status_code, 302, response.content.decode())
         self.assertEqual(Equipment.objects.count(), initial_count + 1)
         new_equipment = Equipment.objects.latest("id")
-        self.assertEqual(new_equipment.nombre, "Nuevo Equipo Gamma")
+        self.assertEqual(new_equipment.marca, "MarcaTest")
         self.assertEqual(new_equipment.user, self.user_client)
 
     def test_equipment_create_view_post_invalid(self):
@@ -163,6 +165,7 @@ class EquipmentAPITest(TestCase):
         self.assertEqual(response.context["form"].instance, equipment)
 
     def test_equipment_update_view_post_valid(self):
+        mamografo_type, _ = EquipmentType.objects.get_or_create(name="MAMÓGRAFO")
         equipment = Equipment.objects.create(
             nombre="Equipo Original",
             serial="SNORIG",
@@ -171,7 +174,7 @@ class EquipmentAPITest(TestCase):
         )
         url = reverse("equipos_update", args=[equipment.id])
         data = {
-            "nombre": "Equipo Actualizado",
+            "equipment_type": mamografo_type.id,
             "marca": equipment.marca or "NuevaMarca",
             "modelo": equipment.modelo or "NuevoModelo",
             "serial": "SNUPDT",
@@ -186,7 +189,7 @@ class EquipmentAPITest(TestCase):
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 302)
         equipment.refresh_from_db()
-        self.assertEqual(equipment.nombre, "Equipo Actualizado")
+        self.assertEqual(equipment.marca, "NuevaMarca")
         self.assertEqual(equipment.serial, "SNUPDT")
         self.assertEqual(equipment.estado_actual, EstadoEquipoChoices.DADO_DE_BAJA)
 
@@ -422,7 +425,7 @@ class EquipmentAPITest(TestCase):
         self.assertEqual(response.status_code, 200)
 
         # Verificar algunas de las nuevas etiquetas
-        self.assertContains(response, "Nombre del Equipo")
+        self.assertContains(response, "Tipo de Equipo")
         self.assertContains(response, "Práctica Asociada")
         self.assertContains(response, "Cliente Propietario")
 
