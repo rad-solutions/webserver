@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import (
     Anotacion,
+    ClientBranch,
     ClientProfile,
     Equipment,
     Process,
@@ -36,10 +37,18 @@ class RoleAdmin(admin.ModelAdmin):
 
 @admin.register(ClientProfile)
 class ClientProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "razon_social", "nit", "municipio", "departamento")
+    list_display = ("user", "razon_social", "nit")
     search_fields = ("user__username", "razon_social", "nit")
-    list_filter = ("departamento", "municipio")
+    list_filter = ()
     raw_id_fields = ("user",)
+
+
+@admin.register(ClientBranch)
+class ClientBranchAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "company", "municipio", "departamento")
+    search_fields = ("nombre", "company__razon_social", "municipio", "departamento")
+    list_filter = ("departamento", "municipio")
+    raw_id_fields = ("company",)
 
 
 @admin.register(Process)

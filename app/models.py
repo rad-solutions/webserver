@@ -40,6 +40,7 @@ class User(AbstractUser):
         ]
 
 
+# ClientProfile: datos globales de la empresa cliente
 class ClientProfile(models.Model):
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, primary_key=True, related_name="client_profile"
@@ -47,13 +48,32 @@ class ClientProfile(models.Model):
     razon_social = models.CharField(max_length=255)
     nit = models.CharField(max_length=20, unique=True)
     representante_legal = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.razon_social} ({self.nit})"
+
+
+# ClientBranch: sedes de cliente
+class ClientBranch(models.Model):
+    company = models.ForeignKey(
+        ClientProfile, on_delete=models.CASCADE, related_name="branches"
+    )
+    nombre = models.CharField(
+        _("Nombre de la Sede"),
+        max_length=100,
+        help_text="Ej. Sede Central, Sede Norte…",
+    )
     direccion_instalacion = models.CharField(max_length=255)
     departamento = models.CharField(max_length=100)
     municipio = models.CharField(max_length=100)
     persona_contacto = models.CharField(max_length=255, blank=True, null=True)
 
+    class Meta:
+        verbose_name = _("Sede de Cliente")
+        verbose_name_plural = _("Sedes de Cliente")
+
     def __str__(self):
-        return f"{self.razon_social} ({self.nit})"
+        return f"{self.nombre} – {self.company.razon_social}"
 
 
 class PracticeCategoryChoices(models.TextChoices):
@@ -262,7 +282,15 @@ class Equipment(models.Model):
         choices=EstadoEquipoChoices.choices,
         default=EstadoEquipoChoices.EN_USO,
     )
-    sede = models.CharField(max_length=150, blank=True, null=True)
+    sede = models.ForeignKey(
+        ClientBranch,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="equipments",
+        verbose_name=_("Sede de Cliente"),
+        help_text=_("Sede a la que pertenece este equipo"),
+    )
 
     def get_report_title(self):
         """Return the title for the reports section.
