@@ -1,3 +1,10 @@
+# [1.54.0](https://github.com/rad-solutions/webserver/compare/v1.53.0...v1.54.0) (2025-07-23)
+
+
+### Features
+
+* Overhaul of the  UI design on the main page and the background of the webserver. ([a6aac44](https://github.com/rad-solutions/webserver/commit/a6aac443a05d8af2954cf1db6e3451388d9b5e35))
+
 # [1.53.0](https://github.com/rad-solutions/webserver/compare/v1.52.0...v1.53.0) (2025-07-23)
 
 
