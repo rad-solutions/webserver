@@ -2,7 +2,7 @@ from django.contrib.auth.models import Permission
 from django.test import TestCase
 from django.urls import reverse
 
-from app.models import ClientProfile, Role, RoleChoices, User
+from app.models import ClientBranch, ClientProfile, Role, RoleChoices, User
 
 
 class UserCreatePermissionTest(TestCase):
@@ -105,11 +105,7 @@ class UserCreateFormTest(TestCase):
             "password2": "Testpass123!",
             "razon_social": "Empresa S.A.",
             "nit": "123456789",
-            "direccion_instalacion": "Calle 123",
-            "departamento": "Cundinamarca",
-            "municipio": "Bogotá",
             "representante_legal": "Juan Perez",
-            "persona_contacto": "Maria Lopez",
         }
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, 302)
@@ -119,10 +115,7 @@ class UserCreateFormTest(TestCase):
         profile = user.client_profile
         self.assertEqual(profile.razon_social, "Empresa S.A.")
         self.assertEqual(profile.nit, "123456789")
-        self.assertEqual(profile.departamento, "Cundinamarca")
-        self.assertEqual(profile.municipio, "Bogotá")
         self.assertEqual(profile.representante_legal, "Juan Perez")
-        self.assertEqual(profile.persona_contacto, "Maria Lopez")
 
     def test_client_user_missing_required_profile_fields(self):
         self.client.login(username="external", password="externalpass")
@@ -134,7 +127,7 @@ class UserCreateFormTest(TestCase):
             "role": self.role_cliente.id,
             "password1": "Testpass123!",
             "password2": "Testpass123!",
-            # Falta razon_social, nit, direccion_instalacion, departamento, municipio
+            # Falta razon_social, nit
         }
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, 200)
@@ -144,15 +137,6 @@ class UserCreateFormTest(TestCase):
             form, "razon_social", "Este campo es obligatorio para clientes."
         )
         self.assertFormError(form, "nit", "Este campo es obligatorio para clientes.")
-        self.assertFormError(
-            form, "direccion_instalacion", "Este campo es obligatorio para clientes."
-        )
-        self.assertFormError(
-            form, "departamento", "Este campo es obligatorio para clientes."
-        )
-        self.assertFormError(
-            form, "municipio", "Este campo es obligatorio para clientes."
-        )
         self.assertFalse(User.objects.filter(username="cliente2").exists())
 
 
@@ -257,11 +241,7 @@ class UserUpdateFormTest(TestCase):
             "password2": "Testpass123!",
             "razon_social": "Empresa Nueva",
             "nit": "987654321",
-            "direccion_instalacion": "Calle Nueva",
-            "departamento": "Antioquia",
-            "municipio": "Medellín",
             "representante_legal": "Ana Ruiz",
-            "persona_contacto": "Carlos Gómez",
         }
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, 302)
@@ -271,10 +251,7 @@ class UserUpdateFormTest(TestCase):
         profile = user.client_profile
         self.assertEqual(profile.razon_social, "Empresa Nueva")
         self.assertEqual(profile.nit, "987654321")
-        self.assertEqual(profile.departamento, "Antioquia")
-        self.assertEqual(profile.municipio, "Medellín")
         self.assertEqual(profile.representante_legal, "Ana Ruiz")
-        self.assertEqual(profile.persona_contacto, "Carlos Gómez")
 
     def test_update_client_user_missing_required_profile_fields(self):
         self.client.login(username="admin", password="adminpass")
@@ -286,7 +263,7 @@ class UserUpdateFormTest(TestCase):
             "role": self.role_cliente.id,
             "password1": "Testpass123!",
             "password2": "Testpass123!",
-            # Falta razon_social, nit, direccion_instalacion, departamento, municipio
+            # Falta razon_social, nit
         }
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, 200)
@@ -296,24 +273,19 @@ class UserUpdateFormTest(TestCase):
             form, "razon_social", "Este campo es obligatorio para clientes."
         )
         self.assertFormError(form, "nit", "Este campo es obligatorio para clientes.")
-        self.assertFormError(
-            form, "direccion_instalacion", "Este campo es obligatorio para clientes."
-        )
-        self.assertFormError(
-            form, "departamento", "Este campo es obligatorio para clientes."
-        )
-        self.assertFormError(
-            form, "municipio", "Este campo es obligatorio para clientes."
-        )
 
     def test_update_from_client_to_internal_removes_profile(self):
         # Primero, convierte el usuario en cliente con perfil
         self.client.login(username="admin", password="adminpass")
         self.user_to_edit.roles.set([self.role_cliente])
-        ClientProfile.objects.create(
+        self.client_profile = ClientProfile.objects.create(
             user=self.user_to_edit,
             razon_social="Empresa",
             nit="123",
+        )
+        self.client_branch = ClientBranch.objects.create(
+            company=self.client_profile,
+            nombre="Sede de Equipos",
             direccion_instalacion="Calle",
             departamento="Depto",
             municipio="Ciudad",

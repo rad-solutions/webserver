@@ -72,10 +72,6 @@ class UserWithProfileForm(UserCreationForm):
     razon_social = forms.CharField(required=False)
     nit = forms.CharField(required=False)
     representante_legal = forms.CharField(required=False)
-    direccion_instalacion = forms.CharField(required=False)
-    departamento = forms.CharField(required=False)
-    municipio = forms.CharField(required=False)
-    persona_contacto = forms.CharField(required=False)
 
     class Meta(UserCreationForm.Meta):
         model = User
@@ -106,9 +102,6 @@ class UserWithProfileForm(UserCreationForm):
             for field in [
                 "razon_social",
                 "nit",
-                "direccion_instalacion",
-                "departamento",
-                "municipio",
             ]:
                 if not cleaned_data.get(field):
                     self.add_error(field, "Este campo es obligatorio para clientes.")
@@ -137,10 +130,6 @@ class UserEditWithProfileForm(UserCreationForm):
     razon_social = forms.CharField(required=False)
     nit = forms.CharField(required=False)
     representante_legal = forms.CharField(required=False)
-    direccion_instalacion = forms.CharField(required=False)
-    departamento = forms.CharField(required=False)
-    municipio = forms.CharField(required=False)
-    persona_contacto = forms.CharField(required=False)
 
     class Meta(UserCreationForm.Meta):
         model = User
@@ -181,9 +170,6 @@ class UserEditWithProfileForm(UserCreationForm):
             for field in [
                 "razon_social",
                 "nit",
-                "direccion_instalacion",
-                "departamento",
-                "municipio",
             ]:
                 if not cleaned_data.get(field):
                     self.add_error(field, "Este campo es obligatorio para clientes.")
@@ -1011,10 +997,6 @@ class UserCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                 razon_social=form.cleaned_data["razon_social"],
                 nit=form.cleaned_data["nit"],
                 representante_legal=form.cleaned_data.get("representante_legal"),
-                direccion_instalacion=form.cleaned_data["direccion_instalacion"],
-                departamento=form.cleaned_data["departamento"],
-                municipio=form.cleaned_data["municipio"],
-                persona_contacto=form.cleaned_data.get("persona_contacto"),
             )
         return response
 
@@ -1073,10 +1055,6 @@ class UserUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
             form.initial["razon_social"] = profile.razon_social
             form.initial["nit"] = profile.nit
             form.initial["representante_legal"] = profile.representante_legal
-            form.initial["direccion_instalacion"] = profile.direccion_instalacion
-            form.initial["departamento"] = profile.departamento
-            form.initial["municipio"] = profile.municipio
-            form.initial["persona_contacto"] = profile.persona_contacto
         return form
 
     def form_valid(self, form):
@@ -1094,10 +1072,6 @@ class UserUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
             profile.razon_social = form.cleaned_data["razon_social"]
             profile.nit = form.cleaned_data["nit"]
             profile.representante_legal = form.cleaned_data.get("representante_legal")
-            profile.direccion_instalacion = form.cleaned_data["direccion_instalacion"]
-            profile.departamento = form.cleaned_data["departamento"]
-            profile.municipio = form.cleaned_data["municipio"]
-            profile.persona_contacto = form.cleaned_data.get("persona_contacto")
             profile.save()
         else:
             ClientProfile.objects.filter(user=user).delete()

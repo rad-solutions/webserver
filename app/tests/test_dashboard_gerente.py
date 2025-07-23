@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from ..models import (
+    ClientBranch,
     ClientProfile,
     Process,
     ProcessStatusChoices,
@@ -41,10 +42,14 @@ class GerenteDashboardTest(TestCase):
             username="cliente_test", password="password"
         )
         self.cliente.roles.add(self.role_cliente)
-        ClientProfile.objects.create(
+        self.client_profile = ClientProfile.objects.create(
             user=self.cliente,
             razon_social="Empresa de Prueba S.A.S.",
             nit="900.123.456-7",
+        )
+        self.client_branch = ClientBranch.objects.create(
+            company=self.client_profile,
+            nombre="Sede Principal",
             direccion_instalacion="Calle Falsa 123",
             departamento="Antioquia",
             municipio="Medellín",

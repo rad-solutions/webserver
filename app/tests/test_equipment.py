@@ -5,6 +5,8 @@ from django.test import TestCase
 from django.urls import reverse
 
 from ..models import (
+    ClientBranch,
+    ClientProfile,
     Equipment,
     EstadoEquipoChoices,
     HistorialTuboRayosX,
@@ -41,6 +43,19 @@ class EquipmentAPITest(TestCase):
             # For now, let's assume the group exists as per migrations
             pass
         self.admin_user.save()  # Ensure the user's group membership is saved
+
+        self.client_profile = ClientProfile.objects.create(
+            user=self.user_client,
+            razon_social="Cliente de Equipos",
+            nit="123.456.789-0",
+        )
+        self.client_branch = ClientBranch.objects.create(
+            company=self.client_profile,
+            nombre="Sede de Equipos",
+            direccion_instalacion="Av. Siempre Viva 742",
+            departamento="Springfield",
+            municipio="Springfield",
+        )
 
         self.process = Process.objects.create(
             user=self.user_client,
@@ -133,7 +148,7 @@ class EquipmentAPITest(TestCase):
             "user": self.user_client.id,
             "process": self.process.id,
             "estado_actual": EstadoEquipoChoices.EN_USO,
-            "sede": "Sede Test",
+            "sede": self.client_branch.id,
             "fecha_adquisicion": date.today().strftime("%Y-%m-%d"),
         }
         response = self.client.post(url, data)
@@ -178,7 +193,7 @@ class EquipmentAPITest(TestCase):
             "user": self.user_client.id,
             "process": self.process.id,
             "estado_actual": EstadoEquipoChoices.DADO_DE_BAJA,
-            "sede": equipment.sede or "NuevaSede",
+            "sede": self.client_branch.id,
             "fecha_adquisicion": (equipment.fecha_adquisicion or date.today()).strftime(
                 "%Y-%m-%d"
             ),

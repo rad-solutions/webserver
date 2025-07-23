@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from app.models import (
     Anotacion,
+    ClientBranch,
     ClientProfile,
     Equipment,
     EquipmentType,
@@ -466,9 +467,6 @@ class ClientProfileModelTest(TestCase):
             user=self.user_client,
             razon_social="Empresa XYZ S.A.S.",
             nit="900123456-7",
-            direccion_instalacion="Calle Falsa 123",
-            departamento="Antioquia",
-            municipio="Medellín",
         )
         self.assertEqual(profile.user, self.user_client)
         self.assertEqual(profile.razon_social, "Empresa XYZ S.A.S.")
@@ -482,9 +480,6 @@ class ClientProfileModelTest(TestCase):
             user=self.user_client,
             razon_social="Empresa A",
             nit="111222333-1",
-            direccion_instalacion="Dir A",
-            departamento="Dep A",
-            municipio="Mun A",
         )
         another_user = User.objects.create_user(
             username="anotherclient", password="password"
@@ -494,9 +489,6 @@ class ClientProfileModelTest(TestCase):
                 user=another_user,
                 razon_social="Empresa B",
                 nit="111222333-1",
-                direccion_instalacion="Dir B",
-                departamento="Dep B",
-                municipio="Mun B",
             )
 
     def test_one_to_one_user_constraint(self):
@@ -504,19 +496,64 @@ class ClientProfileModelTest(TestCase):
             user=self.user_client,
             razon_social="Empresa C",
             nit="444555666-1",
-            direccion_instalacion="Dir C",
-            departamento="Dep C",
-            municipio="Mun C",
         )
         with self.assertRaises(IntegrityError):
             ClientProfile.objects.create(
                 user=self.user_client,
                 razon_social="Empresa D",
                 nit="777888999-1",
-                direccion_instalacion="Dir D",
-                departamento="Dep D",
-                municipio="Mun D",
             )
+
+
+class ClientBranchModelTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.role_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        cls.user = User.objects.create_user(username="testclient", password="password")
+        cls.user.roles.add(cls.role_cliente)
+        cls.profile = ClientProfile.objects.create(
+            user=cls.user, razon_social="Empresa Test", nit="999.888.777-6"
+        )
+
+    def test_client_branch_creation(self):
+        """Verifica que se puede crear una sede y se asocia correctamente al perfil."""
+        branch = ClientBranch.objects.create(
+            company=self.profile,
+            nombre="Sede Sur",
+            direccion_instalacion="Calle 10 #43A-20",
+            departamento="Antioquia",
+            municipio="Medellín",
+            persona_contacto="Juan Pérez",
+        )
+        self.assertEqual(str(branch), "Sede Sur – Empresa Test")
+        self.assertEqual(self.profile.branches.count(), 1)
+        self.assertEqual(self.profile.branches.first(), branch)
+
+    def test_multiple_branches_for_one_profile(self):
+        """Verifica que un perfil de cliente puede tener múltiples sedes."""
+        ClientBranch.objects.create(
+            company=self.profile, nombre="Sede Sur", direccion_instalacion="Dir 1"
+        )
+        ClientBranch.objects.create(
+            company=self.profile, nombre="Sede Norte", direccion_instalacion="Dir 2"
+        )
+        self.assertEqual(self.profile.branches.count(), 2)
+
+    def test_equipment_can_be_assigned_to_branch(self):
+        """Verifica que un equipo puede ser asignado a una sede específica."""
+        branch = ClientBranch.objects.create(
+            company=self.profile, nombre="Sede Bodega", direccion_instalacion="Dir 3"
+        )
+        equipment_type, _ = EquipmentType.objects.get_or_create(name="Rayos X")
+        equipment = Equipment.objects.create(
+            equipment_type=equipment_type,
+            nombre="Equipo de Rayos X",
+            serial="RX-001",
+            user=self.user,
+            sede=branch,  # Asignación a la sede
+        )
+        self.assertEqual(equipment.sede, branch)
+        self.assertIn(equipment, branch.equipments.all())
 
 
 class AnotacionModelTest(TestCase):
