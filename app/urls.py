@@ -2,6 +2,10 @@ from django.urls import path
 
 from app.views import (
     AnotacionCreateView,
+    ClientBranchCreateView,
+    ClientBranchUpdateView,
+    ClientProfileCreateView,
+    ClientProfileUpdateView,
     CustomLoginView,
     DashboardGerenteView,
     DashboardInternoView,
@@ -53,6 +57,26 @@ urlpatterns = [
     path("users/create/", UserCreateView.as_view(), name="user_create"),
     path("users/<int:pk>/update/", UserUpdateView.as_view(), name="user_update"),
     path("users/<int:pk>/delete/", UserDeleteView.as_view(), name="user_delete"),
+    path(
+        "users/<int:user_pk>/profile/create/",
+        ClientProfileCreateView.as_view(),
+        name="client_profile_create",
+    ),
+    path(
+        "profile/<int:pk>/update/",
+        ClientProfileUpdateView.as_view(),
+        name="client_profile_update",
+    ),
+    path(
+        "profile/<int:profile_pk>/branch/create/",
+        ClientBranchCreateView.as_view(),
+        name="client_branch_create",
+    ),
+    path(
+        "branch/<int:pk>/update/",
+        ClientBranchUpdateView.as_view(),
+        name="client_branch_update",
+    ),
     # Report URLs
     path("reports/", ReportListView.as_view(), name="report_list"),
     path("reports/<int:pk>/", ReportDetailView.as_view(), name="report_detail"),
