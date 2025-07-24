@@ -22,16 +22,6 @@
                 {{ form.role|as_crispy_field }}
                 {{ form.password1|as_crispy_field }}
                 {{ form.password2|as_crispy_field }}
-                <div id="client-profile-fields" style="display: none;">
-                    <h4>Datos del Cliente</h4>
-                    {{ form.razon_social|as_crispy_field }}
-                    {{ form.nit|as_crispy_field }}
-                    {{ form.representante_legal|as_crispy_field }}
-                    {{ form.direccion_instalacion|as_crispy_field }}
-                    {{ form.departamento|as_crispy_field }}
-                    {{ form.municipio|as_crispy_field }}
-                    {{ form.persona_contacto|as_crispy_field }}
-                </div>
 
                 <button type="submit" class="btn btn-success">Guardar</button>
                 <a href="javascript:window.history.back();" class="btn btn-secondary">Cancelar</a>
@@ -39,28 +29,4 @@
         </div>
     </div>
 </div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    function toggleClientFields() {
-        var roleSelect = document.getElementById('id_role');
-        var clientFields = document.getElementById('client-profile-fields');
-        if (roleSelect && clientFields) {
-            if (roleSelect.options[roleSelect.selectedIndex].text.toLowerCase().includes('cliente')) {
-                clientFields.style.display = '';
-            } else {
-                clientFields.style.display = 'none';
-                // Limpiar campos si no es cliente (opcional)
-                clientFields.querySelectorAll('input').forEach(function(input) {
-                    input.value = '';
-                });
-            }
-        }
-    }
-    var roleSelect = document.getElementById('id_role');
-    if (roleSelect) {
-        toggleClientFields();
-        roleSelect.addEventListener('change', toggleClientFields);
-    }
-});
-</script>
 {% endblock %}

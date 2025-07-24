@@ -28,6 +28,7 @@ from django.views.generic import (
 from .models import (
     Anotacion,
     ChecklistItemStatusChoices,
+    ClientBranch,
     ClientProfile,
     Equipment,
     HistorialTuboRayosX,
@@ -68,14 +69,6 @@ class UserWithProfileForm(UserCreationForm):
         widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
         help_text="Introduce la misma contraseña que antes, para su verificación.",
     )
-    # Campos de ClientProfile (solo para cliente)
-    razon_social = forms.CharField(required=False)
-    nit = forms.CharField(required=False)
-    representante_legal = forms.CharField(required=False)
-    direccion_instalacion = forms.CharField(required=False)
-    departamento = forms.CharField(required=False)
-    municipio = forms.CharField(required=False)
-    persona_contacto = forms.CharField(required=False)
 
     class Meta(UserCreationForm.Meta):
         model = User
@@ -100,18 +93,6 @@ class UserWithProfileForm(UserCreationForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        role = cleaned_data.get("role")
-        if role and role.name == RoleChoices.CLIENTE:
-            # Validar campos obligatorios de ClientProfile
-            for field in [
-                "razon_social",
-                "nit",
-                "direccion_instalacion",
-                "departamento",
-                "municipio",
-            ]:
-                if not cleaned_data.get(field):
-                    self.add_error(field, "Este campo es obligatorio para clientes.")
         return cleaned_data
 
 
@@ -133,14 +114,6 @@ class UserEditWithProfileForm(UserCreationForm):
         widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
         help_text="Introduce la misma contraseña que antes, para su verificación.",
     )
-    # Campos de ClientProfile (solo para cliente)
-    razon_social = forms.CharField(required=False)
-    nit = forms.CharField(required=False)
-    representante_legal = forms.CharField(required=False)
-    direccion_instalacion = forms.CharField(required=False)
-    departamento = forms.CharField(required=False)
-    municipio = forms.CharField(required=False)
-    persona_contacto = forms.CharField(required=False)
 
     class Meta(UserCreationForm.Meta):
         model = User
@@ -176,17 +149,6 @@ class UserEditWithProfileForm(UserCreationForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        role = cleaned_data.get("role")
-        if role and role.name == RoleChoices.CLIENTE:
-            for field in [
-                "razon_social",
-                "nit",
-                "direccion_instalacion",
-                "departamento",
-                "municipio",
-            ]:
-                if not cleaned_data.get(field):
-                    self.add_error(field, "Este campo es obligatorio para clientes.")
         # Validar username único excepto para el propio usuario
         username = cleaned_data.get("username")
         if username:
@@ -198,6 +160,36 @@ class UserEditWithProfileForm(UserCreationForm):
                     "username", "Ya existe un usuario con ese nombre de usuario."
                 )
         return cleaned_data
+
+
+class ClientProfileForm(forms.ModelForm):
+    class Meta:
+        model = ClientProfile
+        fields = ["razon_social", "nit", "representante_legal"]
+        labels = {
+            "razon_social": "Razón Social",
+            "nit": "NIT",
+            "representante_legal": "Representante Legal",
+        }
+
+
+class ClientBranchForm(forms.ModelForm):
+    class Meta:
+        model = ClientBranch
+        fields = [
+            "nombre",
+            "direccion_instalacion",
+            "departamento",
+            "municipio",
+            "persona_contacto",
+        ]
+        labels = {
+            "nombre": "Nombre de la Sede",
+            "direccion_instalacion": "Dirección de la Sede",
+            "departamento": "Departamento",
+            "municipio": "Municipio",
+            "persona_contacto": "Persona de Contacto",
+        }
 
 
 class ReportForm(forms.ModelForm):
@@ -1002,21 +994,18 @@ class UserCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         return form
 
     def form_valid(self, form):
-        response = super().form_valid(form)
+        user = form.save()
         role = form.cleaned_data["role"]
-        self.object.roles.set([role])
+        user.roles.set([role])
+        self.object = user
+
+        # --- CORRECCIÓN: Lógica de redirección ---
         if role.name == RoleChoices.CLIENTE:
-            ClientProfile.objects.create(
-                user=self.object,
-                razon_social=form.cleaned_data["razon_social"],
-                nit=form.cleaned_data["nit"],
-                representante_legal=form.cleaned_data.get("representante_legal"),
-                direccion_instalacion=form.cleaned_data["direccion_instalacion"],
-                departamento=form.cleaned_data["departamento"],
-                municipio=form.cleaned_data["municipio"],
-                persona_contacto=form.cleaned_data.get("persona_contacto"),
-            )
-        return response
+            # Si es cliente, redirigir al formulario de creación de perfil
+            return redirect("client_profile_create", user_pk=self.object.pk)
+        else:
+            # Si es interno, el flujo termina aquí
+            return redirect(self.get_success_url())
 
     def handle_no_permission(self):
         if not self.request.user.is_authenticated:
@@ -1065,18 +1054,6 @@ class UserUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
             form.fields["role"].queryset = Role.objects.all()
         else:
             form.fields["role"].queryset = Role.objects.none()
-
-        # Si el usuario editado ya es cliente, precargar los campos de ClientProfile
-        instance = self.object
-        if hasattr(instance, "client_profile"):
-            profile = instance.client_profile
-            form.initial["razon_social"] = profile.razon_social
-            form.initial["nit"] = profile.nit
-            form.initial["representante_legal"] = profile.representante_legal
-            form.initial["direccion_instalacion"] = profile.direccion_instalacion
-            form.initial["departamento"] = profile.departamento
-            form.initial["municipio"] = profile.municipio
-            form.initial["persona_contacto"] = profile.persona_contacto
         return form
 
     def form_valid(self, form):
@@ -1088,18 +1065,9 @@ class UserUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
         user.save()
         role = form.cleaned_data["role"]
         user.roles.set([role])
-        # Si es cliente, crear o actualizar el perfil
-        if role.name == RoleChoices.CLIENTE:
-            profile, created = ClientProfile.objects.get_or_create(user=user)
-            profile.razon_social = form.cleaned_data["razon_social"]
-            profile.nit = form.cleaned_data["nit"]
-            profile.representante_legal = form.cleaned_data.get("representante_legal")
-            profile.direccion_instalacion = form.cleaned_data["direccion_instalacion"]
-            profile.departamento = form.cleaned_data["departamento"]
-            profile.municipio = form.cleaned_data["municipio"]
-            profile.persona_contacto = form.cleaned_data.get("persona_contacto")
-            profile.save()
-        else:
+
+        # Si el rol cambia a NO ser cliente, eliminamos el perfil.
+        if role.name != RoleChoices.CLIENTE:
             ClientProfile.objects.filter(user=user).delete()
         return redirect(self.get_success_url())
 
@@ -1113,6 +1081,83 @@ class UserUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
         # User is authenticated, but lacks permission.
         # Delegate to PermissionRequiredMixin's original behavior.
         return PermissionRequiredMixin.handle_no_permission(self)
+
+
+class ClientProfileCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    model = ClientProfile
+    form_class = ClientProfileForm
+    template_name = "users/client_profile_form.html"
+    permission_required = "app.add_user"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Registrar Perfil del Cliente"
+        return context
+
+    def form_valid(self, form):
+        user = get_object_or_404(User, pk=self.kwargs["user_pk"])
+        form.instance.user = user
+        self.object = form.save()
+        return redirect(self.get_success_url())
+
+    def get_success_url(self):
+        # Redirigir a crear la primera sede, pasando el ID del perfil recién creado
+        return reverse_lazy(
+            "client_branch_create", kwargs={"profile_pk": self.object.pk}
+        )
+
+
+class ClientBranchCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    model = ClientBranch
+    form_class = ClientBranchForm
+    template_name = "users/client_branch_form.html"
+    permission_required = "app.add_user"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Registrar Primera Sede del Cliente"
+        return context
+
+    def form_valid(self, form):
+        profile = get_object_or_404(ClientProfile, pk=self.kwargs["profile_pk"])
+        form.instance.company = profile
+        self.object = form.save()
+        return redirect(self.get_success_url())
+
+    def get_success_url(self):
+        # Al final del flujo, redirigir a los detalles del usuario
+        profile = get_object_or_404(ClientProfile, pk=self.kwargs["profile_pk"])
+        return reverse_lazy("user_detail", kwargs={"pk": profile.user.pk})
+
+
+class ClientProfileUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    model = ClientProfile
+    form_class = ClientProfileForm
+    template_name = "users/client_profile_form.html"
+    permission_required = "app.add_user"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Editar Perfil del Cliente"
+        return context
+
+    def get_success_url(self):
+        return reverse_lazy("user_detail", kwargs={"pk": self.object.user.pk})
+
+
+class ClientBranchUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    model = ClientBranch
+    form_class = ClientBranchForm
+    template_name = "users/client_branch_form.html"
+    permission_required = "app.add_user"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Editar Sede del Cliente"
+        return context
+
+    def get_success_url(self):
+        return reverse_lazy("user_detail", kwargs={"pk": self.object.company.user.pk})
 
 
 class UserDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):

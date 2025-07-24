@@ -2,7 +2,7 @@ from django.contrib.auth.models import Permission
 from django.test import TestCase
 from django.urls import reverse
 
-from app.models import ClientProfile, Role, RoleChoices, User
+from app.models import ClientBranch, ClientProfile, Role, RoleChoices, User
 
 
 class UserCreatePermissionTest(TestCase):
@@ -93,67 +93,66 @@ class UserCreateFormTest(TestCase):
         self.assertTrue(user.roles.filter(name=RoleChoices.GERENTE).exists())
         self.assertFalse(hasattr(user, "client_profile"))
 
-    def test_create_client_user(self):
+    def test_create_client_user_redirects_to_profile_form(self):
+        """Verifica que al crear un usuario cliente, se redirige a crear el perfil."""
         self.client.login(username="external", password="externalpass")
-        data = {
-            "username": "cliente",
-            "first_name": "Cliente",
-            "last_name": "Test",
-            "email": "cliente@x.com",
+        user_data = {
+            "username": "cliente_nuevo",
+            "first_name": "Nuevo",
+            "last_name": "Cliente",
+            "email": "cliente@nuevo.com",
             "role": self.role_cliente.id,
             "password1": "Testpass123!",
             "password2": "Testpass123!",
-            "razon_social": "Empresa S.A.",
-            "nit": "123456789",
-            "direccion_instalacion": "Calle 123",
-            "departamento": "Cundinamarca",
-            "municipio": "Bogotá",
-            "representante_legal": "Juan Perez",
-            "persona_contacto": "Maria Lopez",
         }
-        response = self.client.post(self.url, data)
-        self.assertEqual(response.status_code, 302)
-        user = User.objects.get(username="cliente")
-        self.assertTrue(user.roles.filter(name=RoleChoices.CLIENTE).exists())
-        self.assertTrue(hasattr(user, "client_profile"))
-        profile = user.client_profile
-        self.assertEqual(profile.razon_social, "Empresa S.A.")
-        self.assertEqual(profile.nit, "123456789")
-        self.assertEqual(profile.departamento, "Cundinamarca")
-        self.assertEqual(profile.municipio, "Bogotá")
-        self.assertEqual(profile.representante_legal, "Juan Perez")
-        self.assertEqual(profile.persona_contacto, "Maria Lopez")
 
-    def test_client_user_missing_required_profile_fields(self):
-        self.client.login(username="external", password="externalpass")
-        data = {
-            "username": "cliente2",
-            "first_name": "Cliente2",
-            "last_name": "Test",
-            "email": "cliente2@x.com",
-            "role": self.role_cliente.id,
-            "password1": "Testpass123!",
-            "password2": "Testpass123!",
-            # Falta razon_social, nit, direccion_instalacion, departamento, municipio
+        # 1. Crear el usuario
+        response = self.client.post(self.url, user_data)
+        new_user = User.objects.get(username="cliente_nuevo")
+
+        # Verificar redirección a la creación del perfil
+        self.assertRedirects(
+            response, reverse("client_profile_create", kwargs={"user_pk": new_user.pk})
+        )
+
+        # 2. Crear el perfil del cliente
+        profile_data = {
+            "razon_social": "Empresa Nueva S.A.S.",
+            "nit": "987.654.321-0",
+            "representante_legal": "Maria Rojas",
         }
-        response = self.client.post(self.url, data)
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("form", response.context)
-        form = response.context["form"]
-        self.assertFormError(
-            form, "razon_social", "Este campo es obligatorio para clientes."
+        profile_url = reverse("client_profile_create", kwargs={"user_pk": new_user.pk})
+        response = self.client.post(profile_url, profile_data)
+        new_profile = ClientProfile.objects.get(user=new_user)
+
+        # Verificar redirección a la creación de la sede
+        self.assertRedirects(
+            response,
+            reverse("client_branch_create", kwargs={"profile_pk": new_profile.pk}),
         )
-        self.assertFormError(form, "nit", "Este campo es obligatorio para clientes.")
-        self.assertFormError(
-            form, "direccion_instalacion", "Este campo es obligatorio para clientes."
+
+        # 3. Crear la primera sede
+        branch_data = {
+            "nombre": "Sede Principal",
+            "direccion_instalacion": "Avenida 45 # 12-34",
+            "departamento": "Cundinamarca",
+            "municipio": "Bogotá D.C.",
+            "persona_contacto": "Carlos Diaz",
+        }
+        branch_url = reverse(
+            "client_branch_create", kwargs={"profile_pk": new_profile.pk}
         )
-        self.assertFormError(
-            form, "departamento", "Este campo es obligatorio para clientes."
+        response = self.client.post(branch_url, branch_data)
+
+        # Verificar redirección final a los detalles del usuario
+        self.assertRedirects(
+            response, reverse("user_detail", kwargs={"pk": new_user.pk})
         )
-        self.assertFormError(
-            form, "municipio", "Este campo es obligatorio para clientes."
-        )
-        self.assertFalse(User.objects.filter(username="cliente2").exists())
+
+        # Verificar que todo se creó correctamente
+        self.assertTrue(ClientBranch.objects.filter(company=new_profile).exists())
+        branch = ClientBranch.objects.get(company=new_profile)
+        self.assertEqual(branch.nombre, "Sede Principal")
 
 
 class UserUpdatePermissionTest(TestCase):
@@ -255,65 +254,23 @@ class UserUpdateFormTest(TestCase):
             "role": self.role_cliente.id,
             "password1": "Testpass123!",
             "password2": "Testpass123!",
-            "razon_social": "Empresa Nueva",
-            "nit": "987654321",
-            "direccion_instalacion": "Calle Nueva",
-            "departamento": "Antioquia",
-            "municipio": "Medellín",
-            "representante_legal": "Ana Ruiz",
-            "persona_contacto": "Carlos Gómez",
         }
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, 302)
-        user = User.objects.get(username="editme")
-        self.assertTrue(user.roles.filter(name=RoleChoices.CLIENTE).exists())
-        self.assertTrue(hasattr(user, "client_profile"))
-        profile = user.client_profile
-        self.assertEqual(profile.razon_social, "Empresa Nueva")
-        self.assertEqual(profile.nit, "987654321")
-        self.assertEqual(profile.departamento, "Antioquia")
-        self.assertEqual(profile.municipio, "Medellín")
-        self.assertEqual(profile.representante_legal, "Ana Ruiz")
-        self.assertEqual(profile.persona_contacto, "Carlos Gómez")
-
-    def test_update_client_user_missing_required_profile_fields(self):
-        self.client.login(username="admin", password="adminpass")
-        data = {
-            "username": "editme",
-            "first_name": "Cliente",
-            "last_name": "Editado",
-            "email": "clienteeditado@x.com",
-            "role": self.role_cliente.id,
-            "password1": "Testpass123!",
-            "password2": "Testpass123!",
-            # Falta razon_social, nit, direccion_instalacion, departamento, municipio
-        }
-        response = self.client.post(self.url, data)
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("form", response.context)
-        form = response.context["form"]
-        self.assertFormError(
-            form, "razon_social", "Este campo es obligatorio para clientes."
-        )
-        self.assertFormError(form, "nit", "Este campo es obligatorio para clientes.")
-        self.assertFormError(
-            form, "direccion_instalacion", "Este campo es obligatorio para clientes."
-        )
-        self.assertFormError(
-            form, "departamento", "Este campo es obligatorio para clientes."
-        )
-        self.assertFormError(
-            form, "municipio", "Este campo es obligatorio para clientes."
-        )
+        self.assertRedirects(response, reverse("user_list"))
 
     def test_update_from_client_to_internal_removes_profile(self):
         # Primero, convierte el usuario en cliente con perfil
         self.client.login(username="admin", password="adminpass")
         self.user_to_edit.roles.set([self.role_cliente])
-        ClientProfile.objects.create(
+        self.client_profile = ClientProfile.objects.create(
             user=self.user_to_edit,
             razon_social="Empresa",
             nit="123",
+        )
+        self.client_branch = ClientBranch.objects.create(
+            company=self.client_profile,
+            nombre="Sede de Equipos",
             direccion_instalacion="Calle",
             departamento="Depto",
             municipio="Ciudad",
