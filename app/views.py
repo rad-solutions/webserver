@@ -517,6 +517,25 @@ def load_user_equipment(request):
     return JsonResponse(equipment_data, safe=False)
 
 
+def load_client_branches(request):
+    """Vista AJAX para cargar las sedes de un cliente específico.
+
+    Usado en los filtros de las listas de reportes y equipos y formulario de creación de equipo.
+    """
+    user_id = request.GET.get("user_id")
+    branches_data = []
+    if user_id:
+        try:
+            # Buscamos las sedes a través del perfil del cliente
+            branches = ClientBranch.objects.filter(company__user_id=user_id).order_by(
+                "nombre"
+            )
+            branches_data = [{"id": b.id, "name": b.nombre} for b in branches]
+        except (ValueError, TypeError):
+            pass  # Si el user_id no es válido, devuelve una lista vacía
+    return JsonResponse(branches_data, safe=False)
+
+
 # Login view
 class CustomLoginView(LoginView):
     template_name = "login.html"
@@ -1115,7 +1134,7 @@ class ClientBranchCreateView(LoginRequiredMixin, PermissionRequiredMixin, Create
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["page_title"] = "Registrar Primera Sede del Cliente"
+        context["page_title"] = "Registrar Sede del Cliente"
         return context
 
     def form_valid(self, form):
@@ -1218,6 +1237,8 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         marca_filter = self.request.GET.get("marca")
         modelo_filter = self.request.GET.get("modelo")
         serial_filter = self.request.GET.get("serial")
+        sede_filter = self.request.GET.get("sede")
+        client_user_filter = self.request.GET.get("client_user")
 
         # Variable para saber si el filtro de equipo se aplicó y tuvo éxito
         equipment_filter_cc_applied_successfully = False
@@ -1269,6 +1290,19 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         if serial_filter:
             queryset = queryset.filter(equipment__serial__icontains=serial_filter)
 
+        # --- NUEVO: Filtrar por sede ---
+        if sede_filter:
+            try:
+                queryset = queryset.filter(equipment__sede_id=int(sede_filter))
+            except (ValueError, TypeError):
+                pass  # Ignorar si no es un número
+        elif client_user_filter:
+            # Si NO se selecciona sede, pero SÍ un cliente, filtrar por todos los equipos de ese cliente.
+            try:
+                queryset = queryset.filter(equipment__user_id=int(client_user_filter))
+            except (ValueError, TypeError):
+                pass  # Ignorar si no es un número
+
         return queryset.order_by("-created_at")
 
     def get_context_data(self, **kwargs):
@@ -1289,6 +1323,21 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         context["marca_filter"] = self.request.GET.get("marca", "")
         context["modelo_filter"] = self.request.GET.get("modelo", "")
         context["serial_filter"] = self.request.GET.get("serial", "")
+
+        # --- NUEVO: Contexto para el filtro de Sede/Cliente ---
+        context["selected_sede_id"] = self.request.GET.get("sede")
+        context["selected_client_id"] = self.request.GET.get("client_user")
+
+        if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
+            # El cliente solo ve sus propias sedes
+            context["client_branches"] = ClientBranch.objects.filter(
+                company__user=self.request.user
+            )
+        else:
+            # El usuario interno ve una lista de todos los clientes
+            context["all_client_users"] = User.objects.filter(
+                roles__name=RoleChoices.CLIENTE
+            ).order_by("username")
 
         if context["selected_equipment_id"]:
             try:
@@ -1458,6 +1507,9 @@ class EquiposListView(LoginRequiredMixin, ListView):
         end_vig_lic_date_str = self.request.GET.get("end_vig_lic_date")
         end_last_cc_date_str = self.request.GET.get("end_last_cc_date")
         end_venc_cc_date_str = self.request.GET.get("end_venc_cc_date")
+        sede_filter = self.request.GET.get("sede")
+        client_user_filter = self.request.GET.get("client_user")
+
         if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
             queryset = Equipment.objects.filter(user=self.request.user)
         else:
@@ -1559,6 +1611,19 @@ class EquiposListView(LoginRequiredMixin, ListView):
             except ValueError:
                 pass  # Ignorar fecha inválida
 
+        # --- NUEVO: Filtrar por sede ---
+        if sede_filter:
+            try:
+                queryset = queryset.filter(sede_id=int(sede_filter))
+            except (ValueError, TypeError):
+                pass  # Ignorar si no es un número
+        elif client_user_filter:
+            # Si NO se selecciona sede, pero SÍ un cliente, filtrar por todos los equipos de ese cliente.
+            try:
+                queryset = queryset.filter(user_id=int(client_user_filter))
+            except (ValueError, TypeError):
+                pass  # Ignorar si no es un número
+
         return queryset.order_by("-process__fecha_inicio")
 
     def get_context_data(self, **kwargs):
@@ -1581,6 +1646,21 @@ class EquiposListView(LoginRequiredMixin, ListView):
         context["end_vig_lic_date"] = self.request.GET.get("end_vig_lic_date", "")
         context["end_last_cc_date"] = self.request.GET.get("end_last_cc_date", "")
         context["end_venc_cc_date"] = self.request.GET.get("end_venc_cc_date", "")
+
+        # --- NUEVO: Contexto para el filtro de Sede/Cliente ---
+        context["selected_sede_id"] = self.request.GET.get("sede")
+        context["selected_client_id"] = self.request.GET.get("client_user")
+
+        if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
+            # El cliente solo ve sus propias sedes
+            context["client_branches"] = ClientBranch.objects.filter(
+                company__user=self.request.user
+            )
+        else:
+            # El usuario interno ve una lista de todos los clientes
+            context["all_client_users"] = User.objects.filter(
+                roles__name=RoleChoices.CLIENTE
+            ).order_by("username")
 
         today = timezone.now().date()
 

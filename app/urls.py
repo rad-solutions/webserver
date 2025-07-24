@@ -34,6 +34,7 @@ from app.views import (
     UserDetailView,
     UserListView,
     UserUpdateView,
+    load_client_branches,
     load_user_equipment,
     load_user_processes,
     logout_view,
@@ -142,5 +143,10 @@ urlpatterns = [
         "ajax/load-user-equipment/",
         load_user_equipment,
         name="ajax_load_user_equipment",
+    ),
+    path(
+        "ajax/load-client-branches/",
+        load_client_branches,
+        name="ajax_load_client_branches",
     ),
 ]
