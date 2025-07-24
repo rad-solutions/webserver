@@ -14,7 +14,7 @@ jobs:
     name: Provision Ephemeral DB from Prod Snapshot
     runs-on: ubuntu-latest
     env:
-      AWS_REGION: us-east-1a
+      AWS_REGION: us-east-1
       PROD_DB_INSTANCE_IDENTIFIER: "radsolutions-db"
       AWS_ACCOUNT_ID: 978368259161
 
