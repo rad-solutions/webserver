@@ -1,3 +1,11 @@
+# [1.55.0](https://github.com/rad-solutions/webserver/compare/v1.54.0...v1.55.0) (2025-07-24)
+
+
+### Features
+
+* Implement UI to match the new Client Profile and Client Branch models across different views and templates. Corresponding tests adjusted and created. ([61f63df](https://github.com/rad-solutions/webserver/commit/61f63df412ce88281489ebc54ca459031e791c59))
+* Tests adapted to new configuration of models regaring Client's Profiles and Branches. New model tests added. ([47b882b](https://github.com/rad-solutions/webserver/commit/47b882b77408acac34736deb616bf60f61832b84))
+
 # [1.54.0](https://github.com/rad-solutions/webserver/compare/v1.53.0...v1.54.0) (2025-07-23)
 
 
