@@ -57,7 +57,7 @@ jobs:
             aws rds restore-db-instance-from-db-snapshot \
               --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }} \
               --db-snapshot-identifier ${{ steps.identifiers.outputs.snapshot_id }} \
-              --instance-class db.t3.micro \
+              --db-instance-class db.t3.micro \
               --no-publicly-accessible \
               --tags Key=SourceWorkflow,Value="${{ github.workflow }}" Key=CommitSHA,Value=${{ github.sha }}
 
