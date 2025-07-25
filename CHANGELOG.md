@@ -1,3 +1,10 @@
+# [1.58.0](https://github.com/rad-solutions/webserver/compare/v1.57.0...v1.58.0) (2025-07-25)
+
+
+### Features
+
+* update populate_db script to align with latest model changes ([bc57339](https://github.com/rad-solutions/webserver/commit/bc57339974955cadf38f2a291be8906c78484637))
+
 # [1.57.0](https://github.com/rad-solutions/webserver/compare/v1.56.0...v1.57.0) (2025-07-25)
 
 
