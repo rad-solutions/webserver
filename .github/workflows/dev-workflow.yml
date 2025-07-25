@@ -32,9 +32,10 @@ jobs:
         id: identifiers
         run: |
           TIMESTAMP=$(date +%s)
-          SNAPSHOT_ID="snapshot-dev-${{ github.sha }}-${TIMESTAMP}"
-          TEMP_DB_ID="temp-db-dev-${{ github.sha }}-${TIMESTAMP}"
-          TEMP_S3_BUCKET="radsolutions-media-uploads-dev-${{ github.sha }}-${TIMESTAMP}"
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-8)
+          SNAPSHOT_ID="snapshot-dev-${SHORT_SHA}-${TIMESTAMP}"
+          TEMP_DB_ID="temp-db-dev-${SHORT_SHA}-${TIMESTAMP}"
+          TEMP_S3_BUCKET="radsolutions-media-uploads-dev-${SHORT_SHA}-${TIMESTAMP}"
           echo "snapshot_id=$SNAPSHOT_ID" >> $GITHUB_OUTPUT
           echo "temp_db_id=$TEMP_DB_ID" >> $GITHUB_OUTPUT
           echo "temp_s3_bucket=$TEMP_S3_BUCKET" >> $GITHUB_OUTPUT
