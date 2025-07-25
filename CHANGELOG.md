@@ -1,3 +1,11 @@
+# [1.56.0](https://github.com/rad-solutions/webserver/compare/v1.55.0...v1.56.0) (2025-07-25)
+
+
+### Features
+
+* Added filter on equipment and reports list by client's branch. Fixed a little issue with equipment form and user branch creation form. Corresponding test added. ([5ea70d3](https://github.com/rad-solutions/webserver/commit/5ea70d3a1221bbc379c9191d6c9550a68c3fbb99))
+* Fix filters by branch for client users. ([c4836ee](https://github.com/rad-solutions/webserver/commit/c4836ee92962d615c69f943e6925989c945caedc))
+
 # [1.55.0](https://github.com/rad-solutions/webserver/compare/v1.54.0...v1.55.0) (2025-07-24)
 
 
