@@ -28,6 +28,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const userSelect = document.getElementById('id_user'); // Asume que el ID del campo User es 'id_user'
     const processSelect = document.getElementById('id_process');
+    const branchSelect = document.getElementById('id_sede');
 
     if (!userSelect) {
         console.error("El campo de selección de usuario (id_user) no fue encontrado.");
@@ -35,6 +36,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (!processSelect) {
         console.error("El campo de selección de proceso (id_process) no fue encontrado.");
+        return;
+    }
+    if (!branchSelect) {
+        console.error("El campo de selección de sede (id_sede) no fue encontrado.");
         return;
     }
 
@@ -74,9 +79,23 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function loadBranches(userId) {
+        if (userId) {
+            fetch(`{% url 'ajax_load_client_branches' %}?user_id=${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateSelectWithOptions(branchSelect, data, "Seleccione una sede");
+                })
+                .catch(error => console.error('Error cargando sedes:', error));
+        } else {
+            updateSelectWithOptions(branchSelect, [], "Seleccione un usuario primero");
+        }
+    }
+
     userSelect.addEventListener('change', function() {
         const userId = this.value;
         loadProcesses(userId);
+        loadBranches(userId);
     });
 
     // Carga inicial (similar al de report_form.html)
@@ -87,6 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // loadProcesses(userSelect.value);
     } else {
         updateSelectWithOptions(processSelect, [], "Seleccione un usuario primero");
+        updateSelectWithOptions(branchSelect, [], "Seleccione un usuario primero");
     }
 });
 </script>

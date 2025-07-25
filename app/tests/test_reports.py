@@ -9,6 +9,8 @@ from django.urls import reverse
 
 from ..models import (
     Anotacion,
+    ClientBranch,
+    ClientProfile,
     Equipment,
     EstadoReporteChoices,
     Process,
@@ -937,3 +939,119 @@ class ReportListEquipmentFilterTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["reports"]), 0)
         self.assertContains(response, "No hay reportes registrados.")
+
+
+class ReportFilterTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # ... (crear usuarios, roles, etc.) ...
+        cls.client_user = User.objects.create_user(
+            username="cliente_test", password="password"
+        )
+        role_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        cls.client_user.roles.add(role_cliente)
+
+        cls.profile = ClientProfile.objects.create(
+            user=cls.client_user, razon_social="Cliente S.A.", nit="111"
+        )
+
+        cls.sede1 = ClientBranch.objects.create(
+            company=cls.profile, nombre="Sede Norte", direccion_instalacion="Dir 1"
+        )
+        cls.sede2 = ClientBranch.objects.create(
+            company=cls.profile, nombre="Sede Sur", direccion_instalacion="Dir 2"
+        )
+
+        cls.equipment1_sede1 = Equipment.objects.create(
+            user=cls.client_user, nombre="Equipo A", sede=cls.sede1
+        )
+        cls.equipment2_sede2 = Equipment.objects.create(
+            user=cls.client_user, nombre="Equipo B", sede=cls.sede2
+        )
+
+        cls.report1 = Report.objects.create(
+            user=cls.client_user, title="Reporte Sede 1", equipment=cls.equipment1_sede1
+        )
+        cls.report2 = Report.objects.create(
+            user=cls.client_user, title="Reporte Sede 2", equipment=cls.equipment2_sede2
+        )
+
+        cls.internal_user = User.objects.create_user(
+            username="interno", password="password"
+        )
+        role_gerente, _ = Role.objects.get_or_create(name=RoleChoices.GERENTE)
+        cls.internal_user.roles.add(role_gerente)
+
+    def test_filter_by_sede_for_internal_user(self):
+        """Verifica que un usuario interno puede filtrar reportes por sede."""
+        self.client.login(username="interno", password="password")
+        url = (
+            reverse("report_list")
+            + f"?client_user={self.client_user.id}&sede={self.sede1.id}"
+        )
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.report1.title)
+        self.assertNotContains(response, self.report2.title)
+        self.assertEqual(len(response.context["reports"]), 1)
+
+    def test_filter_by_sede_for_client_user(self):
+        """Verifica que un usuario cliente puede filtrar sus propios reportes por sede."""
+        self.client.login(username="cliente_test", password="password")
+        url = reverse("report_list") + f"?sede={self.sede2.id}"
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.report1.title)
+        self.assertContains(response, self.report2.title)
+        self.assertEqual(len(response.context["reports"]), 1)
+
+    def test_ajax_load_client_branches(self):
+        """Verifica que la vista AJAX devuelve las sedes correctas."""
+        self.client.login(username="interno", password="password")
+        url = reverse("ajax_load_client_branches") + f"?user_id={self.client_user.id}"
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data), 2)
+        sede_names = {item["name"] for item in data}
+        self.assertIn("Sede Norte", sede_names)
+        self.assertIn("Sede Sur", sede_names)
+
+    def test_filter_by_client_user_only(self):
+        """Test para verificar que un usuario interno puede filtrar reportes por cliente.
+
+        Verifica que un usuario interno puede filtrar por cliente,
+        obteniendo todos los reportes de todas las sedes de ese cliente.
+        """
+        # Crear un segundo cliente para asegurar que el filtro funciona
+        other_client = User.objects.create_user(username="otro_cliente", password="p")
+        role_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        other_client.roles.add(role_cliente)
+        other_profile = ClientProfile.objects.create(
+            user=other_client, razon_social="Otra S.A.", nit="222"
+        )
+        other_sede = ClientBranch.objects.create(
+            company=other_profile, nombre="Sede Unica", direccion_instalacion="Dir 3"
+        )
+        other_equipment = Equipment.objects.create(
+            user=other_client, nombre="Equipo C", sede=other_sede
+        )
+        Report.objects.create(
+            user=other_client, title="Reporte Otro Cliente", equipment=other_equipment
+        )
+
+        self.client.login(username="interno", password="password")
+        # Filtrar solo por el primer cliente, sin especificar sede
+        url = reverse("report_list") + f"?client_user={self.client_user.id}"
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        # Debe contener los dos reportes del primer cliente
+        self.assertContains(response, self.report1.title)
+        self.assertContains(response, self.report2.title)
+        # NO debe contener el reporte del otro cliente
+        self.assertNotContains(response, "Reporte Otro Cliente")
+        self.assertEqual(len(response.context["reports"]), 2)

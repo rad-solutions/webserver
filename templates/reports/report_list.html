@@ -26,7 +26,7 @@
             </div>
 
             {# Checkbox para Filtro por Equipo #}
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="form-check mt-4">
                     <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_equipment_filters" data-bs-toggle="collapse" data-bs-target="#equipment_filters_fields" {% if selected_equipment_id or marca_filter or modelo_filter or serial_filter %}checked{% endif %}>
                     <label class="form-check-label" for="toggle_equipment_filters">
@@ -35,8 +35,18 @@
                 </div>
             </div>
 
+            {# Checkbox para Filtro por Cliente/Sede #}
+            <div class="col-md-2">
+                <div class="form-check mt-4">
+                    <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_sede_filters" data-bs-toggle="collapse" data-bs-target="#sede_filters_fields" {% if selected_client_id or selected_sede_id %}checked{% endif %}>
+                    <label class="form-check-label" for="toggle_sede_filters">
+                        Filtrar por Cliente/Sede
+                    </label>
+                </div>
+            </div>
+
             {# Checkbox para Filtro por Fecha de Creación #}
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="form-check mt-4"> {# mt-4 para alinear con labels si es necesario, ajustar según preferencia #}
                     <input class="form-check-input filter-group-toggle" type="checkbox" id="toggle_creation_date" data-bs-toggle="collapse" data-bs-target="#creation_date_fields" aria-expanded="false" aria-controls="creation_date_fields" {% if start_date or end_date %}checked{% endif %}>
                     <label class="form-check-label" for="toggle_creation_date">
@@ -50,6 +60,38 @@
             </div>
         </div>
         <hr class="my-3">
+
+        {# --- INICIO: NUEVOS CAMPOS DE FILTRO DE SEDE --- #}
+        <div class="row g-3 align-items-end collapse {% if selected_client_id or selected_sede_id %}show{% endif %}" id="sede_filters_fields">
+            <div class="col-md-3">
+                <h5>Filtro por Cliente y Sede</h5>
+            </div>
+            {% if perms.app.change_report %}
+            <div class="col-md-3">
+                <label for="client_user" class="form-label">Cliente:</label>
+                <select name="client_user" id="client_user" class="form-select form-select-sm">
+                    <option value="">Todos los Clientes</option>
+                    {% for client in all_client_users %}
+                    <option value="{{ client.id }}" {% if client.id|stringformat:"s" == selected_client_id %}selected{% endif %}>
+                        {{ client.client_profile.razon_social|default:client.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-md-3">
+                <label for="sede" class="form-label">Sede:</label>
+                <select name="sede" id="sede" class="form-select form-select-sm">
+                    <option value="">Todas las Sedes</option>
+                    {% if not perms.app.change_report %}
+                        {% for branch in client_branches %}
+                        <option value="{{ branch.id }}" {% if branch.id|stringformat:"s" == selected_sede_id %}selected{% endif %}>{{ branch.nombre }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+            <hr class="my-3">
+        </div>
 
         {# NUEVO: Contenedor colapsable para todos los filtros de equipo #}
         <div class="collapse {% if selected_equipment_id or marca_filter or modelo_filter or serial_filter %}show{% endif %}" id="equipment_filters_fields">
@@ -138,4 +180,53 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const clientUserSelect = document.getElementById('client_user');
+    const sedeSelect = document.getElementById('sede');
+
+    // Esta función solo se aplica si existe el dropdown de cliente (para usuarios internos)
+    if (clientUserSelect && sedeSelect) {
+
+        function updateSedeOptions(options) {
+            const currentSedeId = "{{ selected_sede_id|default:'' }}";
+            sedeSelect.innerHTML = '<option value="">Todas las Sedes</option>'; // Reset
+
+            options.forEach(function(option) {
+                const opt = document.createElement('option');
+                opt.value = option.id;
+                opt.textContent = option.name;
+                if (option.id.toString() === currentSedeId) {
+                    opt.selected = true;
+                }
+                sedeSelect.appendChild(opt);
+            });
+        }
+
+        function loadSedes(clientId) {
+            if (clientId) {
+                fetch(`{% url 'ajax_load_client_branches' %}?user_id=${clientId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        updateSedeOptions(data);
+                    })
+                    .catch(error => console.error('Error cargando sedes:', error));
+            } else {
+                updateSedeOptions([]); // Limpiar si no hay cliente seleccionado
+            }
+        }
+
+        // Cargar sedes al cambiar el cliente
+        clientUserSelect.addEventListener('change', function() {
+            loadSedes(this.value);
+        });
+
+        // Cargar sedes al inicio si ya hay un cliente seleccionado (al recargar la página con filtros)
+        if (clientUserSelect.value) {
+            loadSedes(clientUserSelect.value);
+        }
+    }
+});
+</script>
 {% endblock %}
