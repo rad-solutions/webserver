@@ -7,6 +7,8 @@ from django.utils import timezone
 from faker import Faker
 
 # Import your models
+from app.models import ClientBranch  # Added
+from app.models import EquipmentType  # Added
 from app.models import (
     Anotacion,
     ClientProfile,
@@ -28,11 +30,21 @@ from app.models import (
 NUM_USERS = 10
 NUM_CLIENT_PROFILES = 7  # Should be <= NUM_USERS and match client role users
 NUM_INTERNAL_USERS = NUM_USERS - NUM_CLIENT_PROFILES
+NUM_BRANCHES_PER_CLIENT = 2  # Added
 NUM_PROCESSES_PER_USER = 2
 NUM_EQUIPMENT_PER_CLIENT = 2
 NUM_REPORTS_PER_PROCESS = 1
 NUM_ANOTACIONES_PER_PROCESS = 3
 NUM_HISTORIAL_TUBOS_PER_EQUIPMENT = 2
+
+# --- Data to be created ---
+EQUIPMENT_TYPES_TO_CREATE = [
+    "Equipo de Rayos X Dental",
+    "Mamógrafo",
+    "Tomógrafo Computarizado",
+    "Equipo de Rayos X General",
+    "Fluoroscopio",
+]
 
 
 class Command(BaseCommand):
@@ -60,8 +72,9 @@ class Command(BaseCommand):
         User.objects.filter(is_superuser=False).exclude(
             username__in=predefined_usernames
         ).delete()
+        EquipmentType.objects.all().delete()  # Added
         # Role.objects.all().delete() # This was deleting all roles and causing test users to lose their roles.
-        # ClientProfile, Process, Equipment, Report, Anotacion will cascade delete
+        # ClientProfile, ClientBranch, Process, Equipment, Report, Anotacion will cascade delete
         # or be deleted if their User/Process is deleted.
 
         # --- Create Roles ---
@@ -72,6 +85,17 @@ class Command(BaseCommand):
             roles_to_create[choice_value] = role
             if created:
                 self.stdout.write(self.style.SUCCESS(f"Created role: {choice_label}"))
+
+        # --- Create Equipment Types ---
+        self.stdout.write("Creating Equipment Types...")
+        equipment_types = []
+        for type_name in EQUIPMENT_TYPES_TO_CREATE:
+            eq_type, created = EquipmentType.objects.get_or_create(name=type_name)
+            equipment_types.append(eq_type)
+            if created:
+                self.stdout.write(
+                    self.style.SUCCESS(f"Created equipment type: {type_name}")
+                )
 
         # --- Create Users ---
         self.stdout.write(f"Creating {NUM_USERS} Users...")
@@ -117,26 +141,44 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"Created internal user: {username}"))
 
         # --- Create Client Profiles ---
-        self.stdout.write(f"Creating {NUM_CLIENT_PROFILES} Client Profiles...")
+        self.stdout.write(
+            f"Creating {NUM_CLIENT_PROFILES} Client Profiles and their Branches..."
+        )
+        client_profiles = []
+        client_branches = []
         for client_user in client_users:
-            ClientProfile.objects.create(
+            profile = ClientProfile.objects.create(
                 user=client_user,
                 razon_social=fake.company(),
                 nit=fake.unique.numerify(text="#########-#"),  # Basic NIT format
                 representante_legal=fake.name(),
-                direccion_instalacion=fake.street_address(),
-                departamento=fake.administrative_unit(),  # Changed from fake.state()
-                municipio=fake.city(),
-                persona_contacto=fake.name(),
             )
+            client_profiles.append(profile)
             self.stdout.write(
                 self.style.SUCCESS(
                     f"Created client profile for: {client_user.username}"
                 )
             )
 
+            # Create branches for this client
+            for _ in range(NUM_BRANCHES_PER_CLIENT):
+                branch = ClientBranch.objects.create(
+                    company=profile,
+                    nombre=fake.city_suffix() + " " + fake.street_name(),
+                    direccion_instalacion=fake.street_address(),
+                    departamento=fake.administrative_unit(),
+                    municipio=fake.city(),
+                    persona_contacto=fake.name(),
+                )
+                client_branches.append(branch)
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"  - Created branch '{branch.nombre}' for {profile.razon_social}"
+                    )
+                )
+
         # --- Create Processes ---
-        self.stdout.write("Creating Processes...")  # Corrected F541
+        self.stdout.write("Creating Processes...")
         processes = []
         for user_obj in users:  # Create processes for all types of users
             for _ in range(NUM_PROCESSES_PER_USER):
@@ -173,10 +215,17 @@ class Command(BaseCommand):
 
         # --- Create Equipment ---
         # Equipment is typically associated with client users
-        self.stdout.write("Creating Equipment...")  # Corrected F541
+        self.stdout.write("Creating Equipment...")
         equipments = []
         if client_users:  # Only create equipment if there are client users
             for client_user in client_users:
+                # Get branches associated with this client's profile
+                user_branches = ClientBranch.objects.filter(
+                    company=client_user.client_profile
+                )
+                if not user_branches:
+                    continue  # Skip if client has no branches
+
                 for _ in range(NUM_EQUIPMENT_PER_CLIENT):
                     # Ensure serial is unique if not blank/null
                     serial_number = None
@@ -187,6 +236,7 @@ class Command(BaseCommand):
 
                     equipment = Equipment.objects.create(
                         user=client_user,  # Equipment owned by a client user
+                        equipment_type=random.choice(equipment_types),  # Added
                         nombre=fake.sentence(nb_words=3),
                         marca=fake.company_suffix() + " " + fake.word().capitalize(),
                         modelo=fake.bothify(text="Model-####??"),
@@ -213,7 +263,7 @@ class Command(BaseCommand):
                             else None
                         ),  # Optionally link to a random process
                         estado_actual=random.choice(EstadoEquipoChoices.choices)[0],
-                        sede=fake.city_suffix() + " " + fake.street_name(),
+                        sede=random.choice(user_branches),  # Updated
                     )
                     equipments.append(equipment)
                     self.stdout.write(
