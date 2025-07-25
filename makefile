@@ -30,3 +30,7 @@ precommit:
 populate-db:
 	docker compose exec web poetry run python manage.py populate_db
 	@echo "Base de datos poblada con datos sintéticos."
+
+pagination-test-populate-db:
+	docker compose exec web poetry run python manage.py populate_data
+	@echo "Base de datos poblada con datos sintéticos para pruebas de paginación."

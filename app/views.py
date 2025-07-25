@@ -917,6 +917,7 @@ class UserListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     login_url = "/login/"
     permission_required = "app.view_user"
     raise_exception = True
+    paginate_by = 20
 
     def get_context_data(self, **kwargs):
         """Añade la lógica para mostrar los roles de cada usuario."""
@@ -1492,6 +1493,7 @@ class EquiposListView(LoginRequiredMixin, ListView):
     template_name = "equipos/equipos_list.html"
     context_object_name = "equipos"
     login_url = "/login/"
+    paginate_by = 20
 
     def get_queryset(self):
         # Obtener el tipo de proceso desde los parámetros GET
@@ -1909,6 +1911,7 @@ class ProcessListView(LoginRequiredMixin, ListView):
     template_name = "process/process_list.html"
     context_object_name = "equipos"
     login_url = "/login/"
+    paginate_by = 20
 
     def get_queryset(self):
         # Obtener el tipo de proceso desde los parámetros GET
