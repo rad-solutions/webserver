@@ -34,10 +34,13 @@ jobs:
           TIMESTAMP=$(date +%s)
           SNAPSHOT_ID="snapshot-dev-${{ github.sha }}-${TIMESTAMP}"
           TEMP_DB_ID="temp-db-dev-${{ github.sha }}-${TIMESTAMP}"
+          TEMP_S3_BUCKET="radsolutions-media-uploads-dev-${{ github.sha }}-${TIMESTAMP}"
           echo "snapshot_id=$SNAPSHOT_ID" >> $GITHUB_OUTPUT
           echo "temp_db_id=$TEMP_DB_ID" >> $GITHUB_OUTPUT
+          echo "temp_s3_bucket=$TEMP_S3_BUCKET" >> $GITHUB_OUTPUT
           echo "Generated Snapshot ID: $SNAPSHOT_ID"
           echo "Generated Temp DB ID: $TEMP_DB_ID"
+          echo "Generated Temp S3 Bucket: $TEMP_S3_BUCKET"
 
       - name: Create DB Snapshot from Production
         run: |
@@ -67,3 +70,12 @@ jobs:
             DB_ENDPOINT=$(aws rds describe-db-instances --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }} --query "DBInstances[0].Endpoint.Address" --output text)
             echo "Temporary DB is available at: $DB_ENDPOINT"
             echo "You will need to manage its deletion to avoid costs."
+
+      - name: Create temporary S3 bucket for media
+        run: |
+          echo "Creating temporary S3 bucket: ${{ steps.identifiers.outputs.temp_s3_bucket }}"
+          aws s3api create-bucket --bucket ${{ steps.identifiers.outputs.temp_s3_bucket }} --region ${{ env.AWS_REGION }}
+          echo "Cloning media from production bucket to temporary bucket..."
+          aws s3 sync s3://radsolutions-media-uploads-2253 s3://${{ steps.identifiers.outputs.temp_s3_bucket }}
+          echo "Temporary S3 bucket ready: ${{ steps.identifiers.outputs.temp_s3_bucket }}"
+          # Puedes exportar el nombre del bucket temporal como variable de entorno para otros jobs/steps si lo necesitas
