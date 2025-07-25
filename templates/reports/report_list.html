@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load app_extras %}
 
 {% block title %}Lista de Reportes{% endblock %}
 
@@ -177,6 +178,23 @@
                     </tbody>
                 </table>
             </div>
+            {% if is_paginated %}
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            {# --- CORRECCIÓN --- #}
+                            <li class="page-item"><a class="page-link" href="?{% url_replace page=1 %}">&laquo; Primera</a></li>
+                            <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.previous_page_number %}">Anterior</a></li>
+                        {% endif %}
+                        <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                        {% if page_obj.has_next %}
+                            {# --- CORRECCIÓN --- #}
+                            <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.next_page_number %}">Siguiente</a></li>
+                            <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.paginator.num_pages %}">Última &raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
         </div>
     </div>
 </div>

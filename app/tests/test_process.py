@@ -1180,3 +1180,84 @@ class ProcessListViewTest(TestCase):
         self.assertContains(response, "width: 100%")
         # Verifica que NO se muestra el progreso del proceso antiguo (50%)
         self.assertNotContains(response, "width: 50%")
+
+
+class PaginationWithFiltersTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Crear roles y usuarios
+        cls.gerente_role, _ = Role.objects.get_or_create(name=RoleChoices.GERENTE)
+        cls.cliente_role, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+
+        cls.gerente_user = User.objects.create_user(
+            username="gerente_pagination", password="password"
+        )
+        cls.gerente_user.roles.add(cls.gerente_role)
+
+        cls.cliente_user_a = User.objects.create_user(
+            username="cliente_a", password="password"
+        )
+        cls.cliente_user_a.roles.add(cls.cliente_role)
+
+        cls.cliente_user_b = User.objects.create_user(
+            username="cliente_b", password="password"
+        )
+        cls.cliente_user_b.roles.add(cls.cliente_role)
+
+        # Crear más de 20 procesos para forzar la paginación
+        # 22 procesos para el cliente A, 5 para el cliente B
+        for i in range(22):
+            Process.objects.create(
+                user=cls.cliente_user_a,
+                process_type=ProcessTypeChoices.CONTROL_CALIDAD,
+                estado=ProcessStatusChoices.EN_PROGRESO,
+                fecha_inicio=tz.now() - timedelta(days=i),
+            )
+
+        for i in range(5):
+            Process.objects.create(
+                user=cls.cliente_user_b,
+                process_type=ProcessTypeChoices.ASESORIA,
+                estado=ProcessStatusChoices.FINALIZADO,
+            )
+
+    def test_pagination_maintains_filters(self):
+        """Verifica que al pasar a la página 2, los filtros de la URL se mantienen."""
+        self.client.login(username="gerente_pagination", password="password")
+
+        # 1. Aplicar un filtro que sabemos que tiene más de una página de resultados
+        # Filtraremos por los procesos del cliente A, que son 22.
+        # La vista pagina por 20, así que debería haber 2 páginas.
+        filter_params = {
+            "process_type": ProcessTypeChoices.CONTROL_CALIDAD,
+            "estado": ProcessStatusChoices.EN_PROGRESO,
+        }
+
+        url = reverse("process_internal_list")
+        response_page1 = self.client.get(url, filter_params)
+
+        self.assertEqual(response_page1.status_code, 200)
+        self.assertTrue(response_page1.context["is_paginated"])
+        self.assertEqual(
+            len(response_page1.context["procesos"]), 20
+        )  # 20 items en la página 1
+
+        # 2. Verificar que el enlace "Siguiente" contiene los filtros Y el nuevo parámetro de página
+        # Gracias a nuestro template tag `url_replace`, esto debería funcionar.
+        self.assertContains(
+            response_page1,
+            'href="?process_type=control_calidad&amp;estado=en_progreso&amp;page=2"',
+        )
+
+        # 3. Ir a la página 2 usando los mismos filtros
+        filter_params["page"] = 2
+        response_page2 = self.client.get(url, filter_params)
+
+        self.assertEqual(response_page2.status_code, 200)
+        self.assertEqual(
+            len(response_page2.context["procesos"]), 2
+        )  # 2 items restantes en la página 2
+
+        # 4. Verificar que los procesos en la página 2 pertenecen al cliente correcto
+        for proceso in response_page2.context["procesos"]:
+            self.assertEqual(proceso.user, self.cliente_user_a)
