@@ -1,3 +1,10 @@
+# [1.57.0](https://github.com/rad-solutions/webserver/compare/v1.56.0...v1.57.0) (2025-07-25)
+
+
+### Features
+
+* Fix pagination issue. Added automatic tests and a script to populate db to just do manual test of pagination. ([e50e806](https://github.com/rad-solutions/webserver/commit/e50e8068c247718a3575ee094ecf0a29f525836d))
+
 # [1.56.0](https://github.com/rad-solutions/webserver/compare/v1.55.0...v1.56.0) (2025-07-25)
 
 
