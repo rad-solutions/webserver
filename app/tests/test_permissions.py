@@ -169,8 +169,13 @@ class PermissionTests(TestCase):
         staff_user = User.objects.create_user(
             username="viewstaff", email="view@example.com", password="password"
         )
+        client_role = Role.objects.get(name=RoleChoices.CLIENTE)
+        client_user = User.objects.create_user(
+            username="testcliente", password="password"
+        )
+        client_user.roles.add(client_role)
         process = Process.objects.create(
-            user=staff_user,
+            user=client_user,
             process_type=ProcessTypeChoices.ASESORIA,
             estado=ProcessStatusChoices.EN_PROGRESO,
         )
@@ -195,7 +200,7 @@ class PermissionTests(TestCase):
                     "pdf_file": pdf,
                     "process": process.id,
                     "estado_reporte": EstadoReporteChoices.EN_GENERACION,
-                    "user": staff_user.id,
+                    "user": client_user.id,
                 }
                 response = self.client.post(report_upload_url, data)
 
@@ -214,7 +219,7 @@ class PermissionTests(TestCase):
                     "pdf_file": pdf,
                     "process": process.id,
                     "estado_reporte": EstadoReporteChoices.EN_GENERACION,
-                    "user": staff_user.id,
+                    "user": client_user.id,
                 }
                 response = self.client.post(report_upload_url, data)
             self.assertEqual(response.status_code, 403)

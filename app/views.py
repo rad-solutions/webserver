@@ -454,7 +454,7 @@ class EquipmentForm(forms.ModelForm):
     # --- INICIO: WIDGET SELECT2 ---
     user = forms.ModelChoiceField(
         queryset=User.objects.filter(roles__name=RoleChoices.CLIENTE),
-        label="Cliente Asociado",
+        label="Cliente Propietario",
         widget=ModelSelect2Widget(
             model=User,
             search_fields=[

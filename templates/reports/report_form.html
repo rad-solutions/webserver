@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // No llamamos a loadProcesses/loadEquipment aquí si el __init__ del form ya los pobló.
         // Si el __init__ los deja vacíos (Process.objects.none()), entonces sí hay que llamarlos.
         // La implementación actual del __init__ los pobla, así que el JS solo maneja cambios.
-        // Si prefieres que el JS siempre los cargue, ajusta el __init__ para que siempre sean .none()
+        // Si se prefiere que el JS siempre los cargue, ajusta el __init__ para que siempre sean .none()
         // y descomenta las siguientes líneas:
         // loadProcesses(userSelect.value);
         // loadEquipment(userSelect.value);
