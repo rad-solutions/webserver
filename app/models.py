@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from app.storage import PDFStorage
@@ -504,7 +505,9 @@ class Anotacion(models.Model):
         process_id = self.proceso.id
         user_display = self.usuario.username if self.usuario else "Sistema"
         # auto_now_add=True ensures fecha_creacion is set, so direct strftime is safe
-        date_display = self.fecha_creacion.strftime("%Y-%m-%d %H:%M")
+        # Convertir la fecha a la zona horaria local antes de formatearla
+        local_fecha_creacion = timezone.localtime(self.fecha_creacion)
+        date_display = local_fecha_creacion.strftime("%Y-%m-%d %H:%M")
         return (
             f"Anotación para {process_display} ({process_id}) "
             f"por {user_display} el {date_display}"
@@ -716,14 +719,17 @@ class ProcessStatusLog(models.Model):
         )
         estado_nuevo_display = self.get_estado_nuevo_display()
 
+        # Convertir la fecha a la zona horaria local antes de formatearla
+        local_fecha_cambio = timezone.localtime(self.fecha_cambio)
+
         return _(
-            "Proceso %(proceso_display)s: %(estado_anterior_display)s -> %(estado_nuevo_display)s por %(user_display)s el %(fecha_cambio)s"
+            "Proceso %(proceso_display)s: %(estado_anterior_display)s -> %(estado_nuevo_display)s por %(user_display)s el %(local_fecha_cambio)s"
         ) % {
             "proceso_display": proceso_display,
             "estado_anterior_display": estado_anterior_display,
             "estado_nuevo_display": estado_nuevo_display,
             "user_display": user_display,
-            "fecha_cambio": self.fecha_cambio.strftime("%Y-%m-%d %H:%M"),
+            "local_fecha_cambio": local_fecha_cambio.strftime("%Y-%m-%d %H:%M"),
         }
 
     class Meta:

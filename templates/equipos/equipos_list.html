@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load app_extras %}
+{% load tz %}
 
 {% block title %}Lista de Equipos{% endblock %}
 
@@ -264,14 +265,14 @@
                             <td>{{ equipo.modelo }}</td>
                             <td>{{ equipo.serial }}</td>
                             <td>{{ equipo.practica_asociada }}</td>
-                            <td>{{ equipo.fecha_adquisicion|date:"d/m/Y" }}</td>
+                            <td>{{ equipo.fecha_adquisicion|localtime|date:"d/m/Y" }}</td>
                             <td>
-                                {{ equipo.fecha_vigencia_licencia|date:"d/m/Y" }}
+                                {{ equipo.fecha_vigencia_licencia|localtime|date:"d/m/Y" }}
                                 {% if equipo.licencia_vence_pronto %}<span class="badge bg-warning text-dark ms-1">Por Vencer</span>{% endif %}
                             </td>
-                            <td>{{ equipo.fecha_ultimo_control_calidad|date:"d/m/Y" }}</td>
+                            <td>{{ equipo.fecha_ultimo_control_calidad|localtime|date:"d/m/Y" }}</td>
                             <td>
-                                {{ equipo.fecha_vencimiento_control_calidad|date:"d/m/Y" }}
+                                {{ equipo.fecha_vencimiento_control_calidad|localtime|date:"d/m/Y" }}
                                 {% if equipo.cc_vence_pronto %}<span class="badge bg-danger text-white ms-1">Vence Pronto</span>{% endif %}
                             </td>
                             <td>{{ equipo.get_estado_actual_display }}</td>

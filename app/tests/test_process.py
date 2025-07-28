@@ -44,8 +44,12 @@ class ProcessAPITest(TestCase):
             # fecha_inicio se setea automáticamente por auto_now_add
         )
         # Forzar fechas para testing preciso
-        self.proc1.fecha_inicio = datetime(2023, 3, 10, tzinfo=timezone.utc)
-        self.proc1.fecha_final = datetime(2023, 9, 15, tzinfo=timezone.utc)
+        self.proc1.fecha_inicio = datetime(
+            2023, 3, 10, tzinfo=timezone(-timedelta(hours=5))
+        )
+        self.proc1.fecha_final = datetime(
+            2023, 9, 15, tzinfo=timezone(-timedelta(hours=5))
+        )
         self.proc1.save()
 
         # Anotaciones para el proceso 1
@@ -54,7 +58,7 @@ class ProcessAPITest(TestCase):
             usuario=self.admin_user,
             contenido="Primera anotación para P1",
             fecha_creacion=datetime(
-                2023, 1, 1, 10, 0, 0, tzinfo=timezone.utc
+                2023, 1, 1, 10, 0, 0, tzinfo=timezone(-timedelta(hours=5))
             ),  # Fecha explícita
         )
         self.anotacion2_p1 = Anotacion.objects.create(
@@ -62,15 +66,19 @@ class ProcessAPITest(TestCase):
             usuario=self.user,
             contenido="Segunda anotación para P1",
             fecha_creacion=datetime(
-                2023, 1, 2, 11, 0, 0, tzinfo=timezone.utc
+                2023, 1, 2, 11, 0, 0, tzinfo=timezone(-timedelta(hours=5))
             ),  # Fecha explícita
         )
         # Forzar la actualización de fecha_creacion si auto_now_add interfiere con fechas explícitas
         Anotacion.objects.filter(id=self.anotacion1_p1.id).update(
-            fecha_creacion=datetime(2023, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
+            fecha_creacion=datetime(
+                2023, 1, 1, 10, 0, 0, tzinfo=timezone(-timedelta(hours=5))
+            )
         )
         Anotacion.objects.filter(id=self.anotacion2_p1.id).update(
-            fecha_creacion=datetime(2023, 1, 2, 11, 0, 0, tzinfo=timezone.utc)
+            fecha_creacion=datetime(
+                2023, 1, 2, 11, 0, 0, tzinfo=timezone(-timedelta(hours=5))
+            )
         )
         self.anotacion1_p1.refresh_from_db()
         self.anotacion2_p1.refresh_from_db()
@@ -80,8 +88,12 @@ class ProcessAPITest(TestCase):
             process_type=ProcessTypeChoices.CONTROL_CALIDAD,
             estado=ProcessStatusChoices.FINALIZADO,
         )
-        self.proc2.fecha_inicio = datetime(2023, 8, 5, tzinfo=timezone.utc)
-        self.proc2.fecha_final = datetime(2024, 1, 20, tzinfo=timezone.utc)
+        self.proc2.fecha_inicio = datetime(
+            2023, 8, 5, tzinfo=timezone(-timedelta(hours=5))
+        )
+        self.proc2.fecha_final = datetime(
+            2024, 1, 20, tzinfo=timezone(-timedelta(hours=5))
+        )
         self.proc2.save()
 
         self.proc3_admin = Process.objects.create(  # Proceso de otro usuario
@@ -89,7 +101,9 @@ class ProcessAPITest(TestCase):
             process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
             estado=ProcessStatusChoices.EN_REVISION,
         )
-        self.proc3_admin.fecha_inicio = datetime(2024, 2, 1, tzinfo=timezone.utc)
+        self.proc3_admin.fecha_inicio = datetime(
+            2024, 2, 1, tzinfo=timezone(-timedelta(hours=5))
+        )
         self.proc3_admin.save()
 
         self.proc4_no_final = Process.objects.create(  # Sin fecha final
@@ -97,7 +111,9 @@ class ProcessAPITest(TestCase):
             process_type=ProcessTypeChoices.OTRO,
             estado=ProcessStatusChoices.RADICADO,
         )
-        self.proc4_no_final.fecha_inicio = datetime(2024, 3, 1, tzinfo=timezone.utc)
+        self.proc4_no_final.fecha_inicio = datetime(
+            2024, 3, 1, tzinfo=timezone(-timedelta(hours=5))
+        )
         self.proc4_no_final.save()
 
         # Equipos asociados a estos procesos (ya que la vista lista equipos)
@@ -128,10 +144,10 @@ class ProcessAPITest(TestCase):
             user=self.user,
             process_type=self.pt_asesoria,
             estado=self.estado_progreso,
-            fecha_inicio=datetime(2023, 1, 10, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2023, 1, 10, tzinfo=timezone(-timedelta(hours=5))),
         )
         self.proceso1_asesoria_progreso.fecha_inicio = datetime(
-            2023, 1, 10, tzinfo=timezone.utc
+            2023, 1, 10, tzinfo=timezone(-timedelta(hours=5))
         )
         self.proceso1_asesoria_progreso.save()
 
@@ -139,11 +155,11 @@ class ProcessAPITest(TestCase):
             user=self.user,
             process_type=self.pt_calidad,
             estado=self.estado_finalizado,
-            fecha_inicio=datetime(2023, 2, 10, tzinfo=timezone.utc),
-            fecha_final=datetime(2023, 2, 20, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2023, 2, 10, tzinfo=timezone(-timedelta(hours=5))),
+            fecha_final=datetime(2023, 2, 20, tzinfo=timezone(-timedelta(hours=5))),
         )
         self.proceso2_calidad_finalizado.fecha_inicio = datetime(
-            2023, 2, 10, tzinfo=timezone.utc
+            2023, 2, 10, tzinfo=timezone(-timedelta(hours=5))
         )
         self.proceso2_calidad_finalizado.save()
 
@@ -151,10 +167,10 @@ class ProcessAPITest(TestCase):
             user=self.user,
             process_type=self.pt_blindajes,
             estado=self.estado_progreso,
-            fecha_inicio=datetime(2023, 4, 10, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2023, 4, 10, tzinfo=timezone(-timedelta(hours=5))),
         )
         self.proceso4_blindajes_progreso.fecha_inicio = datetime(
-            2023, 4, 10, tzinfo=timezone.utc
+            2023, 4, 10, tzinfo=timezone(-timedelta(hours=5))
         )
         self.proceso4_blindajes_progreso.save()
 
@@ -1138,7 +1154,7 @@ class ProcessListViewTest(TestCase):
         process_old = Process.objects.create(
             user=client_user,
             process_type=ProcessTypeChoices.ASESORIA,
-            fecha_inicio=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2024, 1, 1, tzinfo=timezone(-timedelta(hours=5))),
         )
         equipment.process = process_old
         equipment.save()
@@ -1146,7 +1162,7 @@ class ProcessListViewTest(TestCase):
         process_new = Process.objects.create(
             user=client_user,
             process_type=ProcessTypeChoices.ASESORIA,
-            fecha_inicio=datetime(2024, 6, 1, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2024, 6, 1, tzinfo=timezone(-timedelta(hours=5))),
         )
         Report.objects.create(
             user=client_user,

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load app_extras %}
+{% load tz %}
 
 {% block title %}Lista de Reportes{% endblock %}
 
@@ -163,7 +164,7 @@
                             <td>{{ report.title }}</td>
                             <td>{{ report.user.username }}</td>
                             <td>{{ report.description|truncatechars:50 }}</td>
-                            <td>{{ report.created_at|date:"d/m/Y H:i" }}</td>
+                            <td>{{ report.created_at|localtime|date:"d/m/Y H:i" }}</td>
                             <td>
                                 <a href="{% url 'report_detail' report.id %}" class="btn btn-sm btn-info">Ver</a>
                                 {% if perms.app.change_report%}
