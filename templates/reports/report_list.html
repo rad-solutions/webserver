@@ -70,13 +70,15 @@
             {% if perms.app.change_report %}
             <div class="col-md-3">
                 <label for="client_user" class="form-label">Cliente:</label>
-                <select name="client_user" id="client_user" class="form-select form-select-sm">
-                    <option value="">Todos los Clientes</option>
-                    {% for client in all_client_users %}
-                    <option value="{{ client.id }}" {% if client.id|stringformat:"s" == selected_client_id %}selected{% endif %}>
-                        {{ client.client_profile.razon_social|default:client.username }}
-                    </option>
-                    {% endfor %}
+                <select name="client_user" id="client_user" class="form-select form-select-sm" data-ajax--url="{% url 'select2_model_user' %}" data-placeholder="Escriba para buscar un cliente...">
+                    {% if selected_client_object %}
+                        {# Si un cliente ya está seleccionado, lo renderizamos para que Select2 lo muestre #}
+                        <option value="{{ selected_client_object.id }}" selected>
+                            {{ selected_client_object.client_profile.razon_social|default:selected_client_object.username }}
+                        </option>
+                    {% else %}
+                        <option value="" selected>Todos los Clientes</option>
+                    {% endif %}
                 </select>
             </div>
             {% endif %}

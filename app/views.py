@@ -16,6 +16,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.views import View
 from django.views.generic import (
     CreateView,
     DeleteView,
@@ -24,6 +25,7 @@ from django.views.generic import (
     TemplateView,
     UpdateView,
 )
+from django_select2.forms import ModelSelect2Widget
 
 from .models import (
     Anotacion,
@@ -193,6 +195,26 @@ class ClientBranchForm(forms.ModelForm):
 
 
 class ReportForm(forms.ModelForm):
+    # --- INICIO: WIDGET SELECT2 ---
+    user = forms.ModelChoiceField(
+        queryset=User.objects.filter(roles__name=RoleChoices.CLIENTE),
+        label="Cliente Asociado",
+        widget=ModelSelect2Widget(
+            model=User,
+            search_fields=[
+                "username__icontains",
+                "first_name__icontains",
+                "last_name__icontains",
+                "client_profile__razon_social__icontains",  # ¡Busca también por razón social!
+            ],
+            attrs={
+                "data-placeholder": "Escriba para buscar un cliente...",
+                "lang": "es",
+            },
+        ),
+    )
+    # --- FIN: WIDGET SELECT2 ---
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -295,6 +317,26 @@ class ReportStatusAndNoteForm(forms.ModelForm):
 
 
 class ProcessForm(forms.ModelForm):
+    # --- INICIO: WIDGET SELECT2 ---
+    user = forms.ModelChoiceField(
+        queryset=User.objects.filter(roles__name=RoleChoices.CLIENTE),
+        label="Cliente Asociado",
+        widget=ModelSelect2Widget(
+            model=User,
+            search_fields=[
+                "username__icontains",
+                "first_name__icontains",
+                "last_name__icontains",
+                "client_profile__razon_social__icontains",  # ¡Busca también por razón social!
+            ],
+            attrs={
+                "data-placeholder": "Escriba para buscar un cliente...",
+                "lang": "es",
+            },
+        ),
+    )
+    # --- FIN: WIDGET SELECT2 ---
+
     class Meta:
         model = Process
         fields = ["process_type", "practice_category", "estado", "user", "fecha_final"]
@@ -409,6 +451,26 @@ class AnotacionForm(forms.ModelForm):
 
 
 class EquipmentForm(forms.ModelForm):
+    # --- INICIO: WIDGET SELECT2 ---
+    user = forms.ModelChoiceField(
+        queryset=User.objects.filter(roles__name=RoleChoices.CLIENTE),
+        label="Cliente Propietario",
+        widget=ModelSelect2Widget(
+            model=User,
+            search_fields=[
+                "username__icontains",
+                "first_name__icontains",
+                "last_name__icontains",
+                "client_profile__razon_social__icontains",  # ¡Busca también por razón social!
+            ],
+            attrs={
+                "data-placeholder": "Escriba para buscar un cliente...",
+                "lang": "es",
+            },
+        ),
+    )
+    # --- FIN: WIDGET SELECT2 ---
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -1200,6 +1262,52 @@ class UserDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
         return PermissionRequiredMixin.handle_no_permission(self)
 
 
+class UserLookupView(LoginRequiredMixin, View):
+    """Vista para el widget Select2 que busca usuarios con rol de Cliente.
+
+    Vista de búsqueda para el widget Select2, asegurando que solo se
+    muestren usuarios con el rol de Cliente y devolviendo el JSON correcto.
+    """
+
+    def get(self, request, *args, **kwargs):
+        term = request.GET.get("term", "")
+
+        # Obtener el queryset base de clientes
+        queryset = User.objects.filter(roles__name=RoleChoices.CLIENTE)
+
+        # Filtrar si hay un término de búsqueda
+        if term:
+            queryset = queryset.filter(
+                Q(username__icontains=term)
+                | Q(first_name__icontains=term)
+                | Q(last_name__icontains=term)
+                | Q(client_profile__razon_social__icontains=term)
+            )
+
+        # Limitar resultados y optimizar.
+        # Usamos F() para ordenar por un campo que puede ser nulo, poniendo los nulos al final.
+        queryset = queryset.select_related("client_profile").order_by(
+            F("client_profile__razon_social").asc(nulls_last=True),
+            "username",  # Añadimos un segundo orden para consistencia
+        )[:20]
+
+        # Formatear los resultados para Select2, manejando de forma segura los perfiles nulos.
+        results = []
+        for user in queryset:
+            # Determinar el texto a mostrar de forma segura
+            display_text = ""
+            if hasattr(user, "client_profile") and user.client_profile:
+                display_text = user.client_profile.razon_social
+
+            # Si no hay razón social, usar nombre completo o username como fallback
+            if not display_text:
+                display_text = user.get_full_name() or user.username
+
+            results.append({"id": user.id, "text": display_text})
+
+        return JsonResponse({"results": results})
+
+
 # Report Views
 class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = Report
@@ -1327,18 +1435,22 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
         # --- NUEVO: Contexto para el filtro de Sede/Cliente ---
         context["selected_sede_id"] = self.request.GET.get("sede")
-        context["selected_client_id"] = self.request.GET.get("client_user")
+        client_user_id = self.request.GET.get("client_user")
+        context["selected_client_id"] = client_user_id
+
+        if client_user_id:
+            try:
+                context["selected_client_object"] = User.objects.select_related(
+                    "client_profile"
+                ).get(pk=client_user_id)
+            except (User.DoesNotExist, ValueError):
+                context["selected_client_object"] = None
 
         if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
             # El cliente solo ve sus propias sedes
             context["client_branches"] = ClientBranch.objects.filter(
                 company__user=self.request.user
             )
-        else:
-            # El usuario interno ve una lista de todos los clientes
-            context["all_client_users"] = User.objects.filter(
-                roles__name=RoleChoices.CLIENTE
-            ).order_by("username")
 
         if context["selected_equipment_id"]:
             try:
@@ -1651,18 +1763,22 @@ class EquiposListView(LoginRequiredMixin, ListView):
 
         # --- NUEVO: Contexto para el filtro de Sede/Cliente ---
         context["selected_sede_id"] = self.request.GET.get("sede")
-        context["selected_client_id"] = self.request.GET.get("client_user")
+        client_user_id = self.request.GET.get("client_user")
+        context["selected_client_id"] = client_user_id
+
+        if client_user_id:
+            try:
+                context["selected_client_object"] = User.objects.select_related(
+                    "client_profile"
+                ).get(pk=client_user_id)
+            except (User.DoesNotExist, ValueError):
+                context["selected_client_object"] = None
 
         if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
             # El cliente solo ve sus propias sedes
             context["client_branches"] = ClientBranch.objects.filter(
                 company__user=self.request.user
             )
-        else:
-            # El usuario interno ve una lista de todos los clientes
-            context["all_client_users"] = User.objects.filter(
-                roles__name=RoleChoices.CLIENTE
-            ).order_by("username")
 
         today = timezone.now().date()
 

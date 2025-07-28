@@ -1055,3 +1055,114 @@ class ReportFilterTest(TestCase):
         # NO debe contener el reporte del otro cliente
         self.assertNotContains(response, "Reporte Otro Cliente")
         self.assertEqual(len(response.context["reports"]), 2)
+
+
+class Select2WidgetTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Crear roles
+        cls.role_gerente, _ = Role.objects.get_or_create(name=RoleChoices.GERENTE)
+        cls.role_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        cls.role_director, _ = Role.objects.get_or_create(
+            name=RoleChoices.DIRECTOR_TECNICO
+        )
+
+        # Crear usuario gerente para las pruebas
+        cls.gerente_user = User.objects.create_user(
+            username="gerente_select2", password="password"
+        )
+        cls.gerente_user.roles.add(cls.role_gerente)
+        cls.director_user = User.objects.create_user(
+            username="director_select2", password="password"
+        )
+        cls.director_user.roles.add(cls.role_director)
+
+        # Crear usuarios cliente para buscar
+        cls.cliente1 = User.objects.create_user(
+            username="cliente_uno", first_name="Empresa", last_name="Uno"
+        )
+        cls.cliente1.roles.add(cls.role_cliente)
+        ClientProfile.objects.create(
+            user=cls.cliente1, razon_social="Empresa Uno S.A.S.", nit="111-1"
+        )
+
+        cls.cliente2 = User.objects.create_user(
+            username="cliente_dos", first_name="Compañía", last_name="Dos"
+        )
+        cls.cliente2.roles.add(cls.role_cliente)
+        ClientProfile.objects.create(
+            user=cls.cliente2, razon_social="Compañía Dos Ltda.", nit="222-2"
+        )
+
+        # Cliente sin perfil para probar el caso límite
+        cls.cliente3_sin_perfil = User.objects.create_user(
+            username="cliente_tres_sinperfil", first_name="Cliente", last_name="Tres"
+        )
+        cls.cliente3_sin_perfil.roles.add(cls.role_cliente)
+
+    def setUp(self):
+        self.client.login(username="director_select2", password="password")
+
+    def test_user_lookup_view_returns_json(self):
+        """Verifica que la vista de búsqueda AJAX devuelve una respuesta JSON 200."""
+        url = reverse("select2_model_user")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Content-Type"], "application/json")
+
+    def test_user_lookup_view_search_by_razon_social(self):
+        """Verifica que la búsqueda por razón social funciona."""
+        url = reverse("select2_model_user")
+        response = self.client.get(url, {"term": "Uno S.A.S."})
+        data = response.json()
+        self.assertEqual(len(data["results"]), 1)
+        self.assertEqual(data["results"][0]["id"], self.cliente1.id)
+        self.assertEqual(data["results"][0]["text"], "Empresa Uno S.A.S.")
+
+    def test_user_lookup_view_search_by_username(self):
+        """Verifica que la búsqueda por nombre de usuario funciona."""
+        url = reverse("select2_model_user")
+        response = self.client.get(url, {"term": "cliente_dos"})
+        data = response.json()
+        self.assertEqual(len(data["results"]), 1)
+        self.assertEqual(data["results"][0]["id"], self.cliente2.id)
+
+    def test_user_lookup_view_handles_user_without_profile(self):
+        """Verifica que la vista maneja correctamente usuarios sin ClientProfile."""
+        url = reverse("select2_model_user")
+        response = self.client.get(url, {"term": "tres_sinperfil"})
+        data = response.json()
+        self.assertEqual(len(data["results"]), 1)
+        self.assertEqual(data["results"][0]["id"], self.cliente3_sin_perfil.id)
+        self.assertEqual(
+            data["results"][0]["text"], "Cliente Tres"
+        )  # Fallback a get_full_name()
+
+    def test_report_form_renders_select2_widget(self):
+        """Verifica que el formulario de creación de reportes renderiza el widget Select2."""
+        response = self.client.get(reverse("report_create"))
+        self.assertEqual(response.status_code, 200)
+        # Verificar la presencia de los atributos y clases de Select2
+        self.assertContains(
+            response,
+            'class="modelselect2widget form-select django-select2 django-select2-heavy"',
+        )
+        self.assertContains(
+            response, 'data-placeholder="Escriba para buscar un cliente..."'
+        )
+
+    def test_report_list_filter_renders_select2_ajax(self):
+        """Verifica que el filtro de la lista de reportes está configurado para Select2 AJAX."""
+        response = self.client.get(reverse("report_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response, f'data-ajax--url="{reverse("select2_model_user")}"'
+        )
+
+    def test_report_list_filter_shows_selected_client(self):
+        """Verifica que si un cliente está filtrado, aparece como seleccionado en el widget."""
+        url = reverse("report_list") + f"?client_user={self.cliente1.id}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        # El HTML debe contener la opción pre-seleccionada para que Select2 la muestre
+        self.assertContains(response, "Empresa Uno S.A.S.")

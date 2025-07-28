@@ -24,6 +24,20 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{{ form.media }}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    // Inicializa todos los widgets de Select2 que no son cargados por Django Forms
+    $(document).ready(function() {
+        $('.select2-widget').select2({
+            theme: "bootstrap-5" // Opcional: para que se vea mejor con Bootstrap 5
+        });
+    });
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const userSelect = document.getElementById('id_user'); // Asume que el ID del campo User es 'id_user'
@@ -95,18 +109,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    userSelect.addEventListener('change', function() {
-        const userId = this.value;
+    $('#id_user').on('select2:select', function (e) {
+        const userId = e.params.data.id;
         loadProcesses(userId);
-        loadEquipment(userId); // En ReportForm, el equipo también depende directamente del usuario
+        loadEquipment(userId);
     });
-
     // Cargar inicial si ya hay un usuario seleccionado (modo edición)
     if (userSelect.value) {
         // No llamamos a loadProcesses/loadEquipment aquí si el __init__ del form ya los pobló.
         // Si el __init__ los deja vacíos (Process.objects.none()), entonces sí hay que llamarlos.
         // La implementación actual del __init__ los pobla, así que el JS solo maneja cambios.
-        // Si prefieres que el JS siempre los cargue, ajusta el __init__ para que siempre sean .none()
+        // Si se prefiere que el JS siempre los cargue, ajusta el __init__ para que siempre sean .none()
         // y descomenta las siguientes líneas:
         // loadProcesses(userSelect.value);
         // loadEquipment(userSelect.value);
