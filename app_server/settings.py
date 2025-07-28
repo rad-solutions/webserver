@@ -162,26 +162,28 @@ AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 # Opcional: usar URLs amigables
 AWS_S3_FILE_OVERWRITE = False
+
 AWS_DEFAULT_ACL = None
-# Change this from False to True
+
 AWS_QUERYSTRING_AUTH = True
-# The link will be valid for 1 hour (3600 seconds)
+
+# The link will be valid for 1 hour
 AWS_QUERYSTRING_EXPIRE = 3600
 
 # (Opcional) Ruta base para tus archivos en el bucket
 AWS_LOCATION = "media"
 
-AWS_S3_CUSTOM_DOMAIN = (
-    f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com"
-)
+# AWS_S3_CUSTOM_DOMAIN = (
+#     f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com"
+# )
 
 # Configuración condicional de MEDIA_URL según USE_MOCK_STORAGE
 USE_MOCK_STORAGE = os.getenv("USE_MOCK_STORAGE").lower() == "true"
 if USE_MOCK_STORAGE:
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
-else:
-    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/"
+# else:
+# MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/"
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
