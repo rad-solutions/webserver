@@ -162,10 +162,12 @@ AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 # Opcional: usar URLs amigables
 AWS_S3_FILE_OVERWRITE = False
+
 AWS_DEFAULT_ACL = None
-# Change this from False to True
+
 AWS_QUERYSTRING_AUTH = True
-# The link will be valid for 1 hour (3600 seconds)
+
+# The link will be valid for 1 hour
 AWS_QUERYSTRING_EXPIRE = 3600
 
 # (Opcional) Ruta base para tus archivos en el bucket
