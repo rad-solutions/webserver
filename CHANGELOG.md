@@ -1,3 +1,12 @@
+# [1.62.0](https://github.com/rad-solutions/webserver/compare/v1.61.0...v1.62.0) (2025-07-28)
+
+
+### Features
+
+* Implemented timezone UTC-5 (America/Bogota) across all webserver. Adapted corresponding tests. ([2cacde0](https://github.com/rad-solutions/webserver/commit/2cacde084c766587527d542e5251ef0ce9a6a345))
+* Localization fix on title of the page. "Checklist" changed to "Lista de Chequeo". ([aadd813](https://github.com/rad-solutions/webserver/commit/aadd813ab30dc1c96711e89fd31c4ba9af8f5d11))
+* The badge in process list for internal users now show "Finalizado hace x dias" for finalized processes. ([f0ffe4b](https://github.com/rad-solutions/webserver/commit/f0ffe4b161427d863a4446f2ae2286d4ef0de49f))
+
 # [1.61.0](https://github.com/rad-solutions/webserver/compare/v1.60.0...v1.61.0) (2025-07-28)
 
 
