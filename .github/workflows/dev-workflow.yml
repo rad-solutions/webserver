@@ -206,8 +206,21 @@ jobs:
           SERVICE_ARN=$(aws apprunner create-service --cli-input-json file://create-service.json --query 'Service.ServiceArn' --output text)
           echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
 
-          echo "Waiting for service to start running..."
-          aws apprunner wait service-updated --service-arn $SERVICE_ARN
+          echo "Waiting for service to become RUNNING..."
+          timeout 300 bash <<'EOT'
+          while true; do
+            STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --query 'Service.Status' --output text)
+            echo "Current service status: $STATUS"
+            if [ "$STATUS" == "RUNNING" ]; then
+              echo "Service is now RUNNING."
+              break
+            elif [ "$STATUS" == "CREATE_FAILED" ]; then
+              echo "Service creation failed. Check the App Runner console for logs."
+              exit 1
+            fi
+            sleep 20
+          done
+          EOT
 
           # Crear el archivo de configuración para update-service
           cat > update-service.json <<EOF
