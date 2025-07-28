@@ -1,3 +1,10 @@
+## [1.58.1](https://github.com/rad-solutions/webserver/compare/v1.58.0...v1.58.1) (2025-07-28)
+
+
+### Bug Fixes
+
+* Enable presigned URLs for secure S3 access ([2d58aa3](https://github.com/rad-solutions/webserver/commit/2d58aa37b382f49b3d1a4fa167d030b7aba4e88c))
+
 # [1.58.0](https://github.com/rad-solutions/webserver/compare/v1.57.0...v1.58.0) (2025-07-25)
 
 
