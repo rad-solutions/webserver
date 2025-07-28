@@ -3,8 +3,9 @@ import logging
 from django.contrib.auth.models import Group
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
+from django.utils import timezone
 
-from .models import Role, RoleChoices, User
+from .models import Process, Role, RoleChoices, User
 
 logger = logging.getLogger(__name__)
 
@@ -93,3 +94,12 @@ def sync_user_roles_to_groups(
                 logger.error(
                     f"Error during post_clear for user '{instance.username}', group related to role name '{role_name_val}': {e}"
                 )
+
+
+@receiver(m2m_changed, sender=Process.assigned_to.through)
+def process_assigned(sender, instance, action, **kwargs):
+    """Set the assignment date when a user is first assigned to a process."""
+    if action == "post_add":
+        if instance.assigned_to.count() > 0 and instance.fecha_asignacion is None:
+            instance.fecha_asignacion = timezone.now()
+            instance.save(update_fields=["fecha_asignacion"])

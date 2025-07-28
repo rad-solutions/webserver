@@ -141,6 +141,9 @@ class Process(models.Model):
         default=ProcessStatusChoices.EN_PROGRESO,
     )
     fecha_inicio = models.DateTimeField(auto_now_add=True)
+    fecha_asignacion = models.DateTimeField(
+        _("Fecha de Asignación"), null=True, blank=True
+    )
     fecha_final = models.DateTimeField(null=True, blank=True)
 
     def clean(self):
