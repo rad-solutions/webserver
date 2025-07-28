@@ -194,8 +194,7 @@ jobs:
                   "Memory": "2048"
               },
               "HealthCheckConfiguration": {
-                  "Protocol": "TCP",
-                  "Port": "8000"
+                  "Protocol": "TCP"
               },
               "Tags": [
                   {"Key": "SourceWorkflow", "Value": "${{ github.workflow }}"},
