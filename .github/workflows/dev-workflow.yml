@@ -207,7 +207,7 @@ jobs:
           echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
 
           echo "Waiting for service to start running..."
-          aws apprunner wait service-running --service-arn $SERVICE_ARN
+          aws apprunner wait service-updated --service-arn $SERVICE_ARN
 
           # Crear el archivo de configuración para update-service
           cat > update-service.json <<EOF
