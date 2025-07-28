@@ -79,7 +79,7 @@ jobs:
         id: new-db-password
         run: |
           echo "Generating a new random password for the temporary DB..."
-          NEW_DB_PASSWORD=$(openssl rand -base64 32)
+          NEW_DB_PASSWORD=$(openssl rand -hex 16) # Use hex to generate a 32-char compliant password
           echo "::add-mask::$NEW_DB_PASSWORD"
 
           echo "Storing new password in a temporary secret..."
