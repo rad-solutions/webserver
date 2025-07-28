@@ -167,7 +167,11 @@
                             <td>
                                 {% if proceso.dias_hasta_vencimiento is not None %}
                                     {% if proceso.dias_hasta_vencimiento < 0 %}
-                                        <span class="badge bg-danger">Vencido hace {{ proceso.dias_vencido }} días</span>
+                                        {% if proceso.estado == 'finalizado' %}
+                                            <span class="badge bg-secondary">Finalizado hace {{ proceso.dias_vencido }} días</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Vencido hace {{ proceso.dias_vencido }} días</span>
+                                        {% endif %}
                                     {% else %}
                                         <span class="badge bg-success">{{ proceso.dias_hasta_vencimiento }} días restantes</span>
                                     {% endif %}
