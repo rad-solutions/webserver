@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load tz %}
 
 {% block title %}Detalle de Proceso{% endblock %}
 
@@ -52,11 +53,11 @@
             </div>
             <div class="row mb-3">
                 <div class="col-md-4"><strong>Fecha de Inicio:</strong></div>
-                <div class="col-md-8">{{ process.fecha_inicio|date:"d/m/Y H:i" }}</div>
+                <div class="col-md-8">{{ process.fecha_inicio|localtime|date:"d/m/Y H:i" }}</div>
             </div>
             <div class="row mb-3">
                 <div class="col-md-4"><strong>Fecha de Finalización:</strong></div>
-                <div class="col-md-8">{{ process.fecha_final|date:"d/m/Y H:i" }}</div>
+                <div class="col-md-8">{{ process.fecha_final|localtime|date:"d/m/Y H:i" }}</div>
             </div>
         </div>
         <div class="card-footer">
@@ -80,7 +81,7 @@
                 {% for anotacion in process.anotaciones.all %}
                 <li class="list-group-item">
                     <strong>{{ anotacion.usuario.username }}:</strong> {{ anotacion.contenido }} <br>
-                    <small class="text-muted">{{ anotacion.fecha_creacion|date:"d/m/Y H:i" }}</small>
+                    <small class="text-muted">{{ anotacion.fecha_creacion|localtime|date:"d/m/Y H:i" }}</small>
                 </li>
                 {% endfor %}
             </ul>

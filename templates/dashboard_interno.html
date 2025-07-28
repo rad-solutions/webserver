@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load tz %}
 
 {% block title %}{{ titulo }}{% endblock %}
 
@@ -51,7 +52,7 @@
                                         <br>
                                         <small>
                                             <strong>Cliente:</strong> {{ proceso.user.client_profile.razon_social|default:"N/A" }} <br>
-                                            <strong>Venció el:</strong> {{ proceso.fecha_final|date:"d/m/Y" }}
+                                            <strong>Venció el:</strong> {{ proceso.fecha_final|localtime|date:"d/m/Y" }}
                                             <span class="badge bg-danger rounded-pill">{{ proceso.dias_vencido }} días vencido</span>
                                         </small>
                                     </li>
@@ -77,7 +78,7 @@
                                         <br>
                                         <small>
                                             <strong>Cliente:</strong> {{ proceso.user.client_profile.razon_social|default:"N/A" }} <br>
-                                            <strong>Vence el:</strong> {{ proceso.fecha_final|date:"d/m/Y" }}
+                                            <strong>Vence el:</strong> {{ proceso.fecha_final|localtime|date:"d/m/Y" }}
                                         </small>
                                     </li>
                                 {% endfor %}

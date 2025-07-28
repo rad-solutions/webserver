@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %} {# Necesario para íconos si los usas localmente, o usa CDN de FontAwesome #}
+{% load tz %}
 
 {% block title %}Dashboard del Cliente{% endblock %}
 
@@ -145,7 +146,7 @@
                                         <td>{{ equipo.marca }}</td>
                                         <td>{{ equipo.modelo }}</td>
                                         <td>{{ equipo.serial }}</td>
-                                        <td>{{ equipo.fecha_vigencia_licencia|date:"d/m/Y" }}</td>
+                                        <td>{{ equipo.fecha_vigencia_licencia|localtime|date:"d/m/Y" }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -180,7 +181,7 @@
                                         <td>{{ equipo.marca }}</td>
                                         <td>{{ equipo.modelo }}</td>
                                         <td>{{ equipo.serial }}</td>
-                                        <td>{{ equipo.fecha_vencimiento_control_calidad|date:"d/m/Y" }}</td>
+                                        <td>{{ equipo.fecha_vencimiento_control_calidad|localtime|date:"d/m/Y" }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -213,7 +214,7 @@
                                     <tr>
                                         <td>{{ proceso_item.get_process_type_display }}</td>
                                         <td><span class="badge bg-info text-dark">{{ proceso_item.get_estado_display }}</span></td>
-                                        <td>{{ proceso_item.fecha_inicio|date:"d/m/Y" }}</td>
+                                        <td>{{ proceso_item.fecha_inicio|localtime|date:"d/m/Y" }}</td>
                                         {% with porcentaje=proceso_item.get_progress_percentage %}
                                             <td>
                                                 {% if porcentaje %}

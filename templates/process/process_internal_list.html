@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load app_extras %}
+{% load tz %}
 
 {% block title %}Lista de Procesos{% endblock %}
 
@@ -161,12 +162,16 @@
                                     <span class="text-muted">Sin asignar</span>
                                 {% endif %}
                             </td>
-                            <td>{{ proceso.fecha_final|date:"d/m/Y"|default:"N/A" }}</td>
+                            <td>{{ proceso.fecha_final|localtime|date:"d/m/Y"|default:"N/A" }}</td>
                             <td>{{ proceso.dias_de_proceso|default:"N/A" }}</td>
                             <td>
                                 {% if proceso.dias_hasta_vencimiento is not None %}
                                     {% if proceso.dias_hasta_vencimiento < 0 %}
-                                        <span class="badge bg-danger">Vencido hace {{ proceso.dias_vencido }} días</span>
+                                        {% if proceso.estado == 'finalizado' %}
+                                            <span class="badge bg-secondary">Finalizado hace {{ proceso.dias_vencido }} días</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Vencido hace {{ proceso.dias_vencido }} días</span>
+                                        {% endif %}
                                     {% else %}
                                         <span class="badge bg-success">{{ proceso.dias_hasta_vencimiento }} días restantes</span>
                                     {% endif %}

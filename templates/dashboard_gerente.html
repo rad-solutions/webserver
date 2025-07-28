@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load tz %}
 
 {% block title %}Dashboard - Gerente{% endblock %}
 
@@ -99,7 +100,7 @@
                                         <small>
                                             <strong>Cliente:</strong> {{ proceso.user.client_profile.razon_social|default:"N/A" }} <br>
                                             <strong>Asignado a:</strong> {{ proceso.assigned_to.get_full_name|default:"Sin asignar" }} <br>
-                                            <strong>Venció el:</strong> {{ proceso.fecha_final|date:"d/m/Y" }}
+                                            <strong>Venció el:</strong> {{ proceso.fecha_final|localtime|date:"d/m/Y" }}
                                             <span class="badge bg-danger rounded-pill">{{ proceso.dias_vencido }} días vencido</span>
                                         </small>
                                     </li>
@@ -126,7 +127,7 @@
                                         <small>
                                             <strong>Cliente:</strong> {{ proceso.user.client_profile.razon_social|default:"N/A" }} <br>
                                             <strong>Asignado a:</strong> {{ proceso.assigned_to.get_full_name|default:"Sin asignar" }} <br>
-                                            <strong>Vence el:</strong> {{ proceso.fecha_final|date:"d/m/Y" }}
+                                            <strong>Vence el:</strong> {{ proceso.fecha_final|localtime|date:"d/m/Y" }}
                                         </small>
                                     </li>
                                 {% endfor %}

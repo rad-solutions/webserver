@@ -598,7 +598,8 @@ class AnotacionModelTest(TestCase):
             usuario=self.user1,
             contenido="Contenido para str.",
         )
-        expected_str = f"Anotación para {self.process.get_process_type_display()} ({self.process.id}) por {self.user1.username} el {anotacion.fecha_creacion.strftime('%Y-%m-%d %H:%M')}"
+        fecha = timezone.localtime(anotacion.fecha_creacion).strftime("%Y-%m-%d %H:%M")
+        expected_str = f"Anotación para {self.process.get_process_type_display()} ({self.process.id}) por {self.user1.username} el {fecha}"
         self.assertEqual(str(anotacion), expected_str)
 
     def test_anotacion_string_representation_no_user(self):
@@ -606,7 +607,7 @@ class AnotacionModelTest(TestCase):
         anotacion = Anotacion.objects.create(
             proceso=self.process, usuario=None, contenido="Sistema generó esta nota."
         )
-        expected_str = f"Anotación para {self.process.get_process_type_display()} ({self.process.id}) por Sistema el {anotacion.fecha_creacion.strftime('%Y-%m-%d %H:%M')}"
+        expected_str = f"Anotación para {self.process.get_process_type_display()} ({self.process.id}) por Sistema el {timezone.localtime(anotacion.fecha_creacion).strftime('%Y-%m-%d %H:%M')}"
         self.assertEqual(str(anotacion), expected_str)
 
     def test_anotacion_ordering(self):
@@ -787,7 +788,7 @@ class ProcessStatusLogModelTest(TestCase):
         expected_str = (
             f"Proceso {expected_str_part_proceso}: {ProcessStatusChoices.EN_PROGRESO.label} -> "
             f"{ProcessStatusChoices.EN_REVISION.label} por {self.user2.username} el "
-            f"{log_entry.fecha_cambio.strftime('%Y-%m-%d %H:%M')}"
+            f"{timezone.localtime(log_entry.fecha_cambio).strftime('%Y-%m-%d %H:%M')}"
         )
         self.assertEqual(str(log_entry), expected_str)
 
@@ -806,7 +807,7 @@ class ProcessStatusLogModelTest(TestCase):
         expected_str = (
             f"Proceso {expected_str_part_proceso}: N/A -> "
             f"{ProcessStatusChoices.FINALIZADO.label} por Sistema el "
-            f"{log_entry.fecha_cambio.strftime('%Y-%m-%d %H:%M')}"
+            f"{timezone.localtime(log_entry.fecha_cambio).strftime('%Y-%m-%d %H:%M')}"
         )
         self.assertEqual(str(log_entry), expected_str)
         self.assertEqual(

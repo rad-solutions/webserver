@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
+{% load tz %}
 
 {% block title %}Actualizar Progreso del Proceso{% endblock %}
 
@@ -9,7 +10,7 @@
     <form method="post">
         {% csrf_token %}
         {{ form|crispy }}
-        <h4>Checklist</h4>
+        <h4>Lista de Chequeo</h4>
         <table class="table">
             <thead>
                 <tr>
@@ -31,7 +32,7 @@
                     </td>
                     <td>{{ item_form.started_at }}</td>
                     <td>{{ item_form.completed_at }}</td>
-                    <td>{{ item_form.due_date }}</td>
+                    <td>{{ item_form.due_date|localtime }}</td>
                     <td>
                         {% if item_form.instance.is_completed and item_form.instance.completed_by %}
                             {{ item_form.instance.completed_by.get_full_name|default:item_form.instance.completed_by.username }}

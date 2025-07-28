@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load tz %}
 
 {% block title %}Lista de Procesos{% endblock %}
 
@@ -108,7 +109,7 @@
                             <td>{{ equipo.modelo }}</td>
                             <td>{{ equipo.serial }}</td>
                             {% with progress_data=equipment_progress_map|get_item:equipo.id %}
-                            <td>{{ progress_data.process.fecha_inicio|date:"d/m/Y"|default:"N/A" }}</td>
+                            <td>{{ progress_data.process.fecha_inicio|localtime|date:"d/m/Y"|default:"N/A" }}</td>
                             <td>{{ equipo.get_estado_actual_display }}</td>
                             <td>
                                 {% if progress_data.process %}

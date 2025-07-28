@@ -67,20 +67,20 @@ class ReportAPITest(TestCase):
             user=self.user,
             process_type=self.process_type_asesoria,
             estado=self.process_status_progreso,
-            fecha_inicio=datetime(2024, 1, 10, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2024, 1, 10, tzinfo=timezone(-timedelta(hours=5))),
         )
         self.process_calidad = Process.objects.create(
             user=self.user,
             process_type=self.process_type_calidad,
             estado=self.process_status_progreso,
-            fecha_inicio=datetime(2024, 2, 15, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2024, 2, 15, tzinfo=timezone(-timedelta(hours=5))),
         )
         # Proceso para otro usuario (admin en este caso, para probar que no se listen sus reportes para el cliente)
         self.process_admin = Process.objects.create(
             user=self.admin_user,
             process_type=self.process_type_asesoria,
             estado=self.process_status_progreso,
-            fecha_inicio=datetime(2024, 3, 1, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2024, 3, 1, tzinfo=timezone(-timedelta(hours=5))),
         )
 
         self.equipment1_calidad = Equipment.objects.create(
@@ -112,7 +112,7 @@ class ReportAPITest(TestCase):
         )
         # Forzar created_at para pruebas de filtro de fecha precisas
         self.report1_asesoria_jan.created_at = datetime(
-            2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc
+            2024, 1, 15, 10, 0, 0, tzinfo=timezone(-timedelta(hours=5))
         )
         self.report1_asesoria_jan.save()
 
@@ -125,7 +125,7 @@ class ReportAPITest(TestCase):
             estado_reporte=EstadoReporteChoices.REVISADO,
         )
         self.report2_calidad_feb.created_at = datetime(
-            2024, 2, 20, 11, 0, 0, tzinfo=timezone.utc
+            2024, 2, 20, 11, 0, 0, tzinfo=timezone(-timedelta(hours=5))
         )
         self.report2_calidad_feb.save()
 
@@ -137,7 +137,7 @@ class ReportAPITest(TestCase):
             estado_reporte=EstadoReporteChoices.APROBADO,
         )
         self.report3_asesoria_mar.created_at = datetime(
-            2024, 3, 25, 12, 0, 0, tzinfo=timezone.utc
+            2024, 3, 25, 12, 0, 0, tzinfo=timezone(-timedelta(hours=5))
         )
         self.report3_asesoria_mar.save()
 
@@ -150,7 +150,7 @@ class ReportAPITest(TestCase):
             estado_reporte=EstadoReporteChoices.APROBADO,
         )
         self.report_admin_user.created_at = datetime(
-            2024, 3, 10, 10, 0, 0, tzinfo=timezone.utc
+            2024, 3, 10, 10, 0, 0, tzinfo=timezone(-timedelta(hours=5))
         )
         self.report_admin_user.save()
 
@@ -704,7 +704,9 @@ class ReportAPITest(TestCase):
             title="Reporte Calidad Enero para Equipo1",
             pdf_file=SimpleUploadedFile("cc_enero.pdf", self.temp_file_content),
         )
-        report_cc_anterior.created_at = datetime(2024, 1, 20, tzinfo=timezone.utc)
+        report_cc_anterior.created_at = datetime(
+            2024, 1, 20, tzinfo=timezone(-timedelta(hours=5))
+        )
         report_cc_anterior.save()
 
         # self.report2_calidad_feb.created_at es 2024-02-20
