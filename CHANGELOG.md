@@ -1,3 +1,11 @@
+# [1.60.0](https://github.com/rad-solutions/webserver/compare/v1.59.0...v1.60.0) (2025-07-28)
+
+
+### Features
+
+* Now, all client select widgets are django-select2 widgets that allow the user to type and filter users to facilitate the selection. This change is applied across the entire webserver. ([3312d09](https://github.com/rad-solutions/webserver/commit/3312d0948c534099645eff6213bd8e377f24a8c6))
+* Tests revised. Updated tests and added new tests to match the new functionality. ([1891383](https://github.com/rad-solutions/webserver/commit/1891383520400987309fe9f03e22c04a0f75a8a6))
+
 # [1.59.0](https://github.com/rad-solutions/webserver/compare/v1.58.1...v1.59.0) (2025-07-28)
 
 
