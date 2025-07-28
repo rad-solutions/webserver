@@ -33,15 +33,17 @@ jobs:
         run: |
           TIMESTAMP=$(date +%s)
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-8)
-          SNAPSHOT_ID="snapshot-dev-${SHORT_SHA}-${TIMESTAMP}"
-          TEMP_DB_ID="temp-db-dev-${SHORT_SHA}-${TIMESTAMP}"
-          TEMP_S3_BUCKET="radsolutions-media-uploads-dev-${SHORT_SHA}-${TIMESTAMP}"
-          echo "snapshot_id=$SNAPSHOT_ID" >> $GITHUB_OUTPUT
-          echo "temp_db_id=$TEMP_DB_ID" >> $GITHUB_OUTPUT
-          echo "temp_s3_bucket=$TEMP_S3_BUCKET" >> $GITHUB_OUTPUT
-          echo "Generated Snapshot ID: $SNAPSHOT_ID"
-          echo "Generated Temp DB ID: $TEMP_DB_ID"
-          echo "Generated Temp S3 Bucket: $TEMP_S3_BUCKET"
+          UNIQUE_ID="dev-${SHORT_SHA}-${TIMESTAMP}"
+
+          echo "snapshot_id=snapshot-${UNIQUE_ID}" >> $GITHUB_OUTPUT
+          echo "temp_db_id=temp-db-${UNIQUE_ID}" >> $GITHUB_OUTPUT
+          echo "temp_s3_bucket=radsolutions-media-uploads-${UNIQUE_ID}" >> $GITHUB_OUTPUT
+          echo "temp_secret_name=temp-secret-${UNIQUE_ID}" >> $GITHUB_OUTPUT
+
+          echo "Generated Snapshot ID: snapshot-${UNIQUE_ID}"
+          echo "Generated Temp DB ID: temp-db-${UNIQUE_ID}"
+          echo "Generated Temp S3 Bucket: radsolutions-media-uploads-${UNIQUE_ID}"
+          echo "Generated Temp Secret Name: temp-secret-${UNIQUE_ID}"
 
       - name: Create DB Snapshot from Production
         run: |
@@ -56,6 +58,7 @@ jobs:
             echo "Snapshot ${{ steps.identifiers.outputs.snapshot_id }} is available."
 
       - name: Restore DB Instance from Snapshot
+        id: restore_db
         run: |
             echo "Restoring snapshot to a new temporary DB instance..."
             aws rds restore-db-instance-from-db-snapshot \
@@ -69,8 +72,32 @@ jobs:
             aws rds wait db-instance-available --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }}
 
             DB_ENDPOINT=$(aws rds describe-db-instances --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }} --query "DBInstances[0].Endpoint.Address" --output text)
+            echo "db_endpoint=$DB_ENDPOINT" >> $GITHUB_OUTPUT
             echo "Temporary DB is available at: $DB_ENDPOINT"
-            echo "You will need to manage its deletion to avoid costs."
+
+      - name: Generate and Set New DB Password
+        id: new-db-password
+        run: |
+          echo "Generating a new random password for the temporary DB..."
+          NEW_DB_PASSWORD=$(openssl rand -base64 32)
+          echo "::add-mask::$NEW_DB_PASSWORD"
+
+          echo "Storing new password in a temporary secret..."
+          aws secretsmanager create-secret \
+            --name ${{ steps.identifiers.outputs.temp_secret_name }} \
+            --secret-string "{\"password\":\"$NEW_DB_PASSWORD\"}" \
+            --tags Key=SourceWorkflow,Value="${{ github.workflow }}" Key=CommitSHA,Value=${{ github.sha }}
+
+          echo "Updating the temporary DB instance with the new password..."
+          aws rds modify-db-instance \
+            --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }} \
+            --master-user-password "$NEW_DB_PASSWORD" \
+            --apply-immediately
+
+          echo "Waiting for DB instance to finish modification..."
+          aws rds wait db-instance-available --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }}
+          echo "Temporary DB password has been updated and stored securely."
+          echo "temp_secret_name=${{ steps.identifiers.outputs.temp_secret_name }}" >> $GITHUB_OUTPUT
 
       - name: Create temporary S3 bucket for media
         run: |
@@ -80,3 +107,137 @@ jobs:
           aws s3 sync s3://radsolutions-media-uploads-2253 s3://${{ steps.identifiers.outputs.temp_s3_bucket }}
           echo "Temporary S3 bucket ready: ${{ steps.identifiers.outputs.temp_s3_bucket }}"
           # Puedes exportar el nombre del bucket temporal como variable de entorno para otros jobs/steps si lo necesitas
+
+  build-and-push-ecr:
+    name: Build and Push to ECR
+    runs-on: ubuntu-latest
+    needs: provision-ephemeral-db
+    outputs:
+      image_uri: ${{ steps.build-image.outputs.image_uri }}
+    env:
+      AWS_REGION: us-east-1
+      AWS_ACCOUNT_ID: 978368259161
+      ECR_REPOSITORY: webserver
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubActions-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag & push to ECR
+        id: build-image
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-8)
+          IMAGE_TAG="dev-${SHORT_SHA}"
+          ECR_REGISTRY=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+          IMAGE_NAME=$ECR_REGISTRY/${{ env.ECR_REPOSITORY }}
+
+          echo "Building and pushing image with tag: $IMAGE_TAG"
+          docker build -t $IMAGE_NAME:$IMAGE_TAG .
+          docker push $IMAGE_NAME:$IMAGE_TAG
+
+          echo "image_uri=$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  deploy-app-runner:
+    name: Deploy to App Runner
+    runs-on: ubuntu-latest
+    needs: [provision-ephemeral-db, build-and-push-ecr]
+    outputs:
+      service_arn: ${{ steps.app-runner.outputs.service_arn }}
+    env:
+      AWS_REGION: us-east-1
+      AWS_ACCOUNT_ID: 978368259161
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubActions-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get DB Password from Temporary Secret
+        id: db-password
+        run: |
+          echo "Retrieving password from temporary secret: ${{ needs.provision-ephemeral-db.outputs.temp_secret_name }}"
+          DB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id ${{ needs.provision-ephemeral-db.outputs.temp_secret_name }} --query SecretString --output text | jq -r .password)
+          echo "::add-mask::$DB_PASSWORD"
+          echo "db_password=$DB_PASSWORD" >> $GITHUB_OUTPUT
+
+      - name: Create and Update App Runner Service
+        id: app-runner
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-8)
+          SERVICE_NAME="webserver-dev-${SHORT_SHA}"
+
+          # Crear el archivo de configuración para create-service
+          cat > create-service.json <<EOF
+          {
+              "ServiceName": "$SERVICE_NAME",
+              "SourceConfiguration": {
+                  "ImageRepository": {
+                      "ImageIdentifier": "${{ needs.build-and-push-ecr.outputs.image_uri }}",
+                      "ImageRepositoryType": "ECR",
+                      "ImageConfiguration": { "Port": "8000" }
+                  },
+                  "AuthenticationConfiguration": {
+                      "AccessRoleArn": "arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/service-role/AppRunnerECRAccessRole"
+                  }
+              },
+              "InstanceConfiguration": {
+                  "Cpu": "1024",
+                  "Memory": "2048"
+              },
+              "HealthCheckConfiguration": {
+                  "Protocol": "TCP",
+                  "Port": "8000"
+              },
+              "Tags": [
+                  {"Key": "SourceWorkflow", "Value": "${{ github.workflow }}"},
+                  {"Key": "CommitSHA", "Value": "${{ github.sha }}"}
+              ]
+          }
+          EOF
+
+          SERVICE_ARN=$(aws apprunner create-service --cli-input-json file://create-service.json --query 'Service.ServiceArn' --output text)
+          echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
+
+          echo "Waiting for service to start running..."
+          aws apprunner wait service-running --service-arn $SERVICE_ARN
+
+          # Crear el archivo de configuración para update-service
+          cat > update-service.json <<EOF
+          {
+              "ServiceArn": "$SERVICE_ARN",
+              "SourceConfiguration": {
+                  "ImageRepository": {
+                      "ImageIdentifier": "${{ needs.build-and-push-ecr.outputs.image_uri }}",
+                      "ImageRepositoryType": "ECR",
+                      "ImageConfiguration": {
+                          "Port": "8000",
+                          "RuntimeEnvironmentVariables": {
+                              "DATABASE_HOST": "${{ needs.provision-ephemeral-db.outputs.db_endpoint }}",
+                              "DATABASE_NAME": "radsolutions_db",
+                              "DATABASE_USER": "radsolutions_user",
+                              "DATABASE_PASSWORD": "${{ steps.db-password.outputs.db_password }}",
+                              "DATABASE_PORT": "5432",
+                              "AWS_STORAGE_BUCKET_NAME": "${{ needs.provision-ephemeral-db.outputs.temp_s3_bucket }}",
+                              "AWS_S3_REGION_NAME": "${{ env.AWS_REGION }}",
+                              "DJANGO_SECRET_KEY": "a-secure-secret-key-for-dev-env",
+                              "USE_MOCK_STORAGE": "False"
+                          }
+                      }
+                  }
+              }
+          }
+          EOF
+
+          echo "Updating service with environment variables..."
+          aws apprunner update-service --cli-input-json file://update-service.json
+
+          echo "Service update initiated. App Runner will now deploy the new version."
