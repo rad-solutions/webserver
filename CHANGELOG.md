@@ -1,3 +1,10 @@
+# [1.61.0](https://github.com/rad-solutions/webserver/compare/v1.60.0...v1.61.0) (2025-07-28)
+
+
+### Features
+
+* Add assignment date to Process model ([5f3c49e](https://github.com/rad-solutions/webserver/commit/5f3c49efec3d1e7f68617ce4e2232b7bd7d44aff))
+
 # [1.60.0](https://github.com/rad-solutions/webserver/compare/v1.59.0...v1.60.0) (2025-07-28)
 
 
