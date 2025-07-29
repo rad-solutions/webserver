@@ -1,3 +1,10 @@
+# [1.63.0](https://github.com/rad-solutions/webserver/compare/v1.62.0...v1.63.0) (2025-07-29)
+
+
+### Features
+
+* Added Practice Category to Estudio Ambiental during populate-db execution. ([273c1c2](https://github.com/rad-solutions/webserver/commit/273c1c2646c5e4cdbb2a85e620c29c1aef72ecf2))
+
 # [1.62.0](https://github.com/rad-solutions/webserver/compare/v1.61.0...v1.62.0) (2025-07-28)
 
 
