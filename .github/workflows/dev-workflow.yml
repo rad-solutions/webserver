@@ -182,6 +182,13 @@ jobs:
             echo "Service is already in a non-paused state ($STATUS)."
           fi
 
+      - name: Get App Runner Service URL
+        id: app-runner-url
+        run: |
+          SERVICE_URL=$(aws apprunner describe-service --service-arn ${{ env.APP_RUNNER_SERVICE_ARN }} --query 'Service.ServiceUrl' --output text)
+          echo "app_runner_url_host=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "App Runner URL Host: $SERVICE_URL"
+
       - name: Get DB Password from Temporary Secret
         id: db-password
         run: |
@@ -217,7 +224,8 @@ jobs:
                               "USE_MOCK_STORAGE": "False",
                               "DEBUG": "True",
                               "DJANGO_LOG_LEVEL": "DEBUG",
-                              "PYTHONUNBUFFERED": "1"
+                              "PYTHONUNBUFFERED": "1",
+                              "AWS_APP_RUNNER_URL_HOST": "${{ steps.app-runner-url.outputs.app_runner_url_host }}"
                           }
                       }
                   }
@@ -245,8 +253,26 @@ jobs:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubActions-deploy-role
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Pause App Runner Service
+      - name: Wait for Service to be Ready and Pause
         run: |
+          echo "Waiting for service to finish updating before pausing..."
+          timeout 600 bash -c '
+            while true; do
+              STATUS=$(aws apprunner describe-service --service-arn "${{ env.APP_RUNNER_SERVICE_ARN }}" --query "Service.Status" --output text)
+              echo "Current service status: $STATUS"
+              if [ "$STATUS" == "RUNNING" ]; then
+                echo "Service is RUNNING. Proceeding to pause."
+                break
+              elif [ "$STATUS" == "OPERATION_IN_PROGRESS" ]; then
+                echo "Update is still in progress. Waiting..."
+                sleep 20
+              else
+                echo "Service is in an unexpected state ($STATUS) and may not be pausable. Exiting wait loop."
+                break
+              fi
+            done
+          '
+
           echo "Pausing App Runner service ${{ env.APP_RUNNER_SERVICE_ARN }} to save costs."
           aws apprunner pause-service --service-arn ${{ env.APP_RUNNER_SERVICE_ARN }}
           echo "Service pause initiated."
