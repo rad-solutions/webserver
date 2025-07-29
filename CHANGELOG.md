@@ -1,3 +1,10 @@
+# [1.64.0](https://github.com/rad-solutions/webserver/compare/v1.63.0...v1.64.0) (2025-07-29)
+
+
+### Features
+
+* Added fecha_asignacion in UI. ([09a2f86](https://github.com/rad-solutions/webserver/commit/09a2f86875e6260f4198cb53f31ddbe2a0677698))
+
 # [1.63.0](https://github.com/rad-solutions/webserver/compare/v1.62.0...v1.63.0) (2025-07-29)
 
 
