@@ -12,7 +12,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
 # Fallback for SECRET KEY when rotating the SECRET_KEY to avoid invalidating existing sessions
 fallback_key = os.getenv("DJANGO_SECRET_KEY_FALLBACK")
-SECRET_KEY_FALLBACK = [fallback_key] if fallback_key else []
+SECRET_KEY_FALLBACKS = [fallback_key] if fallback_key else []
 
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 AUTH_USER_MODEL = "app.User"
