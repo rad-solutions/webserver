@@ -46,6 +46,10 @@
                         </ul>
                     </div>
                 </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>Fecha de Asignación:</strong></div>
+                    <div class="col-md-8">{{ process.fecha_asignacion|localtime|date:"d/m/Y H:i" }}</div>
+                </div>
             {% endif %}
             <div class="row mb-3">
                 <div class="col-md-4"><strong>Estado:</strong></div>

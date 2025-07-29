@@ -139,6 +139,7 @@
                             <th>Tipo de Proceso</th>
                             <th>Cliente (Razón Social)</th>
                             <th>Asignado a</th>
+                            <th>Fecha Asignación</th>
                             <th>Fecha Fin</th>
                             <th>Días de Proceso</th>
                             <th>Días para Vencimiento</th>
@@ -162,6 +163,7 @@
                                     <span class="text-muted">Sin asignar</span>
                                 {% endif %}
                             </td>
+                            <td>{{ proceso.fecha_asignacion|localtime|date:"d/m/Y"|default:"N/A" }}</td>
                             <td>{{ proceso.fecha_final|localtime|date:"d/m/Y"|default:"N/A" }}</td>
                             <td>{{ proceso.dias_de_proceso|default:"N/A" }}</td>
                             <td>
