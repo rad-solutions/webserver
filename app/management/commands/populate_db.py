@@ -184,7 +184,10 @@ class Command(BaseCommand):
             for _ in range(NUM_PROCESSES_PER_USER):
                 process_type = random.choice(ProcessTypeChoices.choices)[0]
                 practice_category = None
-                if process_type == ProcessTypeChoices.ASESORIA:
+                if (
+                    process_type == ProcessTypeChoices.ASESORIA
+                    or process_type == ProcessTypeChoices.ESTUDIO_AMBIENTAL
+                ):
                     practice_category = random.choice(PracticeCategoryChoices.choices)[
                         0
                     ]
