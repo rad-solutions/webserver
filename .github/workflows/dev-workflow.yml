@@ -145,15 +145,14 @@ jobs:
 
           echo "image_uri=$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-  deploy-app-runner:
-    name: Deploy to App Runner
+  update-dev-environment:
+    name: Update Dev App Runner Environment
     runs-on: ubuntu-latest
     needs: [provision-ephemeral-db, build-and-push-ecr]
-    outputs:
-      service_arn: ${{ steps.app-runner.outputs.service_arn }}
     env:
       AWS_REGION: us-east-1
       AWS_ACCOUNT_ID: 978368259161
+      APP_RUNNER_SERVICE_ARN: "arn:aws:apprunner:us-east-1:978368259161:service/radsolutions-web-dev/213e183c61af4e028e5cb956341429f9"
     steps:
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -169,63 +168,15 @@ jobs:
           echo "::add-mask::$DB_PASSWORD"
           echo "db_password=$DB_PASSWORD" >> $GITHUB_OUTPUT
 
-      - name: Create and Update App Runner Service
-        id: app-runner
+      - name: Update App Runner Service with New Image and Env Vars
+        id: app-runner-update
         run: |
-          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-8)
-          SERVICE_NAME="webserver-dev-${SHORT_SHA}"
-
-          # Crear el archivo de configuración para create-service
-          cat > create-service.json <<EOF
-          {
-              "ServiceName": "$SERVICE_NAME",
-              "SourceConfiguration": {
-                  "ImageRepository": {
-                      "ImageIdentifier": "${{ needs.build-and-push-ecr.outputs.image_uri }}",
-                      "ImageRepositoryType": "ECR",
-                      "ImageConfiguration": { "Port": "8000" }
-                  },
-                  "AuthenticationConfiguration": {
-                      "AccessRoleArn": "arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/service-role/AppRunnerECRAccessRole"
-                  }
-              },
-              "InstanceConfiguration": {
-                  "Cpu": "1024",
-                  "Memory": "2048"
-              },
-              "HealthCheckConfiguration": {
-                  "Protocol": "TCP"
-              },
-              "Tags": [
-                  {"Key": "SourceWorkflow", "Value": "${{ github.workflow }}"},
-                  {"Key": "CommitSHA", "Value": "${{ github.sha }}"}
-              ]
-          }
-          EOF
-
-          SERVICE_ARN=$(aws apprunner create-service --cli-input-json file://create-service.json --query 'Service.ServiceArn' --output text)
-          echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
-
-          echo "Waiting for service to become RUNNING..."
-          timeout 300 bash <<'EOT'
-          while true; do
-            STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --query 'Service.Status' --output text)
-            echo "Current service status: $STATUS"
-            if [ "$STATUS" == "RUNNING" ]; then
-              echo "Service is now RUNNING."
-              break
-            elif [ "$STATUS" == "CREATE_FAILED" ]; then
-              echo "Service creation failed. Check the App Runner console for logs."
-              exit 1
-            fi
-            sleep 20
-          done
-          EOT
+          echo "Updating App Runner service ${{ env.APP_RUNNER_SERVICE_ARN }}..."
 
           # Crear el archivo de configuración para update-service
-          cat > update-service.json <<EOF
+          cat > update-service-config.json <<EOF
           {
-              "ServiceArn": "$SERVICE_ARN",
+              "ServiceArn": "${{ env.APP_RUNNER_SERVICE_ARN }}",
               "SourceConfiguration": {
                   "ImageRepository": {
                       "ImageIdentifier": "${{ needs.build-and-push-ecr.outputs.image_uri }}",
@@ -240,7 +191,7 @@ jobs:
                               "DATABASE_PORT": "5432",
                               "AWS_STORAGE_BUCKET_NAME": "${{ needs.provision-ephemeral-db.outputs.temp_s3_bucket }}",
                               "AWS_S3_REGION_NAME": "${{ env.AWS_REGION }}",
-                              "DJANGO_SECRET_KEY": "a-secure-secret-key-for-dev-env",
+                              "DJANGO_SECRET_KEY": "a-secure-secret-key-for-dev-env-from-gh-actions",
                               "USE_MOCK_STORAGE": "False"
                           }
                       }
@@ -249,7 +200,6 @@ jobs:
           }
           EOF
 
-          echo "Updating service with environment variables..."
-          aws apprunner update-service --cli-input-json file://update-service.json
+          aws apprunner update-service --cli-input-json file://update-service-config.json
 
-          echo "Service update initiated. App Runner will now deploy the new version."
+          echo "Service update initiated for ${{ env.APP_RUNNER_SERVICE_ARN }}. App Runner will now start a new deployment."
