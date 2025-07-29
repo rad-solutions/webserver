@@ -160,6 +160,28 @@ jobs:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubActions-deploy-role
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Resume App Runner if Paused
+        run: |
+          STATUS=$(aws apprunner describe-service --service-arn ${{ env.APP_RUNNER_SERVICE_ARN }} --query 'Service.Status' --output text)
+          if [ "$STATUS" == "PAUSED" ]; then
+            echo "Service is PAUSED. Resuming service..."
+            aws apprunner resume-service --service-arn ${{ env.APP_RUNNER_SERVICE_ARN }}
+            echo "Waiting for service to become RUNNING..."
+            timeout 300 bash -c '
+              while true; do
+                CURRENT_STATUS=$(aws apprunner describe-service --service-arn "${{ env.APP_RUNNER_SERVICE_ARN }}" --query "Service.Status" --output text)
+                if [ "$CURRENT_STATUS" == "RUNNING" ]; then
+                  echo "Service is now RUNNING."
+                  break
+                fi
+                echo "Current status: $CURRENT_STATUS. Waiting..."
+                sleep 15
+              done
+            '
+          else
+            echo "Service is already in a non-paused state ($STATUS)."
+          fi
+
       - name: Get DB Password from Temporary Secret
         id: db-password
         run: |
@@ -185,14 +207,17 @@ jobs:
                           "Port": "8000",
                           "RuntimeEnvironmentVariables": {
                               "DATABASE_HOST": "${{ needs.provision-ephemeral-db.outputs.db_endpoint }}",
-                              "DATABASE_NAME": "radsolutions_db",
-                              "DATABASE_USER": "radsolutions_user",
+                              "DATABASE_NAME": "postgres",
+                              "DATABASE_USER": "postgres",
                               "DATABASE_PASSWORD": "${{ steps.db-password.outputs.db_password }}",
                               "DATABASE_PORT": "5432",
                               "AWS_STORAGE_BUCKET_NAME": "${{ needs.provision-ephemeral-db.outputs.temp_s3_bucket }}",
                               "AWS_S3_REGION_NAME": "${{ env.AWS_REGION }}",
-                              "DJANGO_SECRET_KEY": "a-secure-secret-key-for-dev-env-from-gh-actions",
-                              "USE_MOCK_STORAGE": "False"
+                              "DJANGO_SECRET_KEY": "a-very-secure-secret-key-for-dev-env-from-gh-actions",
+                              "USE_MOCK_STORAGE": "False",
+                              "DEBUG": "True",
+                              "DJANGO_LOG_LEVEL": "DEBUG",
+                              "PYTHONUNBUFFERED": "1"
                           }
                       }
                   }
@@ -203,3 +228,25 @@ jobs:
           aws apprunner update-service --cli-input-json file://update-service-config.json
 
           echo "Service update initiated for ${{ env.APP_RUNNER_SERVICE_ARN }}. App Runner will now start a new deployment."
+
+  pause-dev-environment:
+    name: Pause Dev App Runner Environment
+    runs-on: ubuntu-latest
+    needs: [update-dev-environment]
+    if: always() # Asegura que este job se ejecute siempre
+    env:
+      AWS_REGION: us-east-1
+      AWS_ACCOUNT_ID: 978368259161
+      APP_RUNNER_SERVICE_ARN: "arn:aws:apprunner:us-east-1:978368259161:service/radsolutions-web-dev/213e183c61af4e028e5cb956341429f9"
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubActions-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Pause App Runner Service
+        run: |
+          echo "Pausing App Runner service ${{ env.APP_RUNNER_SERVICE_ARN }} to save costs."
+          aws apprunner pause-service --service-arn ${{ env.APP_RUNNER_SERVICE_ARN }}
+          echo "Service pause initiated."
