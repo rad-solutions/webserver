@@ -13,6 +13,10 @@ jobs:
   provision-ephemeral-db:
     name: Provision Ephemeral DB from Prod Snapshot
     runs-on: ubuntu-latest
+    outputs:
+      db_endpoint: ${{ steps.restore_db.outputs.db_endpoint }}
+      temp_s3_bucket: ${{ steps.identifiers.outputs.temp_s3_bucket }}
+      temp_secret_name: ${{ steps.new-db-password.outputs.temp_secret_name }}
     env:
       AWS_REGION: us-east-1
       PROD_DB_INSTANCE_IDENTIFIER: "radsolutions-db"
