@@ -71,6 +71,7 @@ jobs:
               --db-instance-class db.t3.micro \
               --no-publicly-accessible \
               --vpc-security-group-ids sg-003e52293c66d330d \
+              --db-subnet-group-name default-vpc-096cb4bbbbbf1b1be \
               --tags Key=SourceWorkflow,Value="${{ github.workflow }}" Key=CommitSHA,Value=${{ github.sha }}
 
             echo "Waiting for temporary DB instance to be available..."
