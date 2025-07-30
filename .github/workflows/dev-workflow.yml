@@ -226,6 +226,8 @@ jobs:
                               "DATABASE_PORT": "5432",
                               "AWS_STORAGE_BUCKET_NAME": "${{ needs.provision-ephemeral-db.outputs.temp_s3_bucket }}",
                               "AWS_S3_REGION_NAME": "${{ env.AWS_REGION }}",
+                              "AWS_ACCESS_KEY_ID": "${{ secrets.AWS_ACCESS_KEY_ID_DEV }}",
+                              "AWS_SECRET_ACCESS_KEY": "${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}",
                               "DJANGO_SECRET_KEY": "a-very-secure-secret-key-for-dev-env-from-gh-actions",
                               "USE_MOCK_STORAGE": "False",
                               "DEBUG": "True",
