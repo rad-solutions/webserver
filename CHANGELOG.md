@@ -1,3 +1,10 @@
+# [1.66.0](https://github.com/rad-solutions/webserver/compare/v1.65.0...v1.66.0) (2025-07-30)
+
+
+### Features
+
+* Added Niveles de Refrencia as new Process Type. Added test to check correct ChecklistItem generation. ([bb9645b](https://github.com/rad-solutions/webserver/commit/bb9645b1cb884ad58606e27680ebda624e22fa57))
+
 # [1.65.0](https://github.com/rad-solutions/webserver/compare/v1.64.0...v1.65.0) (2025-07-30)
 
 
