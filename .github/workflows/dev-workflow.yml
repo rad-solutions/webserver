@@ -10,6 +10,7 @@ permissions:
   contents: read
 
 jobs:
+
   provision-ephemeral-db:
     name: Provision Ephemeral DB from Prod Snapshot
     runs-on: ubuntu-latest
@@ -21,90 +22,75 @@ jobs:
       AWS_REGION: us-east-1
       PROD_DB_INSTANCE_IDENTIFIER: "radsolutions-db"
       AWS_ACCOUNT_ID: 978368259161
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubActions-deploy-role
           aws-region: ${{ env.AWS_REGION }}
-
       - name: Generate unique identifiers for this run
         id: identifiers
         run: |
           TIMESTAMP=$(date +%s)
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-8)
           UNIQUE_ID="dev-${SHORT_SHA}-${TIMESTAMP}"
-
           echo "snapshot_id=snapshot-${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "temp_db_id=temp-db-${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "temp_s3_bucket=radsolutions-media-uploads-${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "temp_secret_name=temp-secret-${UNIQUE_ID}" >> $GITHUB_OUTPUT
-
           echo "Generated Snapshot ID: snapshot-${UNIQUE_ID}"
           echo "Generated Temp DB ID: temp-db-${UNIQUE_ID}"
           echo "Generated Temp S3 Bucket: radsolutions-media-uploads-${UNIQUE_ID}"
           echo "Generated Temp Secret Name: temp-secret-${UNIQUE_ID}"
-
       - name: Create DB Snapshot from Production
         run: |
-            echo "Starting snapshot of ${{ env.PROD_DB_INSTANCE_IDENTIFIER }}..."
-            aws rds create-db-snapshot \
-              --db-instance-identifier ${{ env.PROD_DB_INSTANCE_IDENTIFIER }} \
-              --db-snapshot-identifier ${{ steps.identifiers.outputs.snapshot_id }} \
-              --tags Key=SourceWorkflow,Value="${{ github.workflow }}" Key=CommitSHA,Value=${{ github.sha }}
-
-            echo "Waiting for snapshot to be available..."
-            aws rds wait db-snapshot-available --db-snapshot-identifier ${{ steps.identifiers.outputs.snapshot_id }}
-            echo "Snapshot ${{ steps.identifiers.outputs.snapshot_id }} is available."
-
+          echo "Starting snapshot of ${{ env.PROD_DB_INSTANCE_IDENTIFIER }}..."
+          aws rds create-db-snapshot \
+            --db-instance-identifier ${{ env.PROD_DB_INSTANCE_IDENTIFIER }} \
+            --db-snapshot-identifier ${{ steps.identifiers.outputs.snapshot_id }} \
+            --tags Key=SourceWorkflow,Value="${{ github.workflow }}" Key=CommitSHA,Value=${{ github.sha }}
+          echo "Waiting for snapshot to be available..."
+          aws rds wait db-snapshot-available --db-snapshot-identifier ${{ steps.identifiers.outputs.snapshot_id }}
+          echo "Snapshot ${{ steps.identifiers.outputs.snapshot_id }} is available."
       - name: Restore DB Instance from Snapshot
         id: restore_db
         run: |
-            echo "Restoring snapshot to a new temporary DB instance..."
-            aws rds restore-db-instance-from-db-snapshot \
-              --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }} \
-              --db-snapshot-identifier ${{ steps.identifiers.outputs.snapshot_id }} \
-              --db-instance-class db.t3.micro \
-              --no-publicly-accessible \
-              --vpc-security-group-ids sg-003e52293c66d330d \
-              --db-subnet-group-name default-vpc-096cb4bbbbbf1b1be \
-              --tags Key=SourceWorkflow,Value="${{ github.workflow }}" Key=CommitSHA,Value=${{ github.sha }}
-
-            echo "Waiting for temporary DB instance to be available..."
-            aws rds wait db-instance-available --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }}
-
-            DB_ENDPOINT=$(aws rds describe-db-instances --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }} --query "DBInstances[0].Endpoint.Address" --output text)
-            echo "db_endpoint=$DB_ENDPOINT" >> $GITHUB_OUTPUT
-            echo "Temporary DB is available at: $DB_ENDPOINT"
-
+          echo "Restoring snapshot to a new temporary DB instance..."
+          aws rds restore-db-instance-from-db-snapshot \
+            --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }} \
+            --db-snapshot-identifier ${{ steps.identifiers.outputs.snapshot_id }} \
+            --db-instance-class db.t3.micro \
+            --no-publicly-accessible \
+            --vpc-security-group-ids sg-003e52293c66d330d \
+            --db-subnet-group-name default-vpc-096cb4bbbbbf1b1be \
+            --tags Key=SourceWorkflow,Value="${{ github.workflow }}" Key=CommitSHA,Value=${{ github.sha }}
+          echo "Waiting for temporary DB instance to be available..."
+          aws rds wait db-instance-available --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }}
+          DB_ENDPOINT=$(aws rds describe-db-instances --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }} --query "DBInstances[0].Endpoint.Address" --output text)
+          echo "db_endpoint=$DB_ENDPOINT" >> $GITHUB_OUTPUT
+          echo "Temporary DB is available at: $DB_ENDPOINT"
       - name: Generate and Set New DB Password
         id: new-db-password
         run: |
           echo "Generating a new random password for the temporary DB..."
           NEW_DB_PASSWORD=$(openssl rand -hex 16) # Use hex to generate a 32-char compliant password
           echo "::add-mask::$NEW_DB_PASSWORD"
-
           echo "Storing new password in a temporary secret..."
           aws secretsmanager create-secret \
             --name ${{ steps.identifiers.outputs.temp_secret_name }} \
             --secret-string "{\"password\":\"$NEW_DB_PASSWORD\"}" \
             --tags Key=SourceWorkflow,Value="${{ github.workflow }}" Key=CommitSHA,Value=${{ github.sha }}
-
           echo "Updating the temporary DB instance with the new password..."
           aws rds modify-db-instance \
             --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }} \
             --master-user-password "$NEW_DB_PASSWORD" \
             --apply-immediately
-
           echo "Waiting for DB instance to finish modification..."
           aws rds wait db-instance-available --db-instance-identifier ${{ steps.identifiers.outputs.temp_db_id }}
           echo "Temporary DB password has been updated and stored securely."
           echo "temp_secret_name=${{ steps.identifiers.outputs.temp_secret_name }}" >> $GITHUB_OUTPUT
-
       - name: Create temporary S3 bucket for media
         run: |
           echo "Creating temporary S3 bucket: ${{ steps.identifiers.outputs.temp_s3_bucket }}"
@@ -114,43 +100,43 @@ jobs:
           echo "Temporary S3 bucket ready: ${{ steps.identifiers.outputs.temp_s3_bucket }}"
           # Puedes exportar el nombre del bucket temporal como variable de entorno para otros jobs/steps si lo necesitas
 
-    run-migrations:
-      name: Run Migrations on Ephemeral DB
-      runs-on: ubuntu-latest
-      needs: provision-ephemeral-db
-      env:
-        AWS_REGION: ${{ env.AWS_REGION }}
-        DB_ENDPOINT: ${{ needs.provision-ephemeral-db.outputs.db_endpoint }}
-        DB_SECRET_NAME: ${{ needs.provision-ephemeral-db.outputs.temp_secret_name }}
-        DB_NAME: radsolutions
-        DB_USER: postgres
-      steps:
-        - uses: actions/checkout@v4
-        - uses: aws-actions/configure-aws-credentials@v4
-          with:
-            role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubActions-deploy-role
-            aws-region: ${{ env.AWS_REGION }}
-        - name: Retrieve DB Password
-          id: retrieve-db-password
-          run: |
-            DB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id ${{ env.DB_SECRET_NAME }} --query SecretString --output text | jq -r .password)
-            echo "::add-mask::$DB_PASSWORD"
-            echo "DB_PASSWORD=$DB_PASSWORD" >> $GITHUB_ENV
-        - uses: actions/setup-python@v4
-          with:
-            python-version: '3.11'
-        - name: Install dependencies
-          run: |
-            pip install --upgrade pip
-            pip install -r requirements.txt
-        - name: Run Django migrations
-          run: |
-            DJANGO_SETTINGS_MODULE=settings.dev \
-            DATABASE_HOST=${{ env.DB_ENDPOINT }} \
-            DATABASE_NAME=${{ env.DB_NAME }} \
-            DATABASE_USER=${{ env.DB_USER }} \
-            DATABASE_PASSWORD=${{ env.DB_PASSWORD }} \
-            python manage.py migrate --noinput
+  run-migrations:
+    name: Run Migrations on Ephemeral DB
+    runs-on: ubuntu-latest
+    needs: provision-ephemeral-db
+    env:
+      AWS_REGION: ${{ env.AWS_REGION }}
+      DB_ENDPOINT: ${{ needs.provision-ephemeral-db.outputs.db_endpoint }}
+      DB_SECRET_NAME: ${{ needs.provision-ephemeral-db.outputs.temp_secret_name }}
+      DB_NAME: radsolutions
+      DB_USER: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubActions-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Retrieve DB Password
+        id: retrieve-db-password
+        run: |
+          DB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id ${{ env.DB_SECRET_NAME }} --query SecretString --output text | jq -r .password)
+          echo "::add-mask::$DB_PASSWORD"
+          echo "DB_PASSWORD=$DB_PASSWORD" >> $GITHUB_ENV
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run Django migrations
+        run: |
+          DJANGO_SETTINGS_MODULE=settings.dev \
+          DATABASE_HOST=${{ env.DB_ENDPOINT }} \
+          DATABASE_NAME=${{ env.DB_NAME }} \
+          DATABASE_USER=${{ env.DB_USER }} \
+          DATABASE_PASSWORD=${{ env.DB_PASSWORD }} \
+          python manage.py migrate --noinput
 
   build-and-push-ecr:
     name: Build and Push to ECR
