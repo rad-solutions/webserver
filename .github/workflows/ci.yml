@@ -46,6 +46,7 @@ jobs:
         echo "AWS_STORAGE_BUCKET_NAME=${{ secrets.AWS_STORAGE_BUCKET_NAME || 'dummy_bucket' }}" >> .env
         echo "AWS_S3_REGION_NAME=${{ secrets.AWS_S3_REGION_NAME || 'us-east-1' }}" >> .env
         echo "USE_MOCK_STORAGE=True" >> .env
+        echo "${{ secrets.TEST_USERS }}"
         echo -n "TEST_USERS=" >> .env
         echo "${{ secrets.TEST_USERS || '{}' }}" >> .env
 
