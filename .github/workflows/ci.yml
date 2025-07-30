@@ -41,7 +41,7 @@ jobs:
         DATABASE_HOST=db
         DATABASE_PORT=5432
         DEBUG=True
-        DJANGO_SECRET_KEY='django-insecure-k#cb*25^f8d9js*%rnkjc24_^r^(8#-@$m*8ia1-zn*ytg=#u*'"
+        DJANGO_SECRET_KEY='django-insecure-k#cb*25^f8d9js*%rnkjc24_^r^(8#-@$m*8ia1-zn*ytg=#u*'
         AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID || 'dummy_key' }}
         AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY || 'dummy_secret' }}
         AWS_STORAGE_BUCKET_NAME=${{ secrets.AWS_STORAGE_BUCKET_NAME || 'dummy_bucket' }}
