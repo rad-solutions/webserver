@@ -93,6 +93,7 @@ class ProcessTypeChoices(models.TextChoices):
     CALCULO_BLINDAJES = "calculo_blindajes", _("Cálculo de Blindajes")
     CONTROL_CALIDAD = "control_calidad", _("Control de Calidad")
     ESTUDIO_AMBIENTAL = "estudio_ambiental", _("Estudio Ambiental")
+    NIVELES_DE_REFERENCIA = "niveles_de_referencia", _("Niveles de Referencia")
     ASESORIA = "asesoria", _("Asesoría")
     OTRO = "otro", _("Otro")
 
@@ -111,7 +112,7 @@ class ProcessStatusChoices(models.TextChoices):
 
 class Process(models.Model):
     process_type = models.CharField(
-        max_length=20,
+        max_length=25,
         choices=ProcessTypeChoices.choices,
         default=ProcessTypeChoices.OTRO,
     )
@@ -532,7 +533,7 @@ class ChecklistItemStatusChoices(models.TextChoices):
 
 class ChecklistItemDefinition(models.Model):
     process_type = models.CharField(
-        max_length=20,
+        max_length=25,
         choices=ProcessTypeChoices.choices,
         verbose_name=_("Tipo de Proceso"),
     )
