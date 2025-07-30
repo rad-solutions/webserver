@@ -34,21 +34,21 @@ jobs:
 
     - name: Create .env file
       run: |
-        echo "DATABASE_NAME=radsolutions_db" >> .env
-        echo "DATABASE_USER=radsolutions_user" >> .env
-        echo "DATABASE_PASSWORD=radsolutions_pass" >> .env
-        echo "DATABASE_HOST=db" >> .env
-        echo "DATABASE_PORT=5432" >> .env
-        echo "DEBUG=True" >> .env
-        echo "DJANGO_SECRET_KEY='django-insecure-k#cb*25^f8d9js*%rnkjc24_^r^(8#-@$m*8ia1-zn*ytg=#u*'" >> .env
-        echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID || 'dummy_key' }}" >> .env
-        echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY || 'dummy_secret' }}" >> .env
-        echo "AWS_STORAGE_BUCKET_NAME=${{ secrets.AWS_STORAGE_BUCKET_NAME || 'dummy_bucket' }}" >> .env
-        echo "AWS_S3_REGION_NAME=${{ secrets.AWS_S3_REGION_NAME || 'us-east-1' }}" >> .env
-        echo "USE_MOCK_STORAGE=True" >> .env
-        echo "${{ secrets.TEST_USERS }}"
-        echo -n "TEST_USERS=" >> .env
-        echo "${{ secrets.TEST_USERS || '{}' }}" >> .env
+        cat <<EOF > .env
+        DATABASE_NAME=radsolutions_db
+        DATABASE_USER=radsolutions_user
+        DATABASE_PASSWORD=radsolutions_pass
+        DATABASE_HOST=db
+        DATABASE_PORT=5432
+        DEBUG=True
+        DJANGO_SECRET_KEY='django-insecure-k#cb*25^f8d9js*%rnkjc24_^r^(8#-@$m*8ia1-zn*ytg=#u*'"
+        AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID || 'dummy_key' }}
+        AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY || 'dummy_secret' }}
+        AWS_STORAGE_BUCKET_NAME=${{ secrets.AWS_STORAGE_BUCKET_NAME || 'dummy_bucket' }}
+        AWS_S3_REGION_NAME=${{ secrets.AWS_S3_REGION_NAME || 'us-east-1' }}
+        USE_MOCK_STORAGE=True
+        TEST_USERS=${{ secrets.TEST_USERS || '{}' }}
+        EOF
 
     - name: Build Docker containers using make
       run: |
