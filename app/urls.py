@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 
 from app.views import (
     AnotacionCreateView,
@@ -33,7 +33,9 @@ from app.views import (
     UserDeleteView,
     UserDetailView,
     UserListView,
+    UserLookupView,
     UserUpdateView,
+    load_client_branches,
     load_user_equipment,
     load_user_processes,
     logout_view,
@@ -133,6 +135,9 @@ urlpatterns = [
         EquipoTuboUpdateView.as_view(),
         name="tubo_update",
     ),
+    # AJAX URLs
+    path("select2/", include("django_select2.urls")),
+    path("ajax/user-lookup/", UserLookupView.as_view(), name="select2_model_user"),
     path(
         "ajax/load-user-processes/",
         load_user_processes,
@@ -142,5 +147,10 @@ urlpatterns = [
         "ajax/load-user-equipment/",
         load_user_equipment,
         name="ajax_load_user_equipment",
+    ),
+    path(
+        "ajax/load-client-branches/",
+        load_client_branches,
+        name="ajax_load_client_branches",
     ),
 ]

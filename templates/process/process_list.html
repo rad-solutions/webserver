@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load tz %}
 
 {% block title %}Lista de Procesos{% endblock %}
 
@@ -108,7 +109,7 @@
                             <td>{{ equipo.modelo }}</td>
                             <td>{{ equipo.serial }}</td>
                             {% with progress_data=equipment_progress_map|get_item:equipo.id %}
-                            <td>{{ progress_data.process.fecha_inicio|date:"d/m/Y"|default:"N/A" }}</td>
+                            <td>{{ progress_data.process.fecha_inicio|localtime|date:"d/m/Y"|default:"N/A" }}</td>
                             <td>{{ equipo.get_estado_actual_display }}</td>
                             <td>
                                 {% if progress_data.process %}
@@ -138,6 +139,23 @@
                     </tbody>
                 </table>
             </div>
+            {% if is_paginated %}
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            {# --- CORRECCIÓN --- #}
+                            <li class="page-item"><a class="page-link" href="?{% url_replace page=1 %}">&laquo; Primera</a></li>
+                            <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.previous_page_number %}">Anterior</a></li>
+                        {% endif %}
+                        <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                        {% if page_obj.has_next %}
+                            {# --- CORRECCIÓN --- #}
+                            <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.next_page_number %}">Siguiente</a></li>
+                            <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.paginator.num_pages %}">Última &raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
         </div>
     </div>
 </div>

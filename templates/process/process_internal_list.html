@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% load app_extras %}
+{% load tz %}
 
 {% block title %}Lista de Procesos{% endblock %}
 
@@ -137,6 +139,7 @@
                             <th>Tipo de Proceso</th>
                             <th>Cliente (Razón Social)</th>
                             <th>Asignado a</th>
+                            <th>Fecha Asignación</th>
                             <th>Fecha Fin</th>
                             <th>Días de Proceso</th>
                             <th>Días para Vencimiento</th>
@@ -160,12 +163,17 @@
                                     <span class="text-muted">Sin asignar</span>
                                 {% endif %}
                             </td>
-                            <td>{{ proceso.fecha_final|date:"d/m/Y"|default:"N/A" }}</td>
+                            <td>{{ proceso.fecha_asignacion|localtime|date:"d/m/Y"|default:"N/A" }}</td>
+                            <td>{{ proceso.fecha_final|localtime|date:"d/m/Y"|default:"N/A" }}</td>
                             <td>{{ proceso.dias_de_proceso|default:"N/A" }}</td>
                             <td>
                                 {% if proceso.dias_hasta_vencimiento is not None %}
                                     {% if proceso.dias_hasta_vencimiento < 0 %}
-                                        <span class="badge bg-danger">Vencido hace {{ proceso.dias_vencido }} días</span>
+                                        {% if proceso.estado == 'finalizado' %}
+                                            <span class="badge bg-secondary">Finalizado hace {{ proceso.dias_vencido }} días</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Vencido hace {{ proceso.dias_vencido }} días</span>
+                                        {% endif %}
                                     {% else %}
                                         <span class="badge bg-success">{{ proceso.dias_hasta_vencimiento }} días restantes</span>
                                     {% endif %}
@@ -199,13 +207,15 @@
                 <nav aria-label="Page navigation">
                     <ul class="pagination justify-content-center">
                         {% if page_obj.has_previous %}
-                            <li class="page-item"><a class="page-link" href="?page=1&{{ request.GET.urlencode }}">&laquo; Primera</a></li>
-                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">Anterior</a></li>
+                            {# --- CORRECCIÓN --- #}
+                            <li class="page-item"><a class="page-link" href="?{% url_replace page=1 %}">&laquo; Primera</a></li>
+                            <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.previous_page_number %}">Anterior</a></li>
                         {% endif %}
                         <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
                         {% if page_obj.has_next %}
-                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">Siguiente</a></li>
-                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&{{ request.GET.urlencode }}">Última &raquo;</a></li>
+                            {# --- CORRECCIÓN --- #}
+                            <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.next_page_number %}">Siguiente</a></li>
+                            <li class="page-item"><a class="page-link" href="?{% url_replace page=page_obj.paginator.num_pages %}">Última &raquo;</a></li>
                         {% endif %}
                     </ul>
                 </nav>

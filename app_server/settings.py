@@ -10,6 +10,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
+# Fallback for SECRET KEY when rotating the SECRET_KEY to avoid invalidating existing sessions
+fallback_key = os.getenv("DJANGO_SECRET_KEY_FALLBACK")
+SECRET_KEY_FALLBACKS = [fallback_key] if fallback_key else []
+
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 AUTH_USER_MODEL = "app.User"
 
@@ -36,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "crispy_forms",
     "crispy_bootstrap5",
+    "django_select2",
     "storages",
     "app",
 ]
@@ -140,7 +145,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "America/Bogota"
 
 USE_I18N = True
 
@@ -162,23 +167,28 @@ AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 # Opcional: usar URLs amigables
 AWS_S3_FILE_OVERWRITE = False
+
 AWS_DEFAULT_ACL = None
-AWS_QUERYSTRING_AUTH = False  # Para que los archivos tengan URL públicas sin tokens
+
+AWS_QUERYSTRING_AUTH = True
+
+# The link will be valid for 1 hour
+AWS_QUERYSTRING_EXPIRE = 3600
 
 # (Opcional) Ruta base para tus archivos en el bucket
 AWS_LOCATION = "media"
 
-AWS_S3_CUSTOM_DOMAIN = (
-    f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com"
-)
+# AWS_S3_CUSTOM_DOMAIN = (
+#     f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com"
+# )
 
 # Configuración condicional de MEDIA_URL según USE_MOCK_STORAGE
 USE_MOCK_STORAGE = os.getenv("USE_MOCK_STORAGE").lower() == "true"
 if USE_MOCK_STORAGE:
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
-else:
-    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/"
+# else:
+# MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/"
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

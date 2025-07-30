@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% load tz %}
+
 {% block title %}Detalle de Equipo{% endblock %}
 
 {% block content %}
@@ -48,19 +50,19 @@
             </div>
             <div class="row mb-3">
                 <div class="col-md-4"><strong>Fecha de Adquisición:</strong></div>
-                <div class="col-md-8">{{ equipo.fecha_adquisicion|date:"d/m/Y" }}</div>
+                <div class="col-md-8">{{ equipo.fecha_adquisicion|localtime|date:"d/m/Y" }}</div>
             </div>
             <div class="row mb-3">
                 <div class="col-md-4"><strong>Fecha de Vigencia de Licencia:</strong></div>
-                <div class="col-md-8">{{ equipo.fecha_vigencia_licencia|date:"d/m/Y"|default_if_none:"No Aplica" }}</div>
+                <div class="col-md-8">{{ equipo.fecha_vigencia_licencia|localtime|date:"d/m/Y"|default_if_none:"No Aplica" }}</div>
             </div>
             <div class="row mb-3">
                 <div class="col-md-4"><strong>Fecha de Último Control de Calidad:</strong></div>
-                <div class="col-md-8">{{ equipo.fecha_ultimo_control_calidad|date:"d/m/Y"|default_if_none:"No Aplica" }}</div>
+                <div class="col-md-8">{{ equipo.fecha_ultimo_control_calidad|localtime|date:"d/m/Y"|default_if_none:"No Aplica" }}</div>
             </div>
             <div class="row mb-3">
                 <div class="col-md-4"><strong>Fecha de Vencimiento del Control de Calidad:</strong></div>
-                <div class="col-md-8">{{ equipo.fecha_vencimiento_control_calidad|date:"d/m/Y"|default_if_none:"No Aplica"}}</div>
+                <div class="col-md-8">{{ equipo.fecha_vencimiento_control_calidad|localtime|date:"d/m/Y"|default_if_none:"No Aplica"}}</div>
             </div>
             <div class="row mb-3">
                 <div class="col-md-4"><strong>¿Tiene proceso de Asesoría?</strong></div>
@@ -159,7 +161,7 @@
                 <li class="list-group-item">
                     Marca del Tubo: {{ tubo.marca }} - Modelo del Tubo: {{ tubo.modelo }} <br> (Serial del tubo: {{ tubo.serial }})
                     <br>
-                    <small class="text-muted">{{ tubo.fecha_cambio|date:"d/m/Y" }}</small>
+                    <small class="text-muted">{{ tubo.fecha_cambio|localtime|date:"d/m/Y" }}</small>
                 </li>
                 {% endfor %}
             </ul>

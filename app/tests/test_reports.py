@@ -9,6 +9,8 @@ from django.urls import reverse
 
 from ..models import (
     Anotacion,
+    ClientBranch,
+    ClientProfile,
     Equipment,
     EstadoReporteChoices,
     Process,
@@ -65,20 +67,20 @@ class ReportAPITest(TestCase):
             user=self.user,
             process_type=self.process_type_asesoria,
             estado=self.process_status_progreso,
-            fecha_inicio=datetime(2024, 1, 10, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2024, 1, 10, tzinfo=timezone(-timedelta(hours=5))),
         )
         self.process_calidad = Process.objects.create(
             user=self.user,
             process_type=self.process_type_calidad,
             estado=self.process_status_progreso,
-            fecha_inicio=datetime(2024, 2, 15, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2024, 2, 15, tzinfo=timezone(-timedelta(hours=5))),
         )
         # Proceso para otro usuario (admin en este caso, para probar que no se listen sus reportes para el cliente)
         self.process_admin = Process.objects.create(
             user=self.admin_user,
             process_type=self.process_type_asesoria,
             estado=self.process_status_progreso,
-            fecha_inicio=datetime(2024, 3, 1, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2024, 3, 1, tzinfo=timezone(-timedelta(hours=5))),
         )
 
         self.equipment1_calidad = Equipment.objects.create(
@@ -110,7 +112,7 @@ class ReportAPITest(TestCase):
         )
         # Forzar created_at para pruebas de filtro de fecha precisas
         self.report1_asesoria_jan.created_at = datetime(
-            2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc
+            2024, 1, 15, 10, 0, 0, tzinfo=timezone(-timedelta(hours=5))
         )
         self.report1_asesoria_jan.save()
 
@@ -123,7 +125,7 @@ class ReportAPITest(TestCase):
             estado_reporte=EstadoReporteChoices.REVISADO,
         )
         self.report2_calidad_feb.created_at = datetime(
-            2024, 2, 20, 11, 0, 0, tzinfo=timezone.utc
+            2024, 2, 20, 11, 0, 0, tzinfo=timezone(-timedelta(hours=5))
         )
         self.report2_calidad_feb.save()
 
@@ -135,7 +137,7 @@ class ReportAPITest(TestCase):
             estado_reporte=EstadoReporteChoices.APROBADO,
         )
         self.report3_asesoria_mar.created_at = datetime(
-            2024, 3, 25, 12, 0, 0, tzinfo=timezone.utc
+            2024, 3, 25, 12, 0, 0, tzinfo=timezone(-timedelta(hours=5))
         )
         self.report3_asesoria_mar.save()
 
@@ -148,7 +150,7 @@ class ReportAPITest(TestCase):
             estado_reporte=EstadoReporteChoices.APROBADO,
         )
         self.report_admin_user.created_at = datetime(
-            2024, 3, 10, 10, 0, 0, tzinfo=timezone.utc
+            2024, 3, 10, 10, 0, 0, tzinfo=timezone(-timedelta(hours=5))
         )
         self.report_admin_user.save()
 
@@ -702,7 +704,9 @@ class ReportAPITest(TestCase):
             title="Reporte Calidad Enero para Equipo1",
             pdf_file=SimpleUploadedFile("cc_enero.pdf", self.temp_file_content),
         )
-        report_cc_anterior.created_at = datetime(2024, 1, 20, tzinfo=timezone.utc)
+        report_cc_anterior.created_at = datetime(
+            2024, 1, 20, tzinfo=timezone(-timedelta(hours=5))
+        )
         report_cc_anterior.save()
 
         # self.report2_calidad_feb.created_at es 2024-02-20
@@ -937,3 +941,230 @@ class ReportListEquipmentFilterTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["reports"]), 0)
         self.assertContains(response, "No hay reportes registrados.")
+
+
+class ReportFilterTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # ... (crear usuarios, roles, etc.) ...
+        cls.client_user = User.objects.create_user(
+            username="cliente_test", password="password"
+        )
+        role_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        cls.client_user.roles.add(role_cliente)
+
+        cls.profile = ClientProfile.objects.create(
+            user=cls.client_user, razon_social="Cliente S.A.", nit="111"
+        )
+
+        cls.sede1 = ClientBranch.objects.create(
+            company=cls.profile, nombre="Sede Norte", direccion_instalacion="Dir 1"
+        )
+        cls.sede2 = ClientBranch.objects.create(
+            company=cls.profile, nombre="Sede Sur", direccion_instalacion="Dir 2"
+        )
+
+        cls.equipment1_sede1 = Equipment.objects.create(
+            user=cls.client_user, nombre="Equipo A", sede=cls.sede1
+        )
+        cls.equipment2_sede2 = Equipment.objects.create(
+            user=cls.client_user, nombre="Equipo B", sede=cls.sede2
+        )
+
+        cls.report1 = Report.objects.create(
+            user=cls.client_user, title="Reporte Sede 1", equipment=cls.equipment1_sede1
+        )
+        cls.report2 = Report.objects.create(
+            user=cls.client_user, title="Reporte Sede 2", equipment=cls.equipment2_sede2
+        )
+
+        cls.internal_user = User.objects.create_user(
+            username="interno", password="password"
+        )
+        role_gerente, _ = Role.objects.get_or_create(name=RoleChoices.GERENTE)
+        cls.internal_user.roles.add(role_gerente)
+
+    def test_filter_by_sede_for_internal_user(self):
+        """Verifica que un usuario interno puede filtrar reportes por sede."""
+        self.client.login(username="interno", password="password")
+        url = (
+            reverse("report_list")
+            + f"?client_user={self.client_user.id}&sede={self.sede1.id}"
+        )
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.report1.title)
+        self.assertNotContains(response, self.report2.title)
+        self.assertEqual(len(response.context["reports"]), 1)
+
+    def test_filter_by_sede_for_client_user(self):
+        """Verifica que un usuario cliente puede filtrar sus propios reportes por sede."""
+        self.client.login(username="cliente_test", password="password")
+        url = reverse("report_list") + f"?sede={self.sede2.id}"
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.report1.title)
+        self.assertContains(response, self.report2.title)
+        self.assertEqual(len(response.context["reports"]), 1)
+
+    def test_ajax_load_client_branches(self):
+        """Verifica que la vista AJAX devuelve las sedes correctas."""
+        self.client.login(username="interno", password="password")
+        url = reverse("ajax_load_client_branches") + f"?user_id={self.client_user.id}"
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data), 2)
+        sede_names = {item["name"] for item in data}
+        self.assertIn("Sede Norte", sede_names)
+        self.assertIn("Sede Sur", sede_names)
+
+    def test_filter_by_client_user_only(self):
+        """Test para verificar que un usuario interno puede filtrar reportes por cliente.
+
+        Verifica que un usuario interno puede filtrar por cliente,
+        obteniendo todos los reportes de todas las sedes de ese cliente.
+        """
+        # Crear un segundo cliente para asegurar que el filtro funciona
+        other_client = User.objects.create_user(username="otro_cliente", password="p")
+        role_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        other_client.roles.add(role_cliente)
+        other_profile = ClientProfile.objects.create(
+            user=other_client, razon_social="Otra S.A.", nit="222"
+        )
+        other_sede = ClientBranch.objects.create(
+            company=other_profile, nombre="Sede Unica", direccion_instalacion="Dir 3"
+        )
+        other_equipment = Equipment.objects.create(
+            user=other_client, nombre="Equipo C", sede=other_sede
+        )
+        Report.objects.create(
+            user=other_client, title="Reporte Otro Cliente", equipment=other_equipment
+        )
+
+        self.client.login(username="interno", password="password")
+        # Filtrar solo por el primer cliente, sin especificar sede
+        url = reverse("report_list") + f"?client_user={self.client_user.id}"
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        # Debe contener los dos reportes del primer cliente
+        self.assertContains(response, self.report1.title)
+        self.assertContains(response, self.report2.title)
+        # NO debe contener el reporte del otro cliente
+        self.assertNotContains(response, "Reporte Otro Cliente")
+        self.assertEqual(len(response.context["reports"]), 2)
+
+
+class Select2WidgetTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Crear roles
+        cls.role_gerente, _ = Role.objects.get_or_create(name=RoleChoices.GERENTE)
+        cls.role_cliente, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+        cls.role_director, _ = Role.objects.get_or_create(
+            name=RoleChoices.DIRECTOR_TECNICO
+        )
+
+        # Crear usuario gerente para las pruebas
+        cls.gerente_user = User.objects.create_user(
+            username="gerente_select2", password="password"
+        )
+        cls.gerente_user.roles.add(cls.role_gerente)
+        cls.director_user = User.objects.create_user(
+            username="director_select2", password="password"
+        )
+        cls.director_user.roles.add(cls.role_director)
+
+        # Crear usuarios cliente para buscar
+        cls.cliente1 = User.objects.create_user(
+            username="cliente_uno", first_name="Empresa", last_name="Uno"
+        )
+        cls.cliente1.roles.add(cls.role_cliente)
+        ClientProfile.objects.create(
+            user=cls.cliente1, razon_social="Empresa Uno S.A.S.", nit="111-1"
+        )
+
+        cls.cliente2 = User.objects.create_user(
+            username="cliente_dos", first_name="Compañía", last_name="Dos"
+        )
+        cls.cliente2.roles.add(cls.role_cliente)
+        ClientProfile.objects.create(
+            user=cls.cliente2, razon_social="Compañía Dos Ltda.", nit="222-2"
+        )
+
+        # Cliente sin perfil para probar el caso límite
+        cls.cliente3_sin_perfil = User.objects.create_user(
+            username="cliente_tres_sinperfil", first_name="Cliente", last_name="Tres"
+        )
+        cls.cliente3_sin_perfil.roles.add(cls.role_cliente)
+
+    def setUp(self):
+        self.client.login(username="director_select2", password="password")
+
+    def test_user_lookup_view_returns_json(self):
+        """Verifica que la vista de búsqueda AJAX devuelve una respuesta JSON 200."""
+        url = reverse("select2_model_user")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Content-Type"], "application/json")
+
+    def test_user_lookup_view_search_by_razon_social(self):
+        """Verifica que la búsqueda por razón social funciona."""
+        url = reverse("select2_model_user")
+        response = self.client.get(url, {"term": "Uno S.A.S."})
+        data = response.json()
+        self.assertEqual(len(data["results"]), 1)
+        self.assertEqual(data["results"][0]["id"], self.cliente1.id)
+        self.assertEqual(data["results"][0]["text"], "Empresa Uno S.A.S.")
+
+    def test_user_lookup_view_search_by_username(self):
+        """Verifica que la búsqueda por nombre de usuario funciona."""
+        url = reverse("select2_model_user")
+        response = self.client.get(url, {"term": "cliente_dos"})
+        data = response.json()
+        self.assertEqual(len(data["results"]), 1)
+        self.assertEqual(data["results"][0]["id"], self.cliente2.id)
+
+    def test_user_lookup_view_handles_user_without_profile(self):
+        """Verifica que la vista maneja correctamente usuarios sin ClientProfile."""
+        url = reverse("select2_model_user")
+        response = self.client.get(url, {"term": "tres_sinperfil"})
+        data = response.json()
+        self.assertEqual(len(data["results"]), 1)
+        self.assertEqual(data["results"][0]["id"], self.cliente3_sin_perfil.id)
+        self.assertEqual(
+            data["results"][0]["text"], "Cliente Tres"
+        )  # Fallback a get_full_name()
+
+    def test_report_form_renders_select2_widget(self):
+        """Verifica que el formulario de creación de reportes renderiza el widget Select2."""
+        response = self.client.get(reverse("report_create"))
+        self.assertEqual(response.status_code, 200)
+        # Verificar la presencia de los atributos y clases de Select2
+        self.assertContains(
+            response,
+            'class="modelselect2widget form-select django-select2 django-select2-heavy"',
+        )
+        self.assertContains(
+            response, 'data-placeholder="Escriba para buscar un cliente..."'
+        )
+
+    def test_report_list_filter_renders_select2_ajax(self):
+        """Verifica que el filtro de la lista de reportes está configurado para Select2 AJAX."""
+        response = self.client.get(reverse("report_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response, f'data-ajax--url="{reverse("select2_model_user")}"'
+        )
+
+    def test_report_list_filter_shows_selected_client(self):
+        """Verifica que si un cliente está filtrado, aparece como seleccionado en el widget."""
+        url = reverse("report_list") + f"?client_user={self.cliente1.id}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        # El HTML debe contener la opción pre-seleccionada para que Select2 la muestre
+        self.assertContains(response, "Empresa Uno S.A.S.")

@@ -44,8 +44,12 @@ class ProcessAPITest(TestCase):
             # fecha_inicio se setea automáticamente por auto_now_add
         )
         # Forzar fechas para testing preciso
-        self.proc1.fecha_inicio = datetime(2023, 3, 10, tzinfo=timezone.utc)
-        self.proc1.fecha_final = datetime(2023, 9, 15, tzinfo=timezone.utc)
+        self.proc1.fecha_inicio = datetime(
+            2023, 3, 10, tzinfo=timezone(-timedelta(hours=5))
+        )
+        self.proc1.fecha_final = datetime(
+            2023, 9, 15, tzinfo=timezone(-timedelta(hours=5))
+        )
         self.proc1.save()
 
         # Anotaciones para el proceso 1
@@ -54,7 +58,7 @@ class ProcessAPITest(TestCase):
             usuario=self.admin_user,
             contenido="Primera anotación para P1",
             fecha_creacion=datetime(
-                2023, 1, 1, 10, 0, 0, tzinfo=timezone.utc
+                2023, 1, 1, 10, 0, 0, tzinfo=timezone(-timedelta(hours=5))
             ),  # Fecha explícita
         )
         self.anotacion2_p1 = Anotacion.objects.create(
@@ -62,15 +66,19 @@ class ProcessAPITest(TestCase):
             usuario=self.user,
             contenido="Segunda anotación para P1",
             fecha_creacion=datetime(
-                2023, 1, 2, 11, 0, 0, tzinfo=timezone.utc
+                2023, 1, 2, 11, 0, 0, tzinfo=timezone(-timedelta(hours=5))
             ),  # Fecha explícita
         )
         # Forzar la actualización de fecha_creacion si auto_now_add interfiere con fechas explícitas
         Anotacion.objects.filter(id=self.anotacion1_p1.id).update(
-            fecha_creacion=datetime(2023, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
+            fecha_creacion=datetime(
+                2023, 1, 1, 10, 0, 0, tzinfo=timezone(-timedelta(hours=5))
+            )
         )
         Anotacion.objects.filter(id=self.anotacion2_p1.id).update(
-            fecha_creacion=datetime(2023, 1, 2, 11, 0, 0, tzinfo=timezone.utc)
+            fecha_creacion=datetime(
+                2023, 1, 2, 11, 0, 0, tzinfo=timezone(-timedelta(hours=5))
+            )
         )
         self.anotacion1_p1.refresh_from_db()
         self.anotacion2_p1.refresh_from_db()
@@ -80,8 +88,12 @@ class ProcessAPITest(TestCase):
             process_type=ProcessTypeChoices.CONTROL_CALIDAD,
             estado=ProcessStatusChoices.FINALIZADO,
         )
-        self.proc2.fecha_inicio = datetime(2023, 8, 5, tzinfo=timezone.utc)
-        self.proc2.fecha_final = datetime(2024, 1, 20, tzinfo=timezone.utc)
+        self.proc2.fecha_inicio = datetime(
+            2023, 8, 5, tzinfo=timezone(-timedelta(hours=5))
+        )
+        self.proc2.fecha_final = datetime(
+            2024, 1, 20, tzinfo=timezone(-timedelta(hours=5))
+        )
         self.proc2.save()
 
         self.proc3_admin = Process.objects.create(  # Proceso de otro usuario
@@ -89,7 +101,9 @@ class ProcessAPITest(TestCase):
             process_type=ProcessTypeChoices.CALCULO_BLINDAJES,
             estado=ProcessStatusChoices.EN_REVISION,
         )
-        self.proc3_admin.fecha_inicio = datetime(2024, 2, 1, tzinfo=timezone.utc)
+        self.proc3_admin.fecha_inicio = datetime(
+            2024, 2, 1, tzinfo=timezone(-timedelta(hours=5))
+        )
         self.proc3_admin.save()
 
         self.proc4_no_final = Process.objects.create(  # Sin fecha final
@@ -97,7 +111,9 @@ class ProcessAPITest(TestCase):
             process_type=ProcessTypeChoices.OTRO,
             estado=ProcessStatusChoices.RADICADO,
         )
-        self.proc4_no_final.fecha_inicio = datetime(2024, 3, 1, tzinfo=timezone.utc)
+        self.proc4_no_final.fecha_inicio = datetime(
+            2024, 3, 1, tzinfo=timezone(-timedelta(hours=5))
+        )
         self.proc4_no_final.save()
 
         # Equipos asociados a estos procesos (ya que la vista lista equipos)
@@ -128,10 +144,10 @@ class ProcessAPITest(TestCase):
             user=self.user,
             process_type=self.pt_asesoria,
             estado=self.estado_progreso,
-            fecha_inicio=datetime(2023, 1, 10, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2023, 1, 10, tzinfo=timezone(-timedelta(hours=5))),
         )
         self.proceso1_asesoria_progreso.fecha_inicio = datetime(
-            2023, 1, 10, tzinfo=timezone.utc
+            2023, 1, 10, tzinfo=timezone(-timedelta(hours=5))
         )
         self.proceso1_asesoria_progreso.save()
 
@@ -139,11 +155,11 @@ class ProcessAPITest(TestCase):
             user=self.user,
             process_type=self.pt_calidad,
             estado=self.estado_finalizado,
-            fecha_inicio=datetime(2023, 2, 10, tzinfo=timezone.utc),
-            fecha_final=datetime(2023, 2, 20, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2023, 2, 10, tzinfo=timezone(-timedelta(hours=5))),
+            fecha_final=datetime(2023, 2, 20, tzinfo=timezone(-timedelta(hours=5))),
         )
         self.proceso2_calidad_finalizado.fecha_inicio = datetime(
-            2023, 2, 10, tzinfo=timezone.utc
+            2023, 2, 10, tzinfo=timezone(-timedelta(hours=5))
         )
         self.proceso2_calidad_finalizado.save()
 
@@ -151,10 +167,10 @@ class ProcessAPITest(TestCase):
             user=self.user,
             process_type=self.pt_blindajes,
             estado=self.estado_progreso,
-            fecha_inicio=datetime(2023, 4, 10, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2023, 4, 10, tzinfo=timezone(-timedelta(hours=5))),
         )
         self.proceso4_blindajes_progreso.fecha_inicio = datetime(
-            2023, 4, 10, tzinfo=timezone.utc
+            2023, 4, 10, tzinfo=timezone(-timedelta(hours=5))
         )
         self.proceso4_blindajes_progreso.save()
 
@@ -1138,7 +1154,7 @@ class ProcessListViewTest(TestCase):
         process_old = Process.objects.create(
             user=client_user,
             process_type=ProcessTypeChoices.ASESORIA,
-            fecha_inicio=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2024, 1, 1, tzinfo=timezone(-timedelta(hours=5))),
         )
         equipment.process = process_old
         equipment.save()
@@ -1146,7 +1162,7 @@ class ProcessListViewTest(TestCase):
         process_new = Process.objects.create(
             user=client_user,
             process_type=ProcessTypeChoices.ASESORIA,
-            fecha_inicio=datetime(2024, 6, 1, tzinfo=timezone.utc),
+            fecha_inicio=datetime(2024, 6, 1, tzinfo=timezone(-timedelta(hours=5))),
         )
         Report.objects.create(
             user=client_user,
@@ -1180,3 +1196,84 @@ class ProcessListViewTest(TestCase):
         self.assertContains(response, "width: 100%")
         # Verifica que NO se muestra el progreso del proceso antiguo (50%)
         self.assertNotContains(response, "width: 50%")
+
+
+class PaginationWithFiltersTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Crear roles y usuarios
+        cls.gerente_role, _ = Role.objects.get_or_create(name=RoleChoices.GERENTE)
+        cls.cliente_role, _ = Role.objects.get_or_create(name=RoleChoices.CLIENTE)
+
+        cls.gerente_user = User.objects.create_user(
+            username="gerente_pagination", password="password"
+        )
+        cls.gerente_user.roles.add(cls.gerente_role)
+
+        cls.cliente_user_a = User.objects.create_user(
+            username="cliente_a", password="password"
+        )
+        cls.cliente_user_a.roles.add(cls.cliente_role)
+
+        cls.cliente_user_b = User.objects.create_user(
+            username="cliente_b", password="password"
+        )
+        cls.cliente_user_b.roles.add(cls.cliente_role)
+
+        # Crear más de 20 procesos para forzar la paginación
+        # 22 procesos para el cliente A, 5 para el cliente B
+        for i in range(22):
+            Process.objects.create(
+                user=cls.cliente_user_a,
+                process_type=ProcessTypeChoices.CONTROL_CALIDAD,
+                estado=ProcessStatusChoices.EN_PROGRESO,
+                fecha_inicio=tz.now() - timedelta(days=i),
+            )
+
+        for i in range(5):
+            Process.objects.create(
+                user=cls.cliente_user_b,
+                process_type=ProcessTypeChoices.ASESORIA,
+                estado=ProcessStatusChoices.FINALIZADO,
+            )
+
+    def test_pagination_maintains_filters(self):
+        """Verifica que al pasar a la página 2, los filtros de la URL se mantienen."""
+        self.client.login(username="gerente_pagination", password="password")
+
+        # 1. Aplicar un filtro que sabemos que tiene más de una página de resultados
+        # Filtraremos por los procesos del cliente A, que son 22.
+        # La vista pagina por 20, así que debería haber 2 páginas.
+        filter_params = {
+            "process_type": ProcessTypeChoices.CONTROL_CALIDAD,
+            "estado": ProcessStatusChoices.EN_PROGRESO,
+        }
+
+        url = reverse("process_internal_list")
+        response_page1 = self.client.get(url, filter_params)
+
+        self.assertEqual(response_page1.status_code, 200)
+        self.assertTrue(response_page1.context["is_paginated"])
+        self.assertEqual(
+            len(response_page1.context["procesos"]), 20
+        )  # 20 items en la página 1
+
+        # 2. Verificar que el enlace "Siguiente" contiene los filtros Y el nuevo parámetro de página
+        # Gracias a nuestro template tag `url_replace`, esto debería funcionar.
+        self.assertContains(
+            response_page1,
+            'href="?process_type=control_calidad&amp;estado=en_progreso&amp;page=2"',
+        )
+
+        # 3. Ir a la página 2 usando los mismos filtros
+        filter_params["page"] = 2
+        response_page2 = self.client.get(url, filter_params)
+
+        self.assertEqual(response_page2.status_code, 200)
+        self.assertEqual(
+            len(response_page2.context["procesos"]), 2
+        )  # 2 items restantes en la página 2
+
+        # 4. Verificar que los procesos en la página 2 pertenecen al cliente correcto
+        for proceso in response_page2.context["procesos"]:
+            self.assertEqual(proceso.user, self.cliente_user_a)

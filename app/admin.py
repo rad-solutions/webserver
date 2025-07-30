@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils import timezone
 
 from .models import (
     Anotacion,
@@ -122,7 +123,8 @@ class AnotacionAdmin(admin.ModelAdmin):
     readonly_fields = ("fecha_creacion",)
 
     def fecha_creacion_display(self, obj):
-        return obj.fecha_creacion.strftime("%Y-%m-%d %H:%M")
+        local_time = timezone.localtime(obj.fecha_creacion)
+        return local_time.strftime("%Y-%m-%d %H:%M")
 
     fecha_creacion_display.short_description = "Fecha Creación"
 
@@ -158,6 +160,7 @@ class ProcessStatusLogAdmin(admin.ModelAdmin):
     readonly_fields = ("fecha_cambio",)
 
     def fecha_cambio_display(self, obj):
-        return obj.fecha_cambio.strftime("%Y-%m-%d %H:%M")
+        local_time = timezone.localtime(obj.fecha_cambio)
+        return local_time.strftime("%Y-%m-%d %H:%M")
 
     fecha_cambio_display.short_description = "Fecha Cambio"

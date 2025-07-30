@@ -1,3 +1,96 @@
+# [1.66.0](https://github.com/rad-solutions/webserver/compare/v1.65.0...v1.66.0) (2025-07-30)
+
+
+### Features
+
+* Added Niveles de Refrencia as new Process Type. Added test to check correct ChecklistItem generation. ([bb9645b](https://github.com/rad-solutions/webserver/commit/bb9645b1cb884ad58606e27680ebda624e22fa57))
+
+# [1.65.0](https://github.com/rad-solutions/webserver/compare/v1.64.0...v1.65.0) (2025-07-30)
+
+
+### Features
+
+* Added SECRET_KEY_FALLBACK setting which is read from env variables. ([2d4e775](https://github.com/rad-solutions/webserver/commit/2d4e775502b7865af98b66491eec1c40765ed3a7))
+
+# [1.64.0](https://github.com/rad-solutions/webserver/compare/v1.63.0...v1.64.0) (2025-07-29)
+
+
+### Features
+
+* Added fecha_asignacion in UI. ([09a2f86](https://github.com/rad-solutions/webserver/commit/09a2f86875e6260f4198cb53f31ddbe2a0677698))
+
+# [1.63.0](https://github.com/rad-solutions/webserver/compare/v1.62.0...v1.63.0) (2025-07-29)
+
+
+### Features
+
+* Added Practice Category to Estudio Ambiental during populate-db execution. ([273c1c2](https://github.com/rad-solutions/webserver/commit/273c1c2646c5e4cdbb2a85e620c29c1aef72ecf2))
+
+# [1.62.0](https://github.com/rad-solutions/webserver/compare/v1.61.0...v1.62.0) (2025-07-28)
+
+
+### Features
+
+* Implemented timezone UTC-5 (America/Bogota) across all webserver. Adapted corresponding tests. ([2cacde0](https://github.com/rad-solutions/webserver/commit/2cacde084c766587527d542e5251ef0ce9a6a345))
+* Localization fix on title of the page. "Checklist" changed to "Lista de Chequeo". ([aadd813](https://github.com/rad-solutions/webserver/commit/aadd813ab30dc1c96711e89fd31c4ba9af8f5d11))
+* The badge in process list for internal users now show "Finalizado hace x dias" for finalized processes. ([f0ffe4b](https://github.com/rad-solutions/webserver/commit/f0ffe4b161427d863a4446f2ae2286d4ef0de49f))
+
+# [1.61.0](https://github.com/rad-solutions/webserver/compare/v1.60.0...v1.61.0) (2025-07-28)
+
+
+### Features
+
+* Add assignment date to Process model ([5f3c49e](https://github.com/rad-solutions/webserver/commit/5f3c49efec3d1e7f68617ce4e2232b7bd7d44aff))
+
+# [1.60.0](https://github.com/rad-solutions/webserver/compare/v1.59.0...v1.60.0) (2025-07-28)
+
+
+### Features
+
+* Now, all client select widgets are django-select2 widgets that allow the user to type and filter users to facilitate the selection. This change is applied across the entire webserver. ([3312d09](https://github.com/rad-solutions/webserver/commit/3312d0948c534099645eff6213bd8e377f24a8c6))
+* Tests revised. Updated tests and added new tests to match the new functionality. ([1891383](https://github.com/rad-solutions/webserver/commit/1891383520400987309fe9f03e22c04a0f75a8a6))
+
+# [1.59.0](https://github.com/rad-solutions/webserver/compare/v1.58.1...v1.59.0) (2025-07-28)
+
+
+### Bug Fixes
+
+* fix enable presigned URLs for secure S3 access_2 ([29b9fcd](https://github.com/rad-solutions/webserver/commit/29b9fcd46fc97bc3ac56b2be5470024ccaf95920))
+
+
+### Features
+
+* fix enable presigned URLs for secure S3 access ([ff5611c](https://github.com/rad-solutions/webserver/commit/ff5611c9b50666c9117f09a26e60c17484569225))
+
+## [1.58.1](https://github.com/rad-solutions/webserver/compare/v1.58.0...v1.58.1) (2025-07-28)
+
+
+### Bug Fixes
+
+* Enable presigned URLs for secure S3 access ([2d58aa3](https://github.com/rad-solutions/webserver/commit/2d58aa37b382f49b3d1a4fa167d030b7aba4e88c))
+
+# [1.58.0](https://github.com/rad-solutions/webserver/compare/v1.57.0...v1.58.0) (2025-07-25)
+
+
+### Features
+
+* update populate_db script to align with latest model changes ([bc57339](https://github.com/rad-solutions/webserver/commit/bc57339974955cadf38f2a291be8906c78484637))
+
+# [1.57.0](https://github.com/rad-solutions/webserver/compare/v1.56.0...v1.57.0) (2025-07-25)
+
+
+### Features
+
+* Fix pagination issue. Added automatic tests and a script to populate db to just do manual test of pagination. ([e50e806](https://github.com/rad-solutions/webserver/commit/e50e8068c247718a3575ee094ecf0a29f525836d))
+
+# [1.56.0](https://github.com/rad-solutions/webserver/compare/v1.55.0...v1.56.0) (2025-07-25)
+
+
+### Features
+
+* Added filter on equipment and reports list by client's branch. Fixed a little issue with equipment form and user branch creation form. Corresponding test added. ([5ea70d3](https://github.com/rad-solutions/webserver/commit/5ea70d3a1221bbc379c9191d6c9550a68c3fbb99))
+* Fix filters by branch for client users. ([c4836ee](https://github.com/rad-solutions/webserver/commit/c4836ee92962d615c69f943e6925989c945caedc))
+
 # [1.55.0](https://github.com/rad-solutions/webserver/compare/v1.54.0...v1.55.0) (2025-07-24)
 
 

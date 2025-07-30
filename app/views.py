@@ -16,6 +16,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.views import View
 from django.views.generic import (
     CreateView,
     DeleteView,
@@ -24,6 +25,7 @@ from django.views.generic import (
     TemplateView,
     UpdateView,
 )
+from django_select2.forms import ModelSelect2Widget
 
 from .models import (
     Anotacion,
@@ -193,6 +195,26 @@ class ClientBranchForm(forms.ModelForm):
 
 
 class ReportForm(forms.ModelForm):
+    # --- INICIO: WIDGET SELECT2 ---
+    user = forms.ModelChoiceField(
+        queryset=User.objects.filter(roles__name=RoleChoices.CLIENTE),
+        label="Cliente Asociado",
+        widget=ModelSelect2Widget(
+            model=User,
+            search_fields=[
+                "username__icontains",
+                "first_name__icontains",
+                "last_name__icontains",
+                "client_profile__razon_social__icontains",  # ¡Busca también por razón social!
+            ],
+            attrs={
+                "data-placeholder": "Escriba para buscar un cliente...",
+                "lang": "es",
+            },
+        ),
+    )
+    # --- FIN: WIDGET SELECT2 ---
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -295,6 +317,26 @@ class ReportStatusAndNoteForm(forms.ModelForm):
 
 
 class ProcessForm(forms.ModelForm):
+    # --- INICIO: WIDGET SELECT2 ---
+    user = forms.ModelChoiceField(
+        queryset=User.objects.filter(roles__name=RoleChoices.CLIENTE),
+        label="Cliente Asociado",
+        widget=ModelSelect2Widget(
+            model=User,
+            search_fields=[
+                "username__icontains",
+                "first_name__icontains",
+                "last_name__icontains",
+                "client_profile__razon_social__icontains",  # ¡Busca también por razón social!
+            ],
+            attrs={
+                "data-placeholder": "Escriba para buscar un cliente...",
+                "lang": "es",
+            },
+        ),
+    )
+    # --- FIN: WIDGET SELECT2 ---
+
     class Meta:
         model = Process
         fields = ["process_type", "practice_category", "estado", "user", "fecha_final"]
@@ -409,6 +451,26 @@ class AnotacionForm(forms.ModelForm):
 
 
 class EquipmentForm(forms.ModelForm):
+    # --- INICIO: WIDGET SELECT2 ---
+    user = forms.ModelChoiceField(
+        queryset=User.objects.filter(roles__name=RoleChoices.CLIENTE),
+        label="Cliente Propietario",
+        widget=ModelSelect2Widget(
+            model=User,
+            search_fields=[
+                "username__icontains",
+                "first_name__icontains",
+                "last_name__icontains",
+                "client_profile__razon_social__icontains",  # ¡Busca también por razón social!
+            ],
+            attrs={
+                "data-placeholder": "Escriba para buscar un cliente...",
+                "lang": "es",
+            },
+        ),
+    )
+    # --- FIN: WIDGET SELECT2 ---
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -515,6 +577,25 @@ def load_user_equipment(request):
         equipments = Equipment.objects.filter(user_id=user_id).order_by("nombre")
         equipment_data = [{"id": e.id, "name": str(e)} for e in equipments]
     return JsonResponse(equipment_data, safe=False)
+
+
+def load_client_branches(request):
+    """Vista AJAX para cargar las sedes de un cliente específico.
+
+    Usado en los filtros de las listas de reportes y equipos y formulario de creación de equipo.
+    """
+    user_id = request.GET.get("user_id")
+    branches_data = []
+    if user_id:
+        try:
+            # Buscamos las sedes a través del perfil del cliente
+            branches = ClientBranch.objects.filter(company__user_id=user_id).order_by(
+                "nombre"
+            )
+            branches_data = [{"id": b.id, "name": b.nombre} for b in branches]
+        except (ValueError, TypeError):
+            pass  # Si el user_id no es válido, devuelve una lista vacía
+    return JsonResponse(branches_data, safe=False)
 
 
 # Login view
@@ -898,6 +979,7 @@ class UserListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     login_url = "/login/"
     permission_required = "app.view_user"
     raise_exception = True
+    paginate_by = 20
 
     def get_context_data(self, **kwargs):
         """Añade la lógica para mostrar los roles de cada usuario."""
@@ -1115,7 +1197,7 @@ class ClientBranchCreateView(LoginRequiredMixin, PermissionRequiredMixin, Create
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["page_title"] = "Registrar Primera Sede del Cliente"
+        context["page_title"] = "Registrar Sede del Cliente"
         return context
 
     def form_valid(self, form):
@@ -1180,6 +1262,52 @@ class UserDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
         return PermissionRequiredMixin.handle_no_permission(self)
 
 
+class UserLookupView(LoginRequiredMixin, View):
+    """Vista para el widget Select2 que busca usuarios con rol de Cliente.
+
+    Vista de búsqueda para el widget Select2, asegurando que solo se
+    muestren usuarios con el rol de Cliente y devolviendo el JSON correcto.
+    """
+
+    def get(self, request, *args, **kwargs):
+        term = request.GET.get("term", "")
+
+        # Obtener el queryset base de clientes
+        queryset = User.objects.filter(roles__name=RoleChoices.CLIENTE)
+
+        # Filtrar si hay un término de búsqueda
+        if term:
+            queryset = queryset.filter(
+                Q(username__icontains=term)
+                | Q(first_name__icontains=term)
+                | Q(last_name__icontains=term)
+                | Q(client_profile__razon_social__icontains=term)
+            )
+
+        # Limitar resultados y optimizar.
+        # Usamos F() para ordenar por un campo que puede ser nulo, poniendo los nulos al final.
+        queryset = queryset.select_related("client_profile").order_by(
+            F("client_profile__razon_social").asc(nulls_last=True),
+            "username",  # Añadimos un segundo orden para consistencia
+        )[:20]
+
+        # Formatear los resultados para Select2, manejando de forma segura los perfiles nulos.
+        results = []
+        for user in queryset:
+            # Determinar el texto a mostrar de forma segura
+            display_text = ""
+            if hasattr(user, "client_profile") and user.client_profile:
+                display_text = user.client_profile.razon_social
+
+            # Si no hay razón social, usar nombre completo o username como fallback
+            if not display_text:
+                display_text = user.get_full_name() or user.username
+
+            results.append({"id": user.id, "text": display_text})
+
+        return JsonResponse({"results": results})
+
+
 # Report Views
 class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = Report
@@ -1218,6 +1346,8 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         marca_filter = self.request.GET.get("marca")
         modelo_filter = self.request.GET.get("modelo")
         serial_filter = self.request.GET.get("serial")
+        sede_filter = self.request.GET.get("sede")
+        client_user_filter = self.request.GET.get("client_user")
 
         # Variable para saber si el filtro de equipo se aplicó y tuvo éxito
         equipment_filter_cc_applied_successfully = False
@@ -1269,6 +1399,19 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         if serial_filter:
             queryset = queryset.filter(equipment__serial__icontains=serial_filter)
 
+        # --- NUEVO: Filtrar por sede ---
+        if sede_filter:
+            try:
+                queryset = queryset.filter(equipment__sede_id=int(sede_filter))
+            except (ValueError, TypeError):
+                pass  # Ignorar si no es un número
+        elif client_user_filter:
+            # Si NO se selecciona sede, pero SÍ un cliente, filtrar por todos los equipos de ese cliente.
+            try:
+                queryset = queryset.filter(equipment__user_id=int(client_user_filter))
+            except (ValueError, TypeError):
+                pass  # Ignorar si no es un número
+
         return queryset.order_by("-created_at")
 
     def get_context_data(self, **kwargs):
@@ -1289,6 +1432,25 @@ class ReportListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         context["marca_filter"] = self.request.GET.get("marca", "")
         context["modelo_filter"] = self.request.GET.get("modelo", "")
         context["serial_filter"] = self.request.GET.get("serial", "")
+
+        # --- NUEVO: Contexto para el filtro de Sede/Cliente ---
+        context["selected_sede_id"] = self.request.GET.get("sede")
+        client_user_id = self.request.GET.get("client_user")
+        context["selected_client_id"] = client_user_id
+
+        if client_user_id:
+            try:
+                context["selected_client_object"] = User.objects.select_related(
+                    "client_profile"
+                ).get(pk=client_user_id)
+            except (User.DoesNotExist, ValueError):
+                context["selected_client_object"] = None
+
+        if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
+            # El cliente solo ve sus propias sedes
+            context["client_branches"] = ClientBranch.objects.filter(
+                company__user=self.request.user
+            )
 
         if context["selected_equipment_id"]:
             try:
@@ -1443,6 +1605,7 @@ class EquiposListView(LoginRequiredMixin, ListView):
     template_name = "equipos/equipos_list.html"
     context_object_name = "equipos"
     login_url = "/login/"
+    paginate_by = 20
 
     def get_queryset(self):
         # Obtener el tipo de proceso desde los parámetros GET
@@ -1458,6 +1621,9 @@ class EquiposListView(LoginRequiredMixin, ListView):
         end_vig_lic_date_str = self.request.GET.get("end_vig_lic_date")
         end_last_cc_date_str = self.request.GET.get("end_last_cc_date")
         end_venc_cc_date_str = self.request.GET.get("end_venc_cc_date")
+        sede_filter = self.request.GET.get("sede")
+        client_user_filter = self.request.GET.get("client_user")
+
         if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
             queryset = Equipment.objects.filter(user=self.request.user)
         else:
@@ -1559,6 +1725,19 @@ class EquiposListView(LoginRequiredMixin, ListView):
             except ValueError:
                 pass  # Ignorar fecha inválida
 
+        # --- NUEVO: Filtrar por sede ---
+        if sede_filter:
+            try:
+                queryset = queryset.filter(sede_id=int(sede_filter))
+            except (ValueError, TypeError):
+                pass  # Ignorar si no es un número
+        elif client_user_filter:
+            # Si NO se selecciona sede, pero SÍ un cliente, filtrar por todos los equipos de ese cliente.
+            try:
+                queryset = queryset.filter(user_id=int(client_user_filter))
+            except (ValueError, TypeError):
+                pass  # Ignorar si no es un número
+
         return queryset.order_by("-process__fecha_inicio")
 
     def get_context_data(self, **kwargs):
@@ -1581,6 +1760,25 @@ class EquiposListView(LoginRequiredMixin, ListView):
         context["end_vig_lic_date"] = self.request.GET.get("end_vig_lic_date", "")
         context["end_last_cc_date"] = self.request.GET.get("end_last_cc_date", "")
         context["end_venc_cc_date"] = self.request.GET.get("end_venc_cc_date", "")
+
+        # --- NUEVO: Contexto para el filtro de Sede/Cliente ---
+        context["selected_sede_id"] = self.request.GET.get("sede")
+        client_user_id = self.request.GET.get("client_user")
+        context["selected_client_id"] = client_user_id
+
+        if client_user_id:
+            try:
+                context["selected_client_object"] = User.objects.select_related(
+                    "client_profile"
+                ).get(pk=client_user_id)
+            except (User.DoesNotExist, ValueError):
+                context["selected_client_object"] = None
+
+        if self.request.user.roles.filter(name=RoleChoices.CLIENTE).exists():
+            # El cliente solo ve sus propias sedes
+            context["client_branches"] = ClientBranch.objects.filter(
+                company__user=self.request.user
+            )
 
         today = timezone.now().date()
 
@@ -1829,6 +2027,7 @@ class ProcessListView(LoginRequiredMixin, ListView):
     template_name = "process/process_list.html"
     context_object_name = "equipos"
     login_url = "/login/"
+    paginate_by = 20
 
     def get_queryset(self):
         # Obtener el tipo de proceso desde los parámetros GET

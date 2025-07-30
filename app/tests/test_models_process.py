@@ -670,3 +670,30 @@ class ProcessChecklistModelTests(TestCase):
         self.assertEqual(
             modification_log.estado_anterior, ProcessStatusChoices.EN_PROGRESO
         )
+
+    def test_create_checklist_items_niveles_de_referencia(self):
+        """Test that checklist items are created for the 'Niveles de Referencia' process type."""
+        # Contar cuántos items deberían crearse (la suma de los de blindajes)
+        expected_count = ChecklistItemDefinition.objects.filter(
+            process_type__in=[
+                ProcessTypeChoices.CALCULO_BLINDAJES,
+            ]
+        ).count()
+
+        # Crear el proceso
+        process = Process.objects.create(
+            process_type=ProcessTypeChoices.NIVELES_DE_REFERENCIA,
+            user=self.test_user,
+            estado=ProcessStatusChoices.EN_PROGRESO,
+        )
+
+        # Verificar que se crearon el número correcto de items
+        self.assertEqual(process.checklist_items.count(), expected_count)
+        self.assertTrue(process.checklist_items.exists())
+
+        # Verificar que uno de los items de blindajes existe
+        self.assertTrue(
+            process.checklist_items.filter(
+                definition__name="Elaboración de cálculo."
+            ).exists()
+        )
