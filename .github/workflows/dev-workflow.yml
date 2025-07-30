@@ -105,7 +105,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: provision-ephemeral-db
     env:
-      AWS_REGION: ${{ env.AWS_REGION }}
+      AWS_REGION: us-east-1
+      AWS_ACCOUNT_ID: 978368259161
       DB_ENDPOINT: ${{ needs.provision-ephemeral-db.outputs.db_endpoint }}
       DB_SECRET_NAME: ${{ needs.provision-ephemeral-db.outputs.temp_secret_name }}
       DB_NAME: radsolutions
