@@ -1,9 +1,14 @@
+import json
 import logging
+import os
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from dotenv import load_dotenv
 
 from app.models import Role, RoleChoices
+
+load_dotenv(override=True)
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +43,7 @@ def create_user_with_role(
 
     if user_created:
         user.set_password(password)
-        logger.info(f"User '{username}' created with password '{password}'.")
+        logger.info(f"User '{username}' created")
     else:
         logger.info(f"User '{username}' already exists.")
 
@@ -55,10 +60,12 @@ def create_user_with_role(
 @transaction.atomic
 def run():
     """Create users for various roles if they don't exist."""
+    json_test_users = os.getenv("TEST_USERS")
+    my_dict = json.loads(json_test_users)
     # Create Admin User (Superuser)
-    admin_username = "admin"
-    admin_email = "admin@example.com"  # Changed to example.com
-    admin_pass = "adminpass"  # Changed password
+    admin_username = my_dict.get("admin").get("username")
+    admin_email = my_dict.get("admin").get("email")
+    admin_pass = my_dict.get("admin").get("password")
     admin_user, admin_created = User.objects.get_or_create(
         username=admin_username,
         defaults={"email": admin_email, "is_staff": True, "is_superuser": True},
@@ -66,50 +73,48 @@ def run():
     if admin_created:
         admin_user.set_password(admin_pass)
         admin_user.save()
-        logger.info(
-            f"Superuser '{admin_username}' created with password '{admin_pass}'."
-        )
+        logger.info(f"Superuser '{admin_username}' created.")
     else:
         logger.info(f"Superuser '{admin_username}' already exists.")
 
     # Define user data for each role
     users_to_create = [
         {
-            "username": "cliente_test",
-            "email": "cliente@example.com",
-            "password": "clientepass",
+            "username": my_dict.get("cliente").get("username"),
+            "email": my_dict.get("cliente").get("email"),
+            "password": my_dict.get("cliente").get("password"),
             "first_name": "Cliente",
             "last_name": "Prueba",
             "role_choice": RoleChoices.CLIENTE,
         },
         {
-            "username": "gerente_test",
-            "email": "gerente@example.com",
-            "password": "gerentepass",
+            "username": my_dict.get("gerente").get("username"),
+            "email": my_dict.get("gerente").get("email"),
+            "password": my_dict.get("gerente").get("password"),
             "first_name": "Gerente",
             "last_name": "Prueba",
             "role_choice": RoleChoices.GERENTE,
         },
         {
-            "username": "director_test",
-            "email": "director@example.com",
-            "password": "directorpass",
+            "username": my_dict.get("director").get("username"),
+            "email": my_dict.get("director").get("email"),
+            "password": my_dict.get("director").get("password"),
             "first_name": "Director",
             "last_name": "Tecnico",
             "role_choice": RoleChoices.DIRECTOR_TECNICO,
         },
         {
-            "username": "tecnico_apoyo_test",
-            "email": "tecnicoapoyo@example.com",
-            "password": "tecnicopass",
+            "username": my_dict.get("tecnico_apoyo").get("username"),
+            "email": my_dict.get("tecnico_apoyo").get("email"),
+            "password": my_dict.get("tecnico_apoyo").get("password"),
             "first_name": "Tecnico",
             "last_name": "Apoyo",
             "role_choice": RoleChoices.PERSONAL_TECNICO_APOYO,
         },
         {
-            "username": "admin_staff_test",  # Changed from 'administrativo_test' to avoid confusion with superuser
-            "email": "administrativo@example.com",
-            "password": "adminstaffpass",  # Changed password
+            "username": my_dict.get("personal_administrativo").get("username"),
+            "email": my_dict.get("personal_administrativo").get("email"),
+            "password": my_dict.get("personal_administrativo").get("password"),
             "first_name": "Personal",
             "last_name": "Administrativo",
             "role_choice": RoleChoices.PERSONAL_ADMINISTRATIVO,
