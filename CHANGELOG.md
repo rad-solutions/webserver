@@ -1,3 +1,10 @@
+# [1.65.0](https://github.com/rad-solutions/webserver/compare/v1.64.0...v1.65.0) (2025-07-30)
+
+
+### Features
+
+* Added SECRET_KEY_FALLBACK setting which is read from env variables. ([2d4e775](https://github.com/rad-solutions/webserver/commit/2d4e775502b7865af98b66491eec1c40765ed3a7))
+
 # [1.64.0](https://github.com/rad-solutions/webserver/compare/v1.63.0...v1.64.0) (2025-07-29)
 
 
