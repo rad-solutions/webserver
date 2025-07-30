@@ -114,10 +114,48 @@ jobs:
           echo "Temporary S3 bucket ready: ${{ steps.identifiers.outputs.temp_s3_bucket }}"
           # Puedes exportar el nombre del bucket temporal como variable de entorno para otros jobs/steps si lo necesitas
 
+    run-migrations:
+      name: Run Migrations on Ephemeral DB
+      runs-on: ubuntu-latest
+      needs: provision-ephemeral-db
+      env:
+        AWS_REGION: ${{ env.AWS_REGION }}
+        DB_ENDPOINT: ${{ needs.provision-ephemeral-db.outputs.db_endpoint }}
+        DB_SECRET_NAME: ${{ needs.provision-ephemeral-db.outputs.temp_secret_name }}
+        DB_NAME: radsolutions
+        DB_USER: postgres
+      steps:
+        - uses: actions/checkout@v4
+        - uses: aws-actions/configure-aws-credentials@v4
+          with:
+            role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubActions-deploy-role
+            aws-region: ${{ env.AWS_REGION }}
+        - name: Retrieve DB Password
+          id: retrieve-db-password
+          run: |
+            DB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id ${{ env.DB_SECRET_NAME }} --query SecretString --output text | jq -r .password)
+            echo "::add-mask::$DB_PASSWORD"
+            echo "DB_PASSWORD=$DB_PASSWORD" >> $GITHUB_ENV
+        - uses: actions/setup-python@v4
+          with:
+            python-version: '3.11'
+        - name: Install dependencies
+          run: |
+            pip install --upgrade pip
+            pip install -r requirements.txt
+        - name: Run Django migrations
+          run: |
+            DJANGO_SETTINGS_MODULE=settings.dev \
+            DATABASE_HOST=${{ env.DB_ENDPOINT }} \
+            DATABASE_NAME=${{ env.DB_NAME }} \
+            DATABASE_USER=${{ env.DB_USER }} \
+            DATABASE_PASSWORD=${{ env.DB_PASSWORD }} \
+            python manage.py migrate --noinput
+
   build-and-push-ecr:
     name: Build and Push to ECR
     runs-on: ubuntu-latest
-    needs: provision-ephemeral-db
+    needs: run-migrations
     outputs:
       image_uri: ${{ steps.build-image.outputs.image_uri }}
     env:
@@ -245,10 +283,33 @@ jobs:
 
           echo "Service update initiated for ${{ env.APP_RUNNER_SERVICE_ARN }}. App Runner will now start a new deployment."
 
+
+  smoke-test:
+    name: Smoke Test Dev Environment
+    runs-on: ubuntu-latest
+    needs: update-dev-environment
+    env:
+      APP_URL: ${{ needs.update-dev-environment.outputs.app_runner_url_host }}
+    steps:
+      - name: Smoke test health endpoint
+        run: |
+          echo "Waiting for service to be ready..."
+          for i in {1..30}; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" $APP_URL/healthz) || status=0
+            if [ "$status" == "200" ]; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i: returned $status. Retrying..."
+            sleep 10
+          done
+          echo "Smoke test failed after 30 attempts."
+          exit 1
+
   pause-dev-environment:
     name: Pause Dev App Runner Environment
     runs-on: ubuntu-latest
-    needs: [update-dev-environment]
+    needs: [smoke-test]
     if: always() # Asegura que este job se ejecute siempre
     env:
       AWS_REGION: us-east-1
