@@ -136,7 +136,7 @@ jobs:
           poetry install --no-interaction --no-root
       - name: Run Django migrations
         run: |
-          DJANGO_SETTINGS_MODULE=settings.dev \
+          DJANGO_SETTINGS_MODULE=app_server.settings \
           DATABASE_HOST=${{ env.DB_ENDPOINT }} \
           DATABASE_NAME=${{ env.DB_NAME }} \
           DATABASE_USER=${{ env.DB_USER }} \
