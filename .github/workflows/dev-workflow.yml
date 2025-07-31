@@ -125,7 +125,7 @@ jobs:
           echo "DB_PASSWORD=$DB_PASSWORD" >> $GITHUB_ENV
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.12'
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
@@ -134,6 +134,15 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           poetry install --no-interaction --no-root
+      - name: Wait for DB to be ready
+        run: |
+          for i in {1..30}; do
+            pg_isready -h "${{ env.DB_ENDPOINT }}" -p 5432 -U ${{ env.DB_USER }} && exit 0
+            echo "Waiting for DB to be ready... ($i/30)"
+            sleep 10
+          done
+          echo "Database is not ready after 5 minutes. Exiting."
+          exit 1
       - name: Run Django migrations
         run: |
           DJANGO_SETTINGS_MODULE=app_server.settings \
