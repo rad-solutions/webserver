@@ -1,3 +1,10 @@
+# [1.68.0](https://github.com/rad-solutions/webserver/compare/v1.67.0...v1.68.0) (2025-07-31)
+
+
+### Features
+
+* Added Env Variables loaded to settings.py for email connection. ([6f85bfb](https://github.com/rad-solutions/webserver/commit/6f85bfb4a44edd454c61ece213bd81de4e225b50))
+
 # [1.67.0](https://github.com/rad-solutions/webserver/compare/v1.66.0...v1.67.0) (2025-07-31)
 
 
