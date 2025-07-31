@@ -141,6 +141,15 @@ jobs:
           DATABASE_NAME=${{ env.DB_NAME }} \
           DATABASE_USER=${{ env.DB_USER }} \
           DATABASE_PASSWORD=${{ env.DB_PASSWORD }} \
+          USE_MOCK_STORAGE=False \
+          AWS_STORAGE_BUCKET_NAME=dummy-bucket \
+          AWS_S3_REGION_NAME=us-east-1 \
+          AWS_ACCESS_KEY_ID=dummy-access-key \
+          AWS_SECRET_ACCESS_KEY=dummy-secret-key \
+          DJANGO_SECRET_KEY=dummy-secret-key \
+          DEBUG=True \
+          AWS_APP_RUNNER_URL_HOST=localhost \
+          DJANGO_LOG_LEVEL=INFO \
           poetry run python manage.py migrate --noinput
 
   build-and-push-ecr:
