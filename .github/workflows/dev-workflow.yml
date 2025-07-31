@@ -161,6 +161,7 @@ jobs:
           DJANGO_LOG_LEVEL=INFO \
           poetry run python manage.py migrate --noinput
 
+
   build-and-push-ecr:
     name: Build and Push to ECR
     runs-on: ubuntu-latest
@@ -197,6 +198,56 @@ jobs:
           docker push $IMAGE_NAME:$IMAGE_TAG
 
           echo "image_uri=$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Update Lambda function image
+        run: |
+          aws lambda update-function-code \
+            --function-name migrate-ephemeral-db \
+            --image-uri ${{ steps.build-image.outputs.image_uri }}
+
+  run-migrations-lambda:
+    name: Run Migrations via Lambda
+    runs-on: ubuntu-latest
+    needs: [provision-ephemeral-db, build-and-push-ecr]
+    env:
+      AWS_REGION: us-east-1
+      AWS_ACCOUNT_ID: 978368259161
+      DB_ENDPOINT: ${{ needs.provision-ephemeral-db.outputs.db_endpoint }}
+      DB_SECRET_NAME: ${{ needs.provision-ephemeral-db.outputs.temp_secret_name }}
+      DB_NAME: radsolutions
+      DB_USER: postgres
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubActions-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Retrieve DB Password
+        id: retrieve-db-password
+        run: |
+          DB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id ${{ env.DB_SECRET_NAME }} --query SecretString --output text | jq -r .password)
+          echo "::add-mask::$DB_PASSWORD"
+          echo "DB_PASSWORD=$DB_PASSWORD" >> $GITHUB_ENV
+
+      - name: Run Django migrations via Lambda
+        env:
+          DB_PASSWORD: ${{ env.DB_PASSWORD }}
+        run: |
+          aws lambda invoke \
+            --function-name migrate-ephemeral-db \
+            --payload '{
+              "DATABASE_HOST": "${{ env.DB_ENDPOINT }}",
+              "DATABASE_NAME": "${{ env.DB_NAME }}",
+              "DATABASE_USER": "${{ env.DB_USER }}",
+              "DATABASE_PASSWORD": "'${DB_PASSWORD}'",
+              "AWS_STORAGE_BUCKET_NAME": "${{ needs.provision-ephemeral-db.outputs.temp_s3_bucket }}",
+              "AWS_S3_REGION_NAME": "us-east-1",
+              "AWS_ACCESS_KEY_ID": "dummy-access-key",
+              "AWS_SECRET_ACCESS_KEY": "dummy-secret-key",
+              "DJANGO_SECRET_KEY": "dummy-secret-key",
+              "DEBUG": "True"
+            }' \
+            output.json
 
   update-dev-environment:
     name: Update Dev App Runner Environment
