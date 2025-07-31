@@ -141,7 +141,7 @@ jobs:
           DATABASE_NAME=${{ env.DB_NAME }} \
           DATABASE_USER=${{ env.DB_USER }} \
           DATABASE_PASSWORD=${{ env.DB_PASSWORD }} \
-          python manage.py migrate --noinput
+          poetry run python manage.py migrate --noinput
 
   build-and-push-ecr:
     name: Build and Push to ECR
