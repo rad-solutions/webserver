@@ -1,3 +1,18 @@
+# [1.67.0](https://github.com/rad-solutions/webserver/compare/v1.66.0...v1.67.0) (2025-07-31)
+
+
+### Bug Fixes
+
+* CI ([90344de](https://github.com/rad-solutions/webserver/commit/90344dee041145cf1825d0e4324a0c871f2213bb))
+* CI ([e43f3e3](https://github.com/rad-solutions/webserver/commit/e43f3e3e90fb37cb1c2a27dcdea7380005cee620))
+* CI ([aab98b5](https://github.com/rad-solutions/webserver/commit/aab98b5da0d9df2bdf08835cfb3a676dc7cf7bd5))
+* test ci ([598f5b1](https://github.com/rad-solutions/webserver/commit/598f5b1085f69c6f5d939fb8e8da55bc0cfc47ba))
+
+
+### Features
+
+* Removed Hard Coded Credentials from scripts. Now loaded from an env variable. ([c5db431](https://github.com/rad-solutions/webserver/commit/c5db43128dd19cbc92810886965e7dc6e392d288))
+
 # [1.66.0](https://github.com/rad-solutions/webserver/compare/v1.65.0...v1.66.0) (2025-07-30)
 
 
