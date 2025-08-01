@@ -4,6 +4,13 @@ repos:
     hooks:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
+        # Excluir archivos de texto plano para que no se les añada una nueva línea.
+        # Esto es útil para plantillas de asunto de correo.
+        exclude: |
+            (?x)^(
+                templates/registration/password_reset_subject\.txt|
+                templates/registration/account_created_subject\.txt
+            )$
     -   id: check-yaml
     -   id: check-added-large-files
     -   id: debug-statements
