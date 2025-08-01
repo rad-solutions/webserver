@@ -153,6 +153,7 @@ jobs:
       DB_SECRET_NAME: ${{ needs.provision-ephemeral-db.outputs.temp_secret_name }}
       DB_NAME: radsolutions
       DB_USER: postgres
+      TEMP_S3_BUCKET: ${{ needs.provision-ephemeral-db.outputs.temp_s3_bucket }}
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -165,24 +166,27 @@ jobs:
           DB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id ${{ env.DB_SECRET_NAME }} --query SecretString --output text | jq -r .password)
           echo "::add-mask::$DB_PASSWORD"
           echo "DB_PASSWORD=$DB_PASSWORD" >> $GITHUB_ENV
+
+      - name: Update Lambda Environment Variables
+        run: |
+          echo "Updating Lambda function environment variables..."
+          aws lambda update-function-configuration \
+            --function-name migrate-ephemeral-db \
+            --environment "Variables={DATABASE_HOST=${{ env.DB_ENDPOINT }},DATABASE_NAME=${{ env.DB_NAME }},DATABASE_USER=${{ env.DB_USER }},DATABASE_PASSWORD=${{ env.DB_PASSWORD }},AWS_STORAGE_BUCKET_NAME=${{ env.TEMP_S3_BUCKET }},AWS_S3_REGION_NAME=${{ env.AWS_REGION }},AWS_ACCESS_KEY_ID=dummy-key,AWS_SECRET_ACCESS_KEY=dummy-secret,DJANGO_SECRET_KEY=dummy-secret-for-lambda,DEBUG=True}"
+
+      - name: Wait for Lambda to update
+        run: |
+          echo "Waiting for function configuration to be updated..."
+          aws lambda wait function-updated --function-name migrate-ephemeral-db
+          echo "Function updated."
+
       - name: Run Django migrations via Lambda
         run: |
+          echo "Invoking Lambda function to run migrations..."
           aws lambda invoke \
             --function-name migrate-ephemeral-db \
             --invocation-type Event \
             --cli-binary-format raw-in-base64-out \
-            --payload '{
-              "DATABASE_HOST": "${{ env.DB_ENDPOINT }}",
-              "DATABASE_NAME": "${{ env.DB_NAME }}",
-              "DATABASE_USER": "${{ env.DB_USER }}",
-              "DATABASE_PASSWORD": "'${DB_PASSWORD}'",
-              "AWS_STORAGE_BUCKET_NAME": "${{ needs.provision-ephemeral-db.outputs.temp_s3_bucket }}",
-              "AWS_S3_REGION_NAME": "us-east-1",
-              "AWS_ACCESS_KEY_ID": "dummy-access-key",
-              "AWS_SECRET_ACCESS_KEY": "dummy-secret-key",
-              "DJANGO_SECRET_KEY": "dummy-secret-key",
-              "DEBUG": "True"
-            }' \
             output.json
 
           echo "Lambda invocation requested. Waiting for migrations to run..."
