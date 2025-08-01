@@ -143,7 +143,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "es-co"
 
 TIME_ZONE = "America/Bogota"
 
