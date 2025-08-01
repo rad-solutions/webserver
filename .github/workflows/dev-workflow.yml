@@ -167,11 +167,12 @@ jobs:
           echo "::add-mask::$DB_PASSWORD"
           echo "DB_PASSWORD=$DB_PASSWORD" >> $GITHUB_ENV
 
-      - name: Update Lambda Environment Variables
+      - name: Update Lambda Configuration
         run: |
-          echo "Updating Lambda function environment variables..."
+          echo "Updating Lambda function command and environment variables..."
           aws lambda update-function-configuration \
             --function-name migrate-ephemeral-db \
+            --image-config '{"Command": ["/usr/local/bin/python", "/app/manage.py", "migrate"]}' \
             --environment "Variables={DATABASE_HOST=${{ env.DB_ENDPOINT }},DATABASE_NAME=${{ env.DB_NAME }},DATABASE_USER=${{ env.DB_USER }},DATABASE_PASSWORD=${{ env.DB_PASSWORD }},AWS_STORAGE_BUCKET_NAME=${{ env.TEMP_S3_BUCKET }},AWS_S3_REGION_NAME=${{ env.AWS_REGION }},DJANGO_SECRET_KEY=dummy-secret-for-lambda,DEBUG=True,USE_MOCK_STORAGE=False}"
 
       - name: Wait for Lambda to update
