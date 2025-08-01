@@ -4,18 +4,24 @@ from datetime import date, datetime, timedelta
 
 from dateutil.relativedelta import relativedelta
 from django import forms
+from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.views import LoginView, redirect_to_login
 from django.core.exceptions import ValidationError
+from django.core.mail import send_mail
 from django.db.models import Count, F, Max, Q
 from django.db.models.functions import TruncMonth
 from django.forms import inlineformset_factory
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from django.views import View
 from django.views.generic import (
     CreateView,
@@ -48,73 +54,36 @@ logger = logging.getLogger(__name__)
 
 
 # Forms
-class UserWithProfileForm(UserCreationForm):
+class UserCreationAsAdminForm(forms.ModelForm):
     role = forms.ModelChoiceField(
         queryset=Role.objects.none(),  # Se setea dinámicamente en la vista
         label="Rol",
         required=True,
     )
-    # Redefinir campos en español
-    username = forms.CharField(
-        label="Nombre de Usuario",
-        max_length=150,
-        help_text="Requerido. 150 caracteres o menos. Letras, dígitos y @/./+/-/_ solamente.",
-    )
-    password1 = forms.CharField(
-        label="Contraseña",
-        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
-        help_text="La contraseña debe contener al menos 8 caracteres, no puede ser únicamente numérica, no debe ser similar a los otros datos y no puede ser demasiado común.",
-    )
-    password2 = forms.CharField(
-        label="Confirmación de Contraseña",
-        strip=False,
-        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
-        help_text="Introduce la misma contraseña que antes, para su verificación.",
-    )
+    email = forms.EmailField(required=True, label="Correo Electrónico")
 
-    class Meta(UserCreationForm.Meta):
+    class Meta:
         model = User
+        fields = ["username", "first_name", "last_name", "email", "role"]
         labels = {
             "username": "Nombre de Usuario",
-            "first_name": "Nombre",
-            "last_name": "Apellido",
-            "email": "Correo Electrónico",
-            "role": "Rol",
-            "password1": "Contraseña",
-            "password2": "Confirmar Contraseña",
+            "first_name": "Nombres",
+            "last_name": "Apellidos",
         }
-        fields = [
-            "username",
-            "first_name",
-            "last_name",
-            "email",
-            "role",
-            "password1",
-            "password2",
-        ]
-
-    def clean(self):
-        cleaned_data = super().clean()
-        return cleaned_data
 
 
-class UserEditWithProfileForm(UserCreationForm):
+class UserEditWithProfileForm(forms.ModelForm):
     role = forms.ModelChoiceField(
         queryset=Role.objects.none(),
         label="Rol",
         required=True,
     )
+    email = forms.EmailField(required=True, label="Correo Electrónico")
     # Redefinir campos en español
     username = forms.CharField(
         label="Nombre de Usuario",
         max_length=150,
         help_text="Requerido. 150 caracteres o menos. Letras, dígitos y @/./+/-/_ solamente.",
-    )
-    password2 = forms.CharField(
-        label="Confirmación de Contraseña",
-        strip=False,
-        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
-        help_text="Introduce la misma contraseña que antes, para su verificación.",
     )
 
     class Meta(UserCreationForm.Meta):
@@ -125,8 +94,6 @@ class UserEditWithProfileForm(UserCreationForm):
             "last_name",
             "email",
             "role",
-            "password1",
-            "password2",
         ]
         labels = {
             "username": "Nombre de Usuario",
@@ -134,8 +101,6 @@ class UserEditWithProfileForm(UserCreationForm):
             "last_name": "Apellido",
             "email": "Correo Electrónico",
             "role": "Rol",
-            "password1": "Contraseña",
-            "password2": "Confirmar Contraseña",
         }
 
     def clean_username(self):
@@ -561,6 +526,7 @@ class HistorialTuboRayosXForm(forms.ModelForm):
         }
 
 
+# AJAX & Utility Views
 def load_user_processes(request):
     user_id = request.GET.get("user_id")
     processes_data = []
@@ -596,6 +562,41 @@ def load_client_branches(request):
         except (ValueError, TypeError):
             pass  # Si el user_id no es válido, devuelve una lista vacía
     return JsonResponse(branches_data, safe=False)
+
+
+def send_welcome_and_set_password_email(user, request):
+    """Genera un enlace para establecer la contraseña y lo envía al nuevo usuario."""
+    try:
+        token = default_token_generator.make_token(user)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+        # Construye la URL completa para el enlace
+        reset_link = request.build_absolute_uri(
+            reverse("password_reset_confirm", kwargs={"uidb64": uid, "token": token})
+        )
+
+        # Renderiza el asunto y el cuerpo del correo desde plantillas
+        subject = render_to_string("registration/account_created_subject.txt")
+        message = render_to_string(
+            "registration/account_created_email.html",
+            {
+                "user": user,
+                "reset_link": reset_link,
+            },
+        )
+
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
+        logger.info(
+            f"Correo de bienvenida y para establecer contraseña enviado a {user.email}"
+        )
+    except Exception as e:
+        logger.error(f"Error al enviar correo de bienvenida a {user.email}: {e}")
 
 
 # Login view
@@ -1037,7 +1038,7 @@ class UserDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
 
 class UserCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = User
-    form_class = UserWithProfileForm
+    form_class = UserCreationAsAdminForm
     template_name = "users/user_form.html"
     login_url = "/login/"
     success_url = reverse_lazy("user_list")
@@ -1076,12 +1077,19 @@ class UserCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         return form
 
     def form_valid(self, form):
-        user = form.save()
+        user = form.save(commit=False)
+        user.set_unusable_password()  # El usuario la establecerá por correo
+        user.save()
+
+        # Asignar el rol seleccionado
         role = form.cleaned_data["role"]
         user.roles.set([role])
         self.object = user
 
-        # --- CORRECCIÓN: Lógica de redirección ---
+        # Enviar el correo de bienvenida para establecer la contraseña
+        send_welcome_and_set_password_email(user, self.request)
+
+        # --- Lógica de redirección ---
         if role.name == RoleChoices.CLIENTE:
             # Si es cliente, redirigir al formulario de creación de perfil
             return redirect("client_profile_create", user_pk=self.object.pk)
@@ -1139,18 +1147,28 @@ class UserUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
         return form
 
     def form_valid(self, form):
-        user = form.save(commit=False)
-        # Siempre actualizar la contraseña
-        password = form.cleaned_data.get("password1")
-        if password:
-            user.set_password(password)
-        user.save()
-        role = form.cleaned_data["role"]
-        user.roles.set([role])
+        """Actualiza el usuario y maneja la lógica de roles y perfiles de cliente."""
+        new_role = form.cleaned_data["role"]
+        user = form.save(commit=False)  # No guardar todavía
 
-        # Si el rol cambia a NO ser cliente, eliminamos el perfil.
-        if role.name != RoleChoices.CLIENTE:
+        # La contraseña no se toca, se mantiene la existente.
+        user.save()
+        user.roles.set([new_role])
+        self.object = user
+
+        is_now_client = new_role.name == RoleChoices.CLIENTE
+        profile_exists = hasattr(user, "client_profile")
+
+        # Caso 1: El rol es Cliente, pero no tiene perfil. Iniciar flujo de creación de perfil.
+        if is_now_client and not profile_exists:
+            return redirect("client_profile_create", user_pk=user.pk)
+
+        # Caso 2: El rol ya NO es Cliente, pero tenía un perfil. Eliminar el perfil obsoleto.
+        if not is_now_client and profile_exists:
             ClientProfile.objects.filter(user=user).delete()
+
+        # Caso 3 (implícito): Para todos los demás casos (interno -> interno, cliente -> cliente con perfil),
+        # simplemente redirigir a la lista de usuarios.
         return redirect(self.get_success_url())
 
     def handle_no_permission(self):

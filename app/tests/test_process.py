@@ -876,7 +876,7 @@ class ProcessAssignmentTest(TestCase):
         self.assertFormError(
             form,
             "assigned_to",
-            "Select a valid choice. 99999 is not one of the available choices.",
+            "Escoja una opción válida. 99999 no es una de las opciones disponibles.",
         )
 
 

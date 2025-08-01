@@ -274,7 +274,7 @@ class ReportAPITest(TestCase):
             form_in_context,
             "El formulario no se encontró en el contexto de la respuesta.",
         )
-        self.assertFormError(form_in_context, "title", "This field is required.")
+        self.assertFormError(form_in_context, "title", "Este campo es obligatorio.")
 
     def test_report_create_view_post_invalid_no_pdf(self):
         self.client.login(username="testuser", password="testpassword")
@@ -295,7 +295,7 @@ class ReportAPITest(TestCase):
             form_in_context,
             "El formulario no se encontró en el contexto de la respuesta.",
         )
-        self.assertFormError(form_in_context, "pdf_file", "This field is required.")
+        self.assertFormError(form_in_context, "pdf_file", "Este campo es obligatorio.")
 
     def test_report_create_view_post_invalid_file_type(self):
         """Test que verifica la validación del tipo de archivo.
