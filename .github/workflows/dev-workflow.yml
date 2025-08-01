@@ -169,6 +169,7 @@ jobs:
         run: |
           aws lambda invoke \
             --function-name migrate-ephemeral-db \
+            --invocation-type Event \
             --cli-binary-format raw-in-base64-out \
             --payload '{
               "DATABASE_HOST": "${{ env.DB_ENDPOINT }}",
@@ -183,6 +184,17 @@ jobs:
               "DEBUG": "True"
             }' \
             output.json
+
+          echo "Lambda invocation requested. Waiting for migrations to run..."
+          sleep 120 # Wait for 2 minutes for migrations to complete
+
+          cat output.json
+          # Check if the invocation was accepted
+          if ! grep -q '"StatusCode": 202' output.json; then
+            echo "Lambda invocation failed!"
+            exit 1
+          fi
+          echo "Migrations assumed to be complete."
 
   update-dev-environment:
     name: Update Dev App Runner Environment

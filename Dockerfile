@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Instalar dependencias del sistema
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libpq-dev curl \
+    && apt-get install -y --no-install-recommends gcc libpq-dev curl bash \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
