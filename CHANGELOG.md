@@ -1,3 +1,16 @@
+# [1.69.0](https://github.com/rad-solutions/webserver/compare/v1.68.0...v1.69.0) (2025-08-01)
+
+
+### Bug Fixes
+
+* Deleted end of line in email subject files. Excluded them from the Pre-Commit Hook. ([2b3d5e7](https://github.com/rad-solutions/webserver/commit/2b3d5e79de9d3c2e6eee72210cc767c4d956a003))
+
+
+### Features
+
+* Implemented password change for logged in users. Tests revised and adapted. ([d2cc133](https://github.com/rad-solutions/webserver/commit/d2cc133f72535ff5f51ec214583013ea56dcfc86))
+* Implemented Self Password Setting by email on User Creation and Password Reset flow. Tests updated. ([a24fbbf](https://github.com/rad-solutions/webserver/commit/a24fbbf9c0d76bdbb382aefe0729024a5364579e))
+
 # [1.68.0](https://github.com/rad-solutions/webserver/compare/v1.67.0...v1.68.0) (2025-07-31)
 
 
