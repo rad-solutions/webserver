@@ -184,17 +184,16 @@ jobs:
       - name: Run Django migrations via Lambda
         run: |
           echo "Invoking Lambda function to run migrations..."
-          aws lambda invoke \
+          INVOKE_OUTPUT=$(aws lambda invoke \
             --function-name migrate-ephemeral-db \
             --invocation-type Event \
             --cli-binary-format raw-in-base64-out \
-            output.json
+            /dev/null) # Redirect payload output, we only need the invocation status from stdout
 
-          echo "Lambda invocation response:"
-          cat output.json
+          echo "Lambda invocation response: $INVOKE_OUTPUT"
 
-          # Check if the invocation was accepted using jq
-          STATUS_CODE=$(jq .StatusCode output.json)
+          # Check if the invocation was accepted using jq on the captured stdout
+          STATUS_CODE=$(echo "$INVOKE_OUTPUT" | jq .StatusCode)
           if [ "$STATUS_CODE" != "202" ]; then
             echo "Lambda invocation failed! Status code: $STATUS_CODE"
             exit 1
