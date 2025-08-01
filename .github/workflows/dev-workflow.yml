@@ -169,6 +169,7 @@ jobs:
         run: |
           aws lambda invoke \
             --function-name migrate-ephemeral-db \
+            --cli-binary-format raw-in-base64-out \
             --payload '{
               "DATABASE_HOST": "${{ env.DB_ENDPOINT }}",
               "DATABASE_NAME": "${{ env.DB_NAME }}",
