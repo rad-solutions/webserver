@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from ..models import (
     ClientBranch,
@@ -542,7 +543,7 @@ class EquipmentListViewExtraFeaturesTest(TestCase):
         self.client_user.user_permissions.add(view_perm)
 
         self.url = reverse("equipos_list")
-        today = date.today()
+        today = timezone.now().date()
 
         self.eq_cc_expiring = Equipment.objects.create(
             nombre="CC Vence Pronto",
@@ -563,7 +564,7 @@ class EquipmentListViewExtraFeaturesTest(TestCase):
         self.eq_cc_this_month = Equipment.objects.create(
             nombre="CC Mes Actual",
             user=self.client_user,
-            fecha_ultimo_control_calidad=today.replace(day=5),
+            fecha_ultimo_control_calidad=today,
         )
 
     def test_row_highlighting_logic_in_context(self):

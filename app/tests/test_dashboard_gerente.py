@@ -81,7 +81,7 @@ class GerenteDashboardTest(TestCase):
             estado=ProcessStatusChoices.EN_PROGRESO,
             fecha_final=hoy - timedelta(days=15),
         )
-        self.proceso_vencido.assigned_to.add(self.gerente)
+        self.proceso_vencido.assigned_to.set([self.gerente])
         self.proceso_vencido.save()
         self.proceso_proximo = Process.objects.create(
             user=self.cliente,
@@ -89,7 +89,7 @@ class GerenteDashboardTest(TestCase):
             estado=ProcessStatusChoices.EN_PROGRESO,
             fecha_final=hoy + timedelta(days=15),
         )
-        self.proceso_proximo.assigned_to.add(self.gerente)
+        self.proceso_proximo.assigned_to.set([self.gerente])
         self.proceso_proximo.save()
         self.proceso_en_progreso = Process.objects.create(
             user=self.cliente,
@@ -97,7 +97,7 @@ class GerenteDashboardTest(TestCase):
             estado=ProcessStatusChoices.EN_PROGRESO,
             fecha_final=hoy + timedelta(days=90),
         )
-        self.proceso_en_progreso.assigned_to.add(self.gerente)
+        self.proceso_en_progreso.assigned_to.set([self.gerente])
         self.proceso_en_progreso.save()
         self.proceso_sin_fecha = Process.objects.create(
             user=self.cliente,
@@ -111,13 +111,12 @@ class GerenteDashboardTest(TestCase):
             estado=ProcessStatusChoices.FINALIZADO,  # No debe aparecer
             fecha_final=hoy - timedelta(days=100),
         )
-
         # Proceso finalizado este mes, asignado a gerente y tecnico1
         self.proceso_finalizado_mes_actual = Process.objects.create(
             user=self.cliente,
             process_type=ProcessTypeChoices.CONTROL_CALIDAD,
             estado=ProcessStatusChoices.FINALIZADO,
-            fecha_final=hoy - timedelta(days=5),
+            fecha_final=hoy,
         )
         self.proceso_finalizado_mes_actual.assigned_to.set(
             [self.gerente, self.tecnico1]

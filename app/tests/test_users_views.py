@@ -360,3 +360,84 @@ class PasswordResetFlowTest(TestCase):
         # Probar el inicio de sesión con la nueva contraseña
         login_successful = self.client.login(username="testuser", password=new_password)
         self.assertTrue(login_successful)
+
+
+class PasswordChangeFlowTest(TestCase):
+    def setUp(self):
+        """Crea un usuario y lo loguea antes de cada test."""
+        self.old_password = "strong_password_123"
+        self.user = User.objects.create_user(
+            username="changepassuser",
+            email="change@example.com",
+            password=self.old_password,
+        )
+        self.client.login(username="changepassuser", password=self.old_password)
+        self.url = reverse("password_change")
+
+    def test_password_change_view_loads_for_logged_in_user(self):
+        """Verifica que la página del formulario de cambio de contraseña carga correctamente."""
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "registration/password_change_form.html")
+
+    def test_successful_password_change(self):
+        """Prueba el flujo completo y exitoso de cambio de contraseña."""
+        new_password = "a_brand_new_password_456"
+        data = {
+            "old_password": self.old_password,
+            "new_password1": new_password,
+            "new_password2": new_password,
+        }
+        response = self.client.post(self.url, data)
+
+        # Debería redirigir a la página de éxito
+        self.assertRedirects(response, reverse("password_change_done"))
+
+        # Verificar que la contraseña realmente cambió en la base de datos
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(new_password))
+        self.assertFalse(self.user.check_password(self.old_password))
+
+    def test_password_change_fails_with_wrong_old_password(self):
+        """Verifica que el cambio falle si la contraseña antigua es incorrecta."""
+        new_password = "a_brand_new_password_456"
+        data = {
+            "old_password": "wrong_old_password",
+            "new_password1": new_password,
+            "new_password2": new_password,
+        }
+        response = self.client.post(self.url, data)
+
+        # La página se vuelve a mostrar con un error, no redirige
+        self.assertEqual(response.status_code, 200)
+        form_in_context = response.context.get("form")
+        self.assertFormError(
+            form_in_context,
+            "old_password",
+            "Su contraseña antigua es incorrecta. Por favor, vuelva a introducirla.",
+        )
+
+        # Verificar que la contraseña NO cambió
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(self.old_password))
+
+    def test_password_change_fails_with_mismatched_new_passwords(self):
+        """Verifica que el cambio falle si las nuevas contraseñas no coinciden."""
+        data = {
+            "old_password": self.old_password,
+            "new_password1": "new_password_a",
+            "new_password2": "new_password_b",
+        }
+        response = self.client.post(self.url, data)
+
+        self.assertEqual(response.status_code, 200)
+        form_in_context = response.context.get("form")
+        self.assertFormError(
+            form_in_context,
+            "new_password2",
+            "Los dos campos de contraseña no coinciden.",
+        )
+
+        # Verificar que la contraseña NO cambió
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(self.old_password))
