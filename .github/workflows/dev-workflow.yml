@@ -172,7 +172,7 @@ jobs:
           echo "Updating Lambda function environment variables..."
           aws lambda update-function-configuration \
             --function-name migrate-ephemeral-db \
-            --environment "Variables={DATABASE_HOST=${{ env.DB_ENDPOINT }},DATABASE_NAME=${{ env.DB_NAME }},DATABASE_USER=${{ env.DB_USER }},DATABASE_PASSWORD=${{ env.DB_PASSWORD }},AWS_STORAGE_BUCKET_NAME=${{ env.TEMP_S3_BUCKET }},AWS_S3_REGION_NAME=${{ env.AWS_REGION }},AWS_ACCESS_KEY_ID=dummy-key,AWS_SECRET_ACCESS_KEY=dummy-secret,DJANGO_SECRET_KEY=dummy-secret-for-lambda,DEBUG=True}"
+            --environment "Variables={DATABASE_HOST=${{ env.DB_ENDPOINT }},DATABASE_NAME=${{ env.DB_NAME }},DATABASE_USER=${{ env.DB_USER }},DATABASE_PASSWORD=${{ env.DB_PASSWORD }},AWS_STORAGE_BUCKET_NAME=${{ env.TEMP_S3_BUCKET }},AWS_S3_REGION_NAME=${{ env.AWS_REGION }},DJANGO_SECRET_KEY=dummy-secret-for-lambda,DEBUG=True}"
 
       - name: Wait for Lambda to update
         run: |
