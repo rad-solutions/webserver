@@ -151,7 +151,7 @@ jobs:
       AWS_ACCOUNT_ID: 978368259161
       DB_ENDPOINT: ${{ needs.provision-ephemeral-db.outputs.db_endpoint }}
       DB_SECRET_NAME: ${{ needs.provision-ephemeral-db.outputs.temp_secret_name }}
-      DB_NAME: radsolutions
+      DB_NAME: postgres # Changed from radsolutions to postgres
       DB_USER: postgres
       TEMP_S3_BUCKET: ${{ needs.provision-ephemeral-db.outputs.temp_s3_bucket }}
     steps:
