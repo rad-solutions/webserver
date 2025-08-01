@@ -113,7 +113,9 @@
     <script src="{% static 'js/scripts.js' %}"></script>
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/es.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/es.js"></script> -->
+    <!-- Cargar nuestras traducciones personalizadas para Select2 -->
+    <script src="{% static 'js/select2_custom_es.js' %}"></script>
     <script>
         $(document).ready(function() {
             // Este selector es genérico y activará cualquier campo preparado para AJAX
